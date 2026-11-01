@@ -78,32 +78,32 @@ Re-derived on 2026-11-01 against `main` at `eacc1fd`. Line numbers move; the sym
 
 ## Deliverables
 
-- [ ] **The configuration, the boundary and the reader, built, in a new ADR at the next free number (`ls docs/adr`), kind `built`.**
+- [x] **The configuration, the boundary and the reader, built, in a new ADR at the next free number (`ls docs/adr`), kind `built`.**
   - `Config::runs_a_settled_image()`, its comment saying what the exponent alone is, and its test field by field against `Config::reads_its_targets()`.
   - `Executor::new` refusing an exponent other than one beside a read, by a `ConfigError` of its own.
   - `Image::decode` refusing, with the same error, an image with a read or a probe under way under such an exponent.
   - `Executor::coupling_sum(sources, targets)`, read between ticks.
   - A test over `testkit/prop.rs`'s lattice for each refusal, and one holding `coupling_sum` to a sum by hand.
-- [ ] **H-46's harness under the name.**
+- [x] **H-46's harness under the name.**
   - `zero_from` decodes the arm's form under `Config::runs_a_settled_image()`, its sizing by struct update and `kept_addresses` left at zero, the task on its plain path at age zero, its comment rewritten. The control's form stays what it was.
   - `zero_groups` reads each value through `coupling_sum`, its assertion against `made.couplings` kept.
   - The six short forms and the verdict's test unchanged, each pin held.
-- [ ] **The dispatches**, once the last commit under `src/` and `tests/` is pushed.
+- [x] **The dispatches**, once the last commit under `src/` and `tests/` is pushed.
   - `scope=exhaustive` with nothing excluded: its eighteen shards are green, and the cost table is regenerated from it.
   - `scope=arms` on seed 22's two first halves: each job green, its eight schedules' pinned rows held under the name.
-- [ ] **The ADR's reading.**
+- [x] **The ADR's reading.**
   - What was built, and the two refusals.
   - Each dispatch with its run id and commit, and each job's time against its bound.
   - That the arms' ten other long halves read the name's form unrun, and what their rows rest on.
   - Whether the schedule's sweep of 2026-11-04 has ended, and its record if it has.
-- [ ] **The documents, in the same pull request.**
+- [x] **The documents, in the same pull request.**
   - `docs/STATUS.md` rewritten whole.
   - Whitepaper §5.2.16: the running configuration beside the engine's default, with an `@assert-count` for the new name and the sentence on the exponent alone.
   - Whitepaper §5.2.1: `coupling_sum` in the zero sum's paragraph, and the exponent's paragraph no longer "unset by default" where the name sets it.
   - The tables written by `node scripts/adr-index.mjs`.
   - `CHANGELOG.md`, one entry of at most 400 characters.
   - The whitepaper's version in both declarations, with its date.
-- [ ] **The brief archived** with `spec-brief archive 086 --strict`, every deliverable dispositioned. The round's ADR is set to `accepted` by the commit that asks for the merge, and the pull request is marked ready for review with it.
+- [x] **The brief archived** with `spec-brief archive 086 --strict`, every deliverable dispositioned. The round's ADR is set to `accepted` by the commit that asks for the merge, and the pull request is marked ready for review with it.
 
 ## Not empowered
 
