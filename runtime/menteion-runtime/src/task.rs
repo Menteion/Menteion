@@ -315,16 +315,41 @@ impl Stimulus {
 
     /// `messages` of `message` into every unit of the set, in the set's order.
     fn send(&self, inject: &Inject, messages: u32, message: u32) -> Result<u32, InjectError> {
-        send(&self.set, inject, messages, message)
+        send(self.set.units(), inject, messages, message)
+    }
+
+    /// [`inject`](Self::inject) into `units` in place of the set (exploration 016, on its branch
+    /// alone): units no [`Set`] can name.
+    pub fn inject_into(&self, inject: &Inject, units: &[u32]) -> Result<u32, InjectError> {
+        let message = spike_message(self.efficacy_q16, false);
+        send(units.iter().copied(), inject, self.messages, message)
+    }
+
+    /// [`cancel_at`](Self::cancel_at) into `units` in place of the set (exploration 016).
+    pub fn cancel_into(&self, inject: &Inject, k: u32, units: &[u32]) -> Result<u32, InjectError> {
+        match self.cancel {
+            Some(cancel) if cancel.is_due(k) => send(
+                units.iter().copied(),
+                inject,
+                cancel.messages,
+                spike_message(cancel.efficacy_q16, false),
+            ),
+            _ => Ok(0),
+        }
     }
 }
 
-/// `messages` of `message` into every unit of `set`, in the set's order; returns the messages
-/// injected. An injector that refuses one stops there.
-fn send(set: &Set, inject: &Inject, messages: u32, message: u32) -> Result<u32, InjectError> {
+/// `messages` of `message` into every unit of `units`, in order; returns the messages injected.
+/// An injector that refuses one stops there.
+fn send(
+    units: impl Iterator<Item = u32>,
+    inject: &Inject,
+    messages: u32,
+    message: u32,
+) -> Result<u32, InjectError> {
     let mut sent = 0u32;
     // Every unit below the arena, which `Task::check` bounded.
-    for unit in set.units() {
+    for unit in units {
         for _ in 0..messages {
             inject.inject(unit, message)?;
             sent = sent.saturating_add(1);
@@ -546,7 +571,7 @@ impl<const N: usize> Readout<N> {
         let mut sent = 0u32;
         for (set, channel) in self.sets.iter().zip(self.channels.iter()) {
             if channel.gpi_snr_inhibition > 0 {
-                sent = sent.saturating_add(send(set, inject, hold.messages, message)?);
+                sent = sent.saturating_add(send(set.units(), inject, hold.messages, message)?);
             }
         }
         Ok(sent)
@@ -1266,12 +1291,29 @@ impl<const N: usize> Task<N> {
         exec: &mut Executor<CAP>,
         trial: u64,
     ) -> Result<Outcome<N>, TaskError> {
+        self.trial_presenting(exec, trial, None)
+    }
+
+    /// [`trial`](Self::trial), the stimulus's messages and its cancel going to `presenting`'s
+    /// units for that stimulus in place of its set (exploration 016, on its branch alone): a
+    /// stimulus sharing part of another's units, spread over periods no [`Set`] can name. `check`
+    /// reads the sets alone, so the caller holds the units to them. None is the trial it was.
+    pub fn trial_presenting<const CAP: usize>(
+        &mut self,
+        exec: &mut Executor<CAP>,
+        trial: u64,
+        presenting: Option<&[Vec<u32>; 2]>,
+    ) -> Result<Outcome<N>, TaskError> {
         self.check(exec)?;
         let start = exec.ticks();
         let stimulus = self.stimulus_at(trial);
         let inject = exec.injector();
         let presented = self.stimuli[usize::from(stimulus)];
-        presented.inject(&inject)?;
+        let units = presenting.map(|units| units[usize::from(stimulus)].as_slice());
+        match units {
+            Some(units) => presented.inject_into(&inject, units)?,
+            None => presented.inject(&inject)?,
+        };
         // The train's stamp is the tick's low word (§8.4), as `start` is read here; the
         // window's first tick is inside the trial, which `check` held, and so is its close.
         let opens = (start as u32).wrapping_add(self.window.from);
@@ -1279,7 +1321,10 @@ impl<const N: usize> Task<N> {
         let mut decided: Option<([u32; N], Option<u8>)> = None;
         let mut held = 0u32;
         for k in 0..self.ticks {
-            presented.cancel_at(&inject, k)?;
+            match units {
+                Some(units) => presented.cancel_into(&inject, k, units)?,
+                None => presented.cancel_at(&inject, k)?,
+            };
             if let Some(hold) = self.hold.filter(|hold| hold.is_due(close, k)) {
                 // The selection, made once, before the first tick the hold is due at: the
                 // tick the window closes at, every tick of the window run and in the train.
