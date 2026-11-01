@@ -1,7 +1,7 @@
 # Where the work stands
 
 Every round rewrites this page whole, and it holds no history ([ADR-0197](adr/0197-one-place-for-each-kind-of-fact.md)).
-[ADR-0232](adr/0232-a-running-configuration-and-m12-closed.md) wrote it on 2026-11-01, after brief 085 and before brief 086.
+[ADR-0233](adr/0233-a-running-configuration-built.md) wrote it on 2026-11-01, with brief 086.
 
 ## The engine
 
@@ -10,6 +10,7 @@ Every round rewrites this page whole, and it holds no history ([ADR-0197](adr/01
 - **Its default** for an image no derivation has settled is `Config::reads_its_targets()`: `Config::default()` with the modulation at rest 0.5, the gain 1.75, the read of 128 windows, both targets by it, and the probe, so the rate's rule runs at the step the engine makes in step = 1/16's place ([ADR-0196](adr/0196-the-engines-default.md), [ADR-0205](adr/0205-the-probe-in-the-engines-default.md)). An engine born under it writes H-42's candidate's image byte for byte on seeds 22, 23 and 24 ([ADR-0206](adr/0206-the-probe-in-the-engines-default-built.md)). `Config::default()` stays the bare engine every pin runs.
 - **It can keep its addresses and read a delay** ([ADR-0208](adr/0208-a-reward-past-the-trial-its-address-kept-built.md), [ADR-0217](adr/0217-a-delay-the-engine-reads-built.md)): with `Config::kept_addresses` set, each trial's close keeps the address, and a reward that names its trial's age consolidates under it. With `Config::reads_its_delay` set, a critic per kept age scores its errors, and the engine moves once from age zero to the age that leads by 1/32 at 64 rewards running. Unset, told, or on time with no move, every run is the run it was.
 - **It can hold a stimulus's couplings** ([ADR-0228](adr/0228-a-zero-sum-at-the-stimulus-built.md)): `Executor::set_zero_sum` scales each group back to a value the host gives, each synapse's fraction carried, and `Config::depression_exponent` sets the excitatory depression's exponent. Unset, every run is the run it was, and neither is in the image.
+- **It has a name for running a settled image** ([ADR-0233](adr/0233-a-running-configuration-built.md)): `Config::runs_a_settled_image()` is the default with a quarter's exponent, and a decode keeps that one field of it. The host reads each group's value once with `Executor::coupling_sum`, keeps it and sets the groups at each load. An exponent but one is refused beside a read, and on an image with a read or a probe under way, so the derivation stays H-42's. The name without the groups is a state no run has read, and nothing refuses it.
 
 ## What it learns
 
@@ -38,23 +39,22 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 ## Asked, read as no, and kept unset
 
 - The rule held by the network is paused, with the facilitating class and the slow current ([ADR-0126](adr/0126-the-gate-raised-measured.md)); the address's neural target side is closed, with the hold and the released delivery (ADR-0146).
-- The whole punishment is a parameter of the image no configuration sets (ADR-0155, ADR-0156); the exploration an option of the task no run sets (ADR-0163, ADR-0164).
-- The controller's step under its estimate is zero in every run that learns (ADR-0077, ADR-0177).
+- The whole punishment is a parameter of the image no configuration sets (ADR-0155, ADR-0156); the exploration an option of the task no run sets (ADR-0163, ADR-0164); and the controller's step under its estimate is zero in every run that learns (ADR-0077, ADR-0177).
 - The rate's rule, the read of its target, the read's flag and the probe are each set in the default; no network but H-42's three has run under it.
-- The kept addresses and the delay read are in no default: H-43 and H-45 ran them, and H-46 the addresses at age zero alone, at `kept_addresses` 2. The zero sum and the depression's exponent are in none either: brief 086 names the exponent for a settled image, and the host sets the groups.
+- The kept addresses and the delay read are in no default or name: H-43 and H-45 ran them. The zero sum is in none either, its groups being the host's, and the exponent is in the running configuration alone.
 - Of the speed line ([ADR-0105](adr/0105-the-speed-line-closed.md)), the sweep and service on arrival are kept, and the lanes reverted.
 
 ## What does not exist
 
-- Every subsystem's real dynamics beyond these rules.
+- Every subsystem's real dynamics beyond these rules, the per-unit gain of §8.8, and a reserved byte in the modulator section.
 - The lookahead ADR-0099 ordered, a lever on the rest of the turn, and a catch-up in fewer steps than ticks.
 - The `mmap` path, the shared-memory mappings, core pinning, the tool broker, standardising apart, and the real-time mode's reach, measured on the reference platform.
 - A delay that changes during a run, a delay past two trials, and a mapping kept through a late move: the first is lost at age zero.
-- The per-unit gain of §8.8, and a reserved byte in the modulator section.
 - A run past sixteen schedules, and couplings whose shape has settled: under the zero sum their bottom eighth still rose about 0.02 a schedule at the sixteenth.
+- A public call that lays H-25's learning configuration on an image, so no host outside the tests reaches a settled image.
 
 ## The next decision
 
-[ADR-0232](adr/0232-a-running-configuration-and-m12-closed.md) closed M12 and named a running configuration for a settled image, which brief 086 builds: the exponent by a name, the zero sum's groups by the host.
+[ADR-0232](adr/0232-a-running-configuration-and-m12-closed.md) closed M12, and [ADR-0233](adr/0233-a-running-configuration-built.md) built its running configuration.
 1. M11, learning that sleep keeps: an exploration reads a night with replay against one without, and M11's decision ADR then settles F-47's replay.
 2. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
