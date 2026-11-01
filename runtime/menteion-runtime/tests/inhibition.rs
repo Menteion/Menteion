@@ -45735,3 +45735,109 @@ fn what_an_empty_night_moves_under_the_zero_sum_on_seed_22_explore() {
 fn what_an_empty_night_moves_under_the_default_on_seed_22_explore() {
     what_an_empty_night_moves(ZERO_CONTROL);
 }
+
+/// The twin at the flips (exploration 014): the consolidated twin of `FLIP_FURTHER_GAPS` at a
+/// smaller and a larger night, at the record's baseline, which consolidates no excitatory synapse,
+/// and with the older mappings kept in the ledger, replayed beside the one just in force.
+const FLIP_TWIN_GAPS: [FlipGap; 4] = [
+    FlipGap::Night {
+        shift: 5,
+        twin: true,
+        slow_wave: Some(ONE / 2),
+        kept: false,
+    },
+    FlipGap::Night {
+        shift: 9,
+        twin: true,
+        slow_wave: Some(ONE / 2),
+        kept: false,
+    },
+    FlipGap::Night {
+        shift: 7,
+        twin: true,
+        slow_wave: None,
+        kept: false,
+    },
+    FlipGap::Night {
+        shift: 7,
+        twin: true,
+        slow_wave: Some(ONE / 2),
+        kept: true,
+    },
+];
+
+/// The consolidated twin alone, for the default's schedules.
+const FLIP_TWIN: FlipGap = FlipGap::Night {
+    shift: 7,
+    twin: true,
+    slow_wave: Some(ONE / 2),
+    kept: false,
+};
+
+/// The twin's nights on H-46's first schedule, from the assignment.
+#[test]
+#[ignore]
+fn the_twins_nights_at_each_flip_of_the_first_schedule_on_seed_22_from_the_assignment_explore() {
+    flip_schedules(
+        NightFrom::FirstMapping,
+        ZERO_ARM,
+        Reversal::AssignmentFirst,
+        &FLIP_TWIN_GAPS,
+    );
+}
+
+/// The twin's nights on H-46's first schedule, from the mirrored assignment.
+#[test]
+#[ignore]
+fn the_twins_nights_at_each_flip_of_the_first_schedule_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    flip_schedules(
+        NightFrom::FirstMapping,
+        ZERO_ARM,
+        Reversal::MirroredFirst,
+        &FLIP_TWIN_GAPS,
+    );
+}
+
+/// The twin's nights on H-46's ninth schedule, from the assignment.
+#[test]
+#[ignore]
+fn the_twins_nights_at_each_flip_of_the_ninth_schedule_on_seed_22_from_the_assignment_explore() {
+    flip_schedules(
+        NightFrom::Eighth,
+        ZERO_ARM,
+        Reversal::AssignmentFirst,
+        &FLIP_TWIN_GAPS,
+    );
+}
+
+/// The twin's nights on H-46's ninth schedule, from the mirrored assignment.
+#[test]
+#[ignore]
+fn the_twins_nights_at_each_flip_of_the_ninth_schedule_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    flip_schedules(
+        NightFrom::Eighth,
+        ZERO_ARM,
+        Reversal::MirroredFirst,
+        &FLIP_TWIN_GAPS,
+    );
+}
+
+/// The consolidated twin on the default's first schedule, both arms.
+#[test]
+#[ignore]
+fn the_twin_at_each_flip_of_the_default_first_schedule_on_seed_22_explore() {
+    for arm in ZERO_ARMS {
+        flip_schedules(NightFrom::FirstMapping, ZERO_CONTROL, arm, &[FLIP_TWIN]);
+    }
+}
+
+/// The consolidated twin on the default's ninth schedule, both arms.
+#[test]
+#[ignore]
+fn the_twin_at_each_flip_of_the_default_ninth_schedule_on_seed_22_explore() {
+    for arm in ZERO_ARMS {
+        flip_schedules(NightFrom::Eighth, ZERO_CONTROL, arm, &[FLIP_TWIN]);
+    }
+}
