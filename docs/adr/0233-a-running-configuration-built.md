@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-01
 depends-on: ADR-0232
 title: A running configuration for a settled image, built
