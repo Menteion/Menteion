@@ -44670,3 +44670,1183 @@ fn zero_tables() {
         "ADR-0226's four predicted readings, as read"
     );
 }
+
+// ----------------------------------------------------- what a night keeps (exploration 014)
+
+use menteion_hippocampus::{PATTERN_MAX, RIPPLE_SHIFT, capture};
+use menteion_homeostasis::{PRESSURE_MAX_Q16, STAGE_AWAKE, STAGE_SWS};
+
+/// A ripple, in ticks (ADR-0038).
+const NIGHT_RIPPLE: u64 = 1 << RIPPLE_SHIFT;
+
+/// The most ripples a night may take, 512 windows: its stages end it well before (ADR-0037).
+const NIGHT_RIPPLES_MAX: u64 = 512 * (WINDOW_TICKS / NIGHT_RIPPLE);
+
+/// The REM ripples an episode survives: more than a night gives any one of them here.
+const NIGHT_PRIORITY: u8 = 200;
+
+/// The span a trial's pattern is captured from (ADR-0048): a basal time constant from the
+/// stimulus.
+const NIGHT_CAPTURE_TICKS: u32 = 512;
+
+/// The rewarded blocks a mapping is read over after a gap.
+const NIGHT_READ_BLOCKS: usize = 4;
+
+/// The sleep shifts of the nights: ADR-0044's, and two lengths four and sixteen times as long.
+const NIGHT_SHIFTS: [u8; 3] = [5, 7, 9];
+
+/// The idle run under the drive, windows between its readings: to 120, 240, 480 and 960, a
+/// schedule's length.
+const NIGHT_LONG_WINDOWS: [u64; 4] = [120, 120, 240, 480];
+
+/// A night's form: its name, under the drive, the replay's twin over the gain (F-47), the zero sum
+/// held, and the excitatory baseline in slow-wave sleep. Under H-25's configuration the baseline
+/// is zero, the reward's gate: the first four forms consolidate no excitatory synapse, and the
+/// rest are this exploration's twin in which a slow-wave tick does.
+type NightForm = (&'static str, bool, bool, bool, Option<i32>);
+
+const NIGHT_FORMS: [NightForm; 13] = [
+    ("driven", true, false, true, None),
+    ("quiet", false, false, true, None),
+    ("twin driven", true, true, true, None),
+    ("twin quiet", false, true, true, None),
+    ("half driven", true, false, true, Some(ONE / 2)),
+    ("half quiet", false, false, true, Some(ONE / 2)),
+    ("half twin driven", true, true, true, Some(ONE / 2)),
+    ("half twin quiet", false, true, true, Some(ONE / 2)),
+    ("half unheld driven", true, false, false, Some(ONE / 2)),
+    ("half unheld quiet", false, false, false, Some(ONE / 2)),
+    ("whole driven", true, false, true, Some(ONE)),
+    ("whole quiet", false, false, true, Some(ONE)),
+    ("whole twin quiet", false, true, true, Some(ONE)),
+];
+
+/// Where a reading starts: H-46's eighth image, whose mapping in force is its eighth schedule's
+/// last, or a first mapping learned from H-42's image.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum NightFrom {
+    Eighth,
+    FirstMapping,
+}
+
+/// What every gap of a reading shares.
+struct NightSite<'a> {
+    made: &'a Made,
+    groups: &'a ZeroGroups,
+    form: usize,
+    sets: [Set; 4],
+    mirrored: bool,
+}
+
+impl NightSite<'_> {
+    /// The groups where the form holds them.
+    fn held(&self) -> Option<&ZeroGroups> {
+        (self.form == ZERO_ARM).then_some(self.groups)
+    }
+}
+
+/// The engine of `form` from `image` for a gap: room for `room` episodes, the replay's drive over
+/// the gain where `twin` says, the baseline in slow-wave sleep where one is given, its homeostasis
+/// record patched, and the zero sum's groups set where they are given, since no image holds them.
+fn night_engine(
+    image: &[u8],
+    form: usize,
+    room: usize,
+    twin: bool,
+    slow_wave: Option<i32>,
+    groups: Option<&ZeroGroups>,
+    patch: impl Fn(&mut HomeostaticDrivePool),
+) -> Engine {
+    let mut exec = zero_from(image, SCAN_UNITS, form);
+    quiet(&mut exec);
+    let cfg = Config {
+        kept_addresses: KEPT_ADDRESSES,
+        depression_exponent: exec.depression_exponent(),
+        episodes: room,
+        replay_after_gain: twin,
+        slow_wave_baseline_q16: slow_wave,
+        ..config(SCAN_UNITS, 2, 0)
+    };
+    let mut exec = reload_with(&exec, cfg, patch);
+    if let Some(groups) = groups {
+        let held = [
+            (groups.sources[0].as_slice(), groups.values[0]),
+            (groups.sources[1].as_slice(), groups.values[1]),
+        ];
+        assert!(
+            exec.set_zero_sum(&held, &groups.targets),
+            "every source excitatory and in the arena, once, and every target in the arena"
+        );
+    }
+    exec
+}
+
+/// `ticks` ticks, under the drive where one is given.
+fn night_ticks(exec: &mut Engine, driven: Option<&Drive>, ticks: u64) {
+    let inject = exec.injector();
+    for _ in 0..ticks {
+        if let Some(drive) = driven {
+            drive.step(&inject, exec.ticks()).expect("the drive runs");
+        }
+        exec.tick();
+    }
+}
+
+/// What a gap's reading takes of the engine between ticks, read in the dumps.
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug)]
+struct NightState {
+    tick: u64,
+    stage: u8,
+    pressure: u32,
+    gain: u32,
+    couplings: [i64; 4],
+    inhibitory: i64,
+    excitatory: i64,
+}
+
+fn night_state(exec: &Engine, sets: &[Set; 4]) -> NightState {
+    let h = exec.homeostasis();
+    let (inhibitory, excitatory) = weights_by_polarity(exec);
+    NightState {
+        tick: exec.ticks(),
+        stage: h.sleep_stage,
+        pressure: h.sleep_pressure_q16,
+        gain: h.synaptic_gain_q16,
+        couplings: couplings(exec, sets),
+        inhibitory,
+        excitatory,
+    }
+}
+
+/// What a stretch of a night's replays fired: the ripples read; the pattern's units by their
+/// spikes in the ripple's ticks, none, one, two, three, more; the first spikes after the drive,
+/// their count, summed latency, least and most; the second spikes, their count and summed
+/// latency; and the spikes of the ripple's ticks, the pattern's, those of other units in its first
+/// basal time constant, and those of other units in its last.
+#[derive(Clone, Copy, Debug, Default)]
+struct RippleRead {
+    ripples: u32,
+    fired: [u32; 5],
+    first: (u32, u64, u32, u32),
+    second: (u32, u64),
+    pattern: u64,
+    others_after: u64,
+    others_before: u64,
+}
+
+fn ripple_read(read: &mut RippleRead, spikes: &[(u32, u32)], at: u32, pattern: &[u32]) {
+    read.ripples = read.ripples.saturating_add(1);
+    for &unit in pattern {
+        let mine: Vec<u32> = spikes
+            .iter()
+            .filter(|s| s.1 == unit)
+            .map(|s| s.0.wrapping_sub(at))
+            .collect();
+        let slot = mine.len().min(read.fired.len().saturating_sub(1));
+        read.fired[slot] = read.fired[slot].saturating_add(1);
+        if let Some(&first) = mine.first() {
+            let (n, sum, least, most) = read.first;
+            read.first = (
+                n.saturating_add(1),
+                sum.saturating_add(u64::from(first)),
+                if n == 0 { first } else { least.min(first) },
+                most.max(first),
+            );
+        }
+        if let Some(&second) = mine.get(1) {
+            read.second = (
+                read.second.0.saturating_add(1),
+                read.second.1.saturating_add(u64::from(second)),
+            );
+        }
+    }
+    for &(t, unit) in spikes {
+        if pattern.contains(&unit) {
+            read.pattern = read.pattern.saturating_add(1);
+            continue;
+        }
+        let age = u64::from(t.wrapping_sub(at));
+        if age < u64::from(NIGHT_CAPTURE_TICKS) {
+            read.others_after = read.others_after.saturating_add(1);
+        } else if age >= NIGHT_RIPPLE.saturating_sub(u64::from(NIGHT_CAPTURE_TICKS)) {
+            read.others_before = read.others_before.saturating_add(1);
+        }
+    }
+}
+
+/// The weights among `patterns`, each pattern's first unit its source: the synapses from the
+/// source to the rest, from the rest to the source, and among the rest, each a count and a sum.
+fn pattern_sums(exec: &Engine, patterns: &[Vec<u32>]) -> [(u32, i64); 3] {
+    let mut out = [(0u32, 0i64); 3];
+    for pattern in patterns {
+        for (i, &from) in pattern.iter().enumerate() {
+            let Some(unit) = exec.units().get(from as usize) else {
+                continue;
+            };
+            for s in unit.fan_out(exec.blocks()) {
+                let Some(j) = pattern.iter().position(|&u| u == s.target) else {
+                    continue;
+                };
+                let kind = match (i, j) {
+                    (0, _) => 0,
+                    (_, 0) => 1,
+                    _ => 2,
+                };
+                out[kind] = (
+                    out[kind].0.saturating_add(1),
+                    out[kind].1.saturating_add(i64::from(s.weight_q1_15)),
+                );
+            }
+        }
+    }
+    out
+}
+
+/// A night's settings.
+#[derive(Clone, Copy)]
+struct NightGiven<'a> {
+    shift: u8,
+    driven: bool,
+    twin: bool,
+    held: bool,
+    slow_wave: Option<i32>,
+    spend: bool,
+    patterns: &'a [Vec<u32>],
+}
+
+/// A night from `image`: `given`'s episodes tagged, the engine in slow-wave sleep at a pressure of
+/// 1.0 as ADR-0044's night starts, its stages run to the wake, then quiet. Every window dumps the
+/// state, the spikes and what the replays fired. Returns the image the night wrote, its shift back
+/// at zero so that the engine does not sleep again, and the night's ticks.
+fn night_on(site: &NightSite, image: &[u8], label: &str, given: NightGiven) -> (Vec<u8>, u64) {
+    let sets = site.sets;
+    let shift = given.shift;
+    let mut exec = night_engine(
+        image,
+        site.form,
+        given.patterns.len(),
+        given.twin,
+        given.slow_wave,
+        site.held().filter(|_| given.held),
+        |h| {
+            h.sleep_shift = shift;
+            h.sleep_stage = STAGE_SWS;
+            h.sleep_pressure_q16 = PRESSURE_MAX_Q16;
+        },
+    );
+    if given.spend {
+        exec.spend_episodes();
+    }
+    for pattern in given.patterns {
+        exec.tag_episode(pattern, NIGHT_PRIORITY)
+            .expect("the ledger has room and the pattern is one");
+    }
+    eprintln!(
+        "DUMP {label} start {:?} target {:?} step {} period {} pattern sums {:?}",
+        night_state(&exec, &sets),
+        exec.rate_target_per_window(),
+        exec.homeostasis().control_step_q0_16,
+        exec.istdp_target_period_ticks(),
+        pattern_sums(&exec, given.patterns)
+    );
+    let source = drive(SCAN_UNITS);
+    let driven = given.driven.then_some(&source);
+    let began = exec.ticks();
+    let lead = NIGHT_RIPPLE.wrapping_sub(began) & NIGHT_RIPPLE.wrapping_sub(1);
+    night_ticks(&mut exec, driven, lead);
+    let mut read = RippleRead::default();
+    let mut spikes = 0u64;
+    for _ in 0..NIGHT_RIPPLES_MAX {
+        let at = exec.ticks();
+        let pattern = (exec.sleep_stage() == STAGE_SWS)
+            .then(|| exec.episodes().get(exec.hippocampus().replay_hand as usize))
+            .flatten()
+            .filter(|e| !e.is_spent())
+            .map(|e| e.pattern().to_vec());
+        night_ticks(&mut exec, driven, NIGHT_RIPPLE);
+        let train = exec.train();
+        let from = train.partition_point(|s| s.0 < at as u32);
+        let mine = &train[from..];
+        spikes = spikes.saturating_add(mine.len() as u64);
+        if let Some(pattern) = &pattern {
+            ripple_read(&mut read, mine, at as u32, pattern);
+        }
+        if exec.ticks() & WINDOW_TICKS.wrapping_sub(1) == 0 {
+            eprintln!(
+                "DUMP {label} window {:?} spikes {spikes} replays {} depotentiations {} {read:?}",
+                night_state(&exec, &sets),
+                exec.replays(),
+                exec.depotentiations()
+            );
+            spikes = 0;
+            read = RippleRead::default();
+        }
+        if exec.sleep_stage() == STAGE_AWAKE {
+            break;
+        }
+    }
+    assert_eq!(exec.sleep_stage(), STAGE_AWAKE, "{label}: the night ended");
+    let ticks = exec.ticks().wrapping_sub(began);
+    let quiet_ticks = quiet(&mut exec);
+    eprintln!(
+        "DUMP {label} end {:?} quiet in {quiet_ticks} ticks, ticks {ticks}, replays {} depotentiations {} pattern sums {:?}",
+        night_state(&exec, &sets),
+        exec.replays(),
+        exec.depotentiations(),
+        pattern_sums(&exec, given.patterns)
+    );
+    let awake = night_engine(
+        &Image::encode(&exec).expect("quiescent"),
+        site.form,
+        0,
+        false,
+        None,
+        None,
+        |h| h.sleep_shift = 0,
+    );
+    undropped(exec, label);
+    let written = Image::encode(&awake).expect("quiescent");
+    undropped(awake, label);
+    (written, ticks)
+}
+
+/// `ticks` ticks awake from `image` with no stimulus, under the drive or not, then quiet.
+fn idle_on(site: &NightSite, image: &[u8], label: &str, ticks: u64, driven: bool) -> Vec<u8> {
+    let mut exec = night_engine(image, site.form, 0, false, None, site.held(), |_| {});
+    let start = night_state(&exec, &site.sets);
+    let source = drive(SCAN_UNITS);
+    night_ticks(&mut exec, driven.then_some(&source), ticks);
+    let end = night_state(&exec, &site.sets);
+    let quiet_ticks = quiet(&mut exec);
+    eprintln!("DUMP {label} idle start {start:?} end {end:?} quiet in {quiet_ticks} ticks");
+    let written = Image::encode(&exec).expect("quiescent");
+    undropped(exec, label);
+    written
+}
+
+/// What a mapping reads from `image`: a block with the reward withheld, then, on its own fork,
+/// `NIGHT_READ_BLOCKS` rewarded.
+fn retained(site: &NightSite, image: &[u8], label: &str) {
+    for (what, feedback, blocks) in [
+        ("withheld", Feedback::Withheld, 1),
+        ("rewarded", Feedback::Answer, NIGHT_READ_BLOCKS),
+    ] {
+        let mut exec = night_engine(image, site.form, 0, false, None, site.held(), |_| {});
+        let task = task_over(
+            site.sets,
+            SHAPE_F46,
+            Some(site.made.derived.cancel),
+            SCAN_UNITS,
+            feedback,
+            site.mirrored,
+            DRAWN_DELIVERY,
+        );
+        let (read, trace) = run_on_scheduled_over(
+            site.sets,
+            &mut exec,
+            task,
+            SCAN_UNITS,
+            blocks.saturating_mul(BLOCK),
+            &[],
+            &mut |_, _, _, _| {},
+        );
+        eprintln!(
+            "DUMP {label} {what} correct {:?} trace {trace:#018x} blocks {read:?}",
+            curve(&read)
+        );
+        undropped(exec, label);
+    }
+}
+
+/// The mapping's episodes: one for every excitatory unit of a stimulus set, that unit first, then
+/// the excitatory units of its answer's readout set it reaches, the strongest summed weight first,
+/// as many as `PATTERN_MAX` leaves room for.
+fn mapping_patterns(site: &NightSite, image: &[u8]) -> Vec<Vec<u32>> {
+    let exec = zero_from(image, SCAN_UNITS, site.form);
+    let excitatory = |id: u32| {
+        exec.units()
+            .get(id as usize)
+            .is_some_and(|u| u.flags & FLAG_INHIBITORY == 0)
+    };
+    let mut patterns = Vec::new();
+    for s in [0u8, 1] {
+        let from = site.sets[usize::from(s)];
+        let into = site.sets[answer_of(s, site.mirrored).saturating_add(2)];
+        for unit in exec.units() {
+            let id = unit.id as u32;
+            if unit.flags & FLAG_INHIBITORY != 0 || !from.contains(id) {
+                continue;
+            }
+            let mut targets: Vec<(u32, i64)> = Vec::new();
+            for syn in unit.fan_out(exec.blocks()) {
+                if !into.contains(syn.target) || !excitatory(syn.target) {
+                    continue;
+                }
+                let weight = i64::from(syn.weight_q1_15);
+                match targets.iter_mut().find(|t| t.0 == syn.target) {
+                    Some(t) => t.1 = t.1.saturating_add(weight),
+                    None => targets.push((syn.target, weight)),
+                }
+            }
+            targets.sort_by_key(|&(target, weight)| (core::cmp::Reverse(weight), target));
+            let rest = targets.iter().take(PATTERN_MAX.saturating_sub(1));
+            let mut pattern = vec![id];
+            pattern.extend(rest.map(|t| t.0));
+            patterns.push(pattern);
+        }
+    }
+    undropped(exec, "the patterns");
+    patterns
+}
+
+/// ADR-0048's rule on a block of the mapping: on a fork of `image`, one episode from each correct
+/// trial, the units `capture` ranks in the basal time constant from the stimulus, with where they
+/// lie dumped: the stimulus presented, its answer, the other readout, the other stimulus, none,
+/// and how many are inhibitory.
+fn captured_patterns(site: &NightSite, image: &[u8], label: &str) -> Vec<Vec<u32>> {
+    let mut exec = night_engine(image, site.form, 0, false, None, site.held(), |_| {});
+    let task = task_over(
+        site.sets,
+        SHAPE_F46,
+        Some(site.made.derived.cancel),
+        SCAN_UNITS,
+        Feedback::Answer,
+        site.mirrored,
+        DRAWN_DELIVERY,
+    );
+    let mut patterns: Vec<Vec<u32>> = Vec::new();
+    let mut lies = [0u32; 5];
+    let sets = site.sets;
+    let mirrored = site.mirrored;
+    run_on_scheduled_over(
+        sets,
+        &mut exec,
+        task,
+        SCAN_UNITS,
+        BLOCK,
+        &[],
+        &mut |exec, _, start, outcome| {
+            if !outcome.correct {
+                return;
+            }
+            let mut out = [0u32; PATTERN_MAX];
+            let len = capture(exec.train(), start, NIGHT_CAPTURE_TICKS, &mut out);
+            let pattern = out[..usize::from(len)].to_vec();
+            let s = usize::from(outcome.stimulus);
+            let answer = answer_of(outcome.stimulus, mirrored);
+            for &unit in &pattern {
+                let at = if sets[s].contains(unit) {
+                    0
+                } else if sets[answer.saturating_add(2)].contains(unit) {
+                    1
+                } else if sets[(answer ^ 1).saturating_add(2)].contains(unit) {
+                    2
+                } else if sets[s ^ 1].contains(unit) {
+                    3
+                } else {
+                    4
+                };
+                lies[at] = lies[at].saturating_add(1);
+            }
+            patterns.push(pattern);
+        },
+    );
+    let inhibitory = patterns.iter().flatten().fold(0u32, |n, &unit| {
+        let is = exec.units()[unit as usize].flags & FLAG_INHIBITORY != 0;
+        n.saturating_add(u32::from(is))
+    });
+    eprintln!(
+        "DUMP {label} captured {} episodes, their units {lies:?} of stimulus, answer, other readout, other stimulus, none; {inhibitory} inhibitory; the first {:?}",
+        patterns.len(),
+        patterns.first()
+    );
+    undropped(exec, label);
+    patterns
+}
+
+/// The image a reading starts from and whether its mapping in force is the mirrored assignment.
+fn night_image(
+    made: &Made,
+    groups: &ZeroGroups,
+    from: NightFrom,
+    form: usize,
+    arm: Reversal,
+    name: &str,
+) -> (Vec<u8>, bool) {
+    let k = ZERO_ARMS
+        .iter()
+        .position(|&a| a == arm)
+        .expect("an arm of H-25's two");
+    match from {
+        NightFrom::Eighth => {
+            let path = zero_image_path(0, form, k);
+            let image = std::fs::read(&path).unwrap_or_else(|e| panic!("{name}: {path}: {e}"));
+            assert_eq!(
+                Some(crc64(&image)),
+                ZERO_IMAGES_CRC[0][form][k],
+                "{name}: the carried image"
+            );
+            (image, !first_mapping(arm))
+        }
+        NightFrom::FirstMapping => {
+            let (mut exec, run) = zero_schedule(made, &made.windowed, arm, form, groups, FLIP, &[]);
+            quiet(&mut exec);
+            let image = Image::encode(&exec).expect("quiescent");
+            eprintln!("DUMP {name} first mapping {:?}", curve(&run.blocks));
+            undropped(exec, name);
+            (image, first_mapping(arm))
+        }
+    }
+}
+
+/// What a night keeps from `from` in `form` and `arm` (exploration 014): the mapping read with no
+/// gap; at each sleep shift, a night of the mapping's episodes in every `NIGHT_FORMS`, each read
+/// after, with the same ticks awake under the drive and without it; nights of the episodes
+/// ADR-0048's rule captures, at a baseline of a half in slow-wave sleep; and a schedule's length
+/// under the drive with no stimulus. On `whole` false, the harness's trial: the gap and two nights.
+fn what_a_night_keeps(from: NightFrom, form: usize, arm: Reversal, whole: bool) {
+    let name = format!("night {} {arm:?} {from:?}", ZERO_NAMES[0][form]);
+    let made = probe_made(0, &name);
+    let groups = zero_groups(&made, &name);
+    let (image, mirrored) = night_image(&made, &groups, from, form, arm, &name);
+    let site = NightSite {
+        made: &made,
+        groups: &groups,
+        form,
+        sets: geometry(SCAN_UNITS, made.derived.rotation),
+        mirrored,
+    };
+    let patterns = mapping_patterns(&site, &image);
+    eprintln!(
+        "DUMP {name} the mapping's {} episodes, {} units in all, mirrored {mirrored}; the first {:?}",
+        patterns.len(),
+        patterns.iter().map(Vec::len).sum::<usize>(),
+        patterns.first()
+    );
+    retained(&site, &image, &format!("{name} no gap"));
+    let shifts = if whole {
+        &NIGHT_SHIFTS[..]
+    } else {
+        &NIGHT_SHIFTS[..1]
+    };
+    for &shift in shifts {
+        let mut length = 0u64;
+        for &(what, driven, twin, held, slow_wave) in &NIGHT_FORMS {
+            let trial = what == "driven" || what == "half quiet";
+            if !whole && !trial || form != ZERO_ARM && !held {
+                continue;
+            }
+            let label = format!("{name} shift {shift} {what}");
+            let given = NightGiven {
+                shift,
+                driven,
+                twin,
+                held,
+                slow_wave,
+                spend: false,
+                patterns: &patterns,
+            };
+            let (after, ticks) = night_on(&site, &image, &label, given);
+            retained(&site, &after, &label);
+            length = ticks;
+        }
+        if !whole {
+            continue;
+        }
+        for (what, driven) in [("idle driven", true), ("idle quiet", false)] {
+            let label = format!("{name} shift {shift} {what}");
+            let after = idle_on(&site, &image, &label, length, driven);
+            retained(&site, &after, &label);
+        }
+    }
+    let captured = captured_patterns(&site, &image, &name);
+    if !whole {
+        return;
+    }
+    for shift in [5u8, 7] {
+        let label = format!("{name} shift {shift} captured half quiet");
+        let given = NightGiven {
+            shift,
+            driven: false,
+            twin: false,
+            held: true,
+            slow_wave: Some(ONE / 2),
+            spend: false,
+            patterns: &captured,
+        };
+        let (after, _) = night_on(&site, &image, &label, given);
+        retained(&site, &after, &label);
+    }
+    let mut long = image.clone();
+    let mut ran = 0u64;
+    for windows in NIGHT_LONG_WINDOWS {
+        ran = ran.saturating_add(windows);
+        let label = format!("{name} long {ran} windows");
+        long = idle_on(
+            &site,
+            &long,
+            &label,
+            windows.saturating_mul(WINDOW_TICKS),
+            true,
+        );
+        retained(&site, &long, &label);
+    }
+}
+
+/// The trial of exploration 014's harness: the gap and one night, on seed 22 from the assignment.
+#[test]
+#[ignore]
+fn the_harness_of_what_a_night_keeps_explore() {
+    what_a_night_keeps(
+        NightFrom::Eighth,
+        ZERO_ARM,
+        Reversal::AssignmentFirst,
+        false,
+    );
+}
+
+/// Questions 1, 2 and 4 under H-46's arm, from the assignment.
+#[test]
+#[ignore]
+fn what_a_night_keeps_under_the_zero_sum_on_seed_22_from_the_assignment_explore() {
+    what_a_night_keeps(NightFrom::Eighth, ZERO_ARM, Reversal::AssignmentFirst, true);
+}
+
+/// Questions 1, 2 and 4 under H-46's arm, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_a_night_keeps_under_the_zero_sum_on_seed_22_from_the_mirrored_assignment_explore() {
+    what_a_night_keeps(NightFrom::Eighth, ZERO_ARM, Reversal::MirroredFirst, true);
+}
+
+/// Question 5, the default, from the assignment.
+#[test]
+#[ignore]
+fn what_a_night_keeps_under_the_default_on_seed_22_from_the_assignment_explore() {
+    what_a_night_keeps(
+        NightFrom::Eighth,
+        ZERO_CONTROL,
+        Reversal::AssignmentFirst,
+        true,
+    );
+}
+
+/// Question 5, the default, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_a_night_keeps_under_the_default_on_seed_22_from_the_mirrored_assignment_explore() {
+    what_a_night_keeps(
+        NightFrom::Eighth,
+        ZERO_CONTROL,
+        Reversal::MirroredFirst,
+        true,
+    );
+}
+
+/// Questions 1, 2 and 4 of a first mapping under H-46's arm, from the assignment.
+#[test]
+#[ignore]
+fn what_a_night_keeps_of_a_first_mapping_on_seed_22_from_the_assignment_explore() {
+    what_a_night_keeps(
+        NightFrom::FirstMapping,
+        ZERO_ARM,
+        Reversal::AssignmentFirst,
+        true,
+    );
+}
+
+/// Questions 1, 2 and 4 of a first mapping under H-46's arm, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_a_night_keeps_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore() {
+    what_a_night_keeps(
+        NightFrom::FirstMapping,
+        ZERO_ARM,
+        Reversal::MirroredFirst,
+        true,
+    );
+}
+
+/// The ticks of a night at shift 7 from H-46's eighth image, the length of the awake gap.
+const FLIP_NIGHT_TICKS: u64 = 4_037_214;
+
+/// What stands at each flip of a schedule (exploration 014, question 3): nothing but the image
+/// between two engines; `ticks` awake with no stimulus under the drive; or a night of the mapping
+/// just in force under the drive, at `shift`, the replay's twin over the gain where `twin` says,
+/// at `slow_wave` in slow-wave sleep, its older episodes spent unless `kept`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum FlipGap {
+    Nothing,
+    Idle {
+        ticks: u64,
+    },
+    Night {
+        shift: u8,
+        twin: bool,
+        slow_wave: Option<i32>,
+        kept: bool,
+    },
+}
+
+const FLIP_NIGHT: FlipGap = FlipGap::Night {
+    shift: 7,
+    twin: false,
+    slow_wave: None,
+    kept: false,
+};
+
+const FLIP_HALF: FlipGap = FlipGap::Night {
+    shift: 7,
+    twin: false,
+    slow_wave: Some(ONE / 2),
+    kept: false,
+};
+
+/// The gaps of the first test of a start and an arm: no gap, awake, a night as the engine has it,
+/// and one whose replays consolidate.
+const FLIP_GAPS: [FlipGap; 4] = [
+    FlipGap::Nothing,
+    FlipGap::Idle {
+        ticks: FLIP_NIGHT_TICKS,
+    },
+    FLIP_NIGHT,
+    FLIP_HALF,
+];
+
+/// The gaps of the second: the older mappings kept in the ledger, the replay's twin, whose
+/// consolidated replays took the couplings against the mapping, and the longest whole dose that
+/// held a mapping.
+const FLIP_FURTHER_GAPS: [FlipGap; 3] = [
+    FlipGap::Night {
+        shift: 7,
+        twin: false,
+        slow_wave: Some(ONE / 2),
+        kept: true,
+    },
+    FlipGap::Night {
+        shift: 7,
+        twin: true,
+        slow_wave: Some(ONE / 2),
+        kept: false,
+    },
+    FlipGap::Night {
+        shift: 9,
+        twin: false,
+        slow_wave: Some(ONE),
+        kept: false,
+    },
+];
+
+/// One schedule of H-20 from `start`, its four mappings each on an engine of its own, trial 0 on,
+/// `gap` at each of its three flips (exploration 014, question 3). Dumps each mapping's blocks, and
+/// the schedule's correct counts, crossings, reversals summed and clauses beside H-46's `pinned`.
+fn flip_schedule(
+    from: &NightSite,
+    start: &[u8],
+    arm: Reversal,
+    gap: FlipGap,
+    name: &str,
+    pinned: Option<[Option<usize>; 4]>,
+) {
+    let name = format!("{name} {gap:?}");
+    let (made, form, sets) = (from.made, from.form, from.sets);
+    let mut image = start.to_vec();
+    let first = first_mapping(arm);
+    let mut blocks: Vec<Block> = Vec::with_capacity(SCHEDULE_BLOCKS);
+    for (m, &(begin, end)) in SPANS.iter().enumerate() {
+        let mirrored = first != (m & 1 == 1);
+        let at = format!("{name} mapping {m}");
+        let site = NightSite {
+            made,
+            groups: from.groups,
+            form,
+            sets,
+            mirrored,
+        };
+        let mut exec = night_engine(&image, form, 0, false, None, site.held(), |_| {});
+        let task = task_over(
+            sets,
+            SHAPE_F46,
+            Some(made.derived.cancel),
+            SCAN_UNITS,
+            Feedback::Answer,
+            mirrored,
+            DRAWN_DELIVERY,
+        );
+        let (read, trace) = run_on_scheduled_over(
+            sets,
+            &mut exec,
+            task,
+            SCAN_UNITS,
+            end.saturating_sub(begin),
+            &[],
+            &mut |_, _, _, _| {},
+        );
+        eprintln!(
+            "DUMP {at} correct {:?} trace {trace:#018x} last couplings {:?} gain {} inhibitory {:?}",
+            curve(&read),
+            read.last().map(|b| b.10),
+            exec.homeostasis().synaptic_gain_q16,
+            read.last().map(|b| b.7)
+        );
+        blocks.extend(read);
+        quiet(&mut exec);
+        image = Image::encode(&exec).expect("quiescent");
+        undropped(exec, &at);
+        if m.saturating_add(1) == SPANS.len() {
+            break;
+        }
+        match gap {
+            FlipGap::Nothing => {}
+            FlipGap::Idle { ticks } => {
+                image = idle_on(&site, &image, &at, ticks, true);
+            }
+            FlipGap::Night {
+                shift,
+                twin,
+                slow_wave,
+                kept,
+            } => {
+                let patterns = mapping_patterns(&site, &image);
+                let given = NightGiven {
+                    shift,
+                    driven: true,
+                    twin,
+                    held: true,
+                    slow_wave,
+                    spend: !kept,
+                    patterns: &patterns,
+                };
+                image = night_on(&site, &image, &at, given).0;
+            }
+        }
+    }
+    let crossed = crossings(&blocks);
+    eprintln!(
+        "DUMP {name} schedule correct {:?} crossed {crossed:?} reversals {} clauses {:?} image crc {:#018x} H-46's row crossed {pinned:?}",
+        mapping_correct(&blocks),
+        reversals_summed(crossed),
+        kept_clauses(
+            &made.couplings,
+            outside_image(&made.couplings, made.sums.1),
+            &blocks
+        ),
+        crc64(&image)
+    );
+}
+
+/// `gaps`, each a schedule from `from` in `form` and `arm`: H-42's image, whose reversals are at
+/// their slowest, or H-46's eighth, whose reversals are near their floor.
+fn flip_schedules(from: NightFrom, form: usize, arm: Reversal, gaps: &[FlipGap]) {
+    let k = ZERO_ARMS
+        .iter()
+        .position(|&a| a == arm)
+        .expect("an arm of H-25's two");
+    let name = format!("flips {} {arm:?} {from:?}", ZERO_NAMES[0][form]);
+    let made = probe_made(0, &name);
+    let groups = zero_groups(&made, &name);
+    let (start, pinned) = match from {
+        NightFrom::Eighth => (
+            night_image(&made, &groups, from, form, arm, &name).0,
+            ZERO_ROWS[0][form][k].get(ZERO_HALF).map(|r| r.crossed),
+        ),
+        NightFrom::FirstMapping => (
+            made.windowed.to_vec(),
+            ZERO_ROWS[0][form][k].first().map(|r| r.crossed),
+        ),
+    };
+    let site = NightSite {
+        made: &made,
+        groups: &groups,
+        form,
+        sets: geometry(SCAN_UNITS, made.derived.rotation),
+        mirrored: first_mapping(arm),
+    };
+    for &gap in gaps {
+        flip_schedule(&site, &start, arm, gap, &name, pinned);
+    }
+}
+
+/// A night with nothing to replay under the drive, at each shift, at the record's baseline and at
+/// a half in slow-wave sleep (exploration 014): what the drive alone moves in a night, beside what
+/// `what_a_night_keeps` read with the replays.
+fn what_an_empty_night_moves(form: usize) {
+    for arm in ZERO_ARMS {
+        let name = format!("night {} {arm:?} Eighth", ZERO_NAMES[0][form]);
+        let made = probe_made(0, &name);
+        let groups = zero_groups(&made, &name);
+        let from = NightFrom::Eighth;
+        let (image, mirrored) = night_image(&made, &groups, from, form, arm, &name);
+        let site = NightSite {
+            made: &made,
+            groups: &groups,
+            form,
+            sets: geometry(SCAN_UNITS, made.derived.rotation),
+            mirrored,
+        };
+        for shift in NIGHT_SHIFTS {
+            for (what, slow_wave) in [("empty driven", None), ("empty half driven", Some(ONE / 2))]
+            {
+                let label = format!("{name} shift {shift} {what}");
+                let given = NightGiven {
+                    shift,
+                    driven: true,
+                    twin: false,
+                    held: true,
+                    slow_wave,
+                    spend: false,
+                    patterns: &[],
+                };
+                let (after, _) = night_on(&site, &image, &label, given);
+                retained(&site, &after, &label);
+            }
+        }
+    }
+}
+
+/// Question 3 on H-46's first schedule, from the assignment.
+#[test]
+#[ignore]
+fn a_night_at_each_flip_of_the_first_schedule_on_seed_22_from_the_assignment_explore() {
+    flip_schedules(
+        NightFrom::FirstMapping,
+        ZERO_ARM,
+        Reversal::AssignmentFirst,
+        &FLIP_GAPS,
+    );
+}
+
+/// Question 3's further nights on H-46's first schedule, from the assignment.
+#[test]
+#[ignore]
+fn further_nights_at_each_flip_of_the_first_schedule_on_seed_22_from_the_assignment_explore() {
+    flip_schedules(
+        NightFrom::FirstMapping,
+        ZERO_ARM,
+        Reversal::AssignmentFirst,
+        &FLIP_FURTHER_GAPS,
+    );
+}
+
+/// Question 3 on H-46's first schedule, from the mirrored assignment.
+#[test]
+#[ignore]
+fn a_night_at_each_flip_of_the_first_schedule_on_seed_22_from_the_mirrored_assignment_explore() {
+    flip_schedules(
+        NightFrom::FirstMapping,
+        ZERO_ARM,
+        Reversal::MirroredFirst,
+        &FLIP_GAPS,
+    );
+}
+
+/// Question 3's further nights on H-46's first schedule, from the mirrored assignment.
+#[test]
+#[ignore]
+fn further_nights_at_each_flip_of_the_first_schedule_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    flip_schedules(
+        NightFrom::FirstMapping,
+        ZERO_ARM,
+        Reversal::MirroredFirst,
+        &FLIP_FURTHER_GAPS,
+    );
+}
+
+/// Question 3 on H-46's ninth schedule, from the assignment.
+#[test]
+#[ignore]
+fn a_night_at_each_flip_of_the_ninth_schedule_on_seed_22_from_the_assignment_explore() {
+    flip_schedules(
+        NightFrom::Eighth,
+        ZERO_ARM,
+        Reversal::AssignmentFirst,
+        &FLIP_GAPS,
+    );
+}
+
+/// Question 3's further nights on H-46's ninth schedule, from the assignment.
+#[test]
+#[ignore]
+fn further_nights_at_each_flip_of_the_ninth_schedule_on_seed_22_from_the_assignment_explore() {
+    flip_schedules(
+        NightFrom::Eighth,
+        ZERO_ARM,
+        Reversal::AssignmentFirst,
+        &FLIP_FURTHER_GAPS,
+    );
+}
+
+/// Question 3 on H-46's ninth schedule, from the mirrored assignment.
+#[test]
+#[ignore]
+fn a_night_at_each_flip_of_the_ninth_schedule_on_seed_22_from_the_mirrored_assignment_explore() {
+    flip_schedules(
+        NightFrom::Eighth,
+        ZERO_ARM,
+        Reversal::MirroredFirst,
+        &FLIP_GAPS,
+    );
+}
+
+/// Question 3's further nights on H-46's ninth schedule, from the mirrored assignment.
+#[test]
+#[ignore]
+fn further_nights_at_each_flip_of_the_ninth_schedule_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    flip_schedules(
+        NightFrom::Eighth,
+        ZERO_ARM,
+        Reversal::MirroredFirst,
+        &FLIP_FURTHER_GAPS,
+    );
+}
+
+/// Question 5 on the default's first schedule, both arms, no gap and a consolidated night.
+#[test]
+#[ignore]
+fn a_night_at_each_flip_of_the_default_first_schedule_on_seed_22_explore() {
+    for arm in ZERO_ARMS {
+        flip_schedules(
+            NightFrom::FirstMapping,
+            ZERO_CONTROL,
+            arm,
+            &[FlipGap::Nothing, FLIP_NIGHT, FLIP_HALF],
+        );
+    }
+}
+
+/// Question 5 on the default's ninth schedule, both arms, no gap and a consolidated night.
+#[test]
+#[ignore]
+fn a_night_at_each_flip_of_the_default_ninth_schedule_on_seed_22_explore() {
+    for arm in ZERO_ARMS {
+        flip_schedules(
+            NightFrom::Eighth,
+            ZERO_CONTROL,
+            arm,
+            &[FlipGap::Nothing, FLIP_NIGHT, FLIP_HALF],
+        );
+    }
+}
+
+/// What the drive moves in a night under H-46's arm, both arms of H-25.
+#[test]
+#[ignore]
+fn what_an_empty_night_moves_under_the_zero_sum_on_seed_22_explore() {
+    what_an_empty_night_moves(ZERO_ARM);
+}
+
+/// What the drive moves in a night under the default, both arms of H-25.
+#[test]
+#[ignore]
+fn what_an_empty_night_moves_under_the_default_on_seed_22_explore() {
+    what_an_empty_night_moves(ZERO_CONTROL);
+}
+
+/// The twin at the flips (exploration 014): the consolidated twin of `FLIP_FURTHER_GAPS` at a
+/// smaller and a larger night, at the record's baseline, which consolidates no excitatory synapse,
+/// and with the older mappings kept in the ledger, replayed beside the one just in force.
+const FLIP_TWIN_GAPS: [FlipGap; 4] = [
+    FlipGap::Night {
+        shift: 5,
+        twin: true,
+        slow_wave: Some(ONE / 2),
+        kept: false,
+    },
+    FlipGap::Night {
+        shift: 9,
+        twin: true,
+        slow_wave: Some(ONE / 2),
+        kept: false,
+    },
+    FlipGap::Night {
+        shift: 7,
+        twin: true,
+        slow_wave: None,
+        kept: false,
+    },
+    FlipGap::Night {
+        shift: 7,
+        twin: true,
+        slow_wave: Some(ONE / 2),
+        kept: true,
+    },
+];
+
+/// The consolidated twin alone, for the default's schedules.
+const FLIP_TWIN: FlipGap = FlipGap::Night {
+    shift: 7,
+    twin: true,
+    slow_wave: Some(ONE / 2),
+    kept: false,
+};
+
+/// The twin's nights on H-46's first schedule, from the assignment.
+#[test]
+#[ignore]
+fn the_twins_nights_at_each_flip_of_the_first_schedule_on_seed_22_from_the_assignment_explore() {
+    flip_schedules(
+        NightFrom::FirstMapping,
+        ZERO_ARM,
+        Reversal::AssignmentFirst,
+        &FLIP_TWIN_GAPS,
+    );
+}
+
+/// The twin's nights on H-46's first schedule, from the mirrored assignment.
+#[test]
+#[ignore]
+fn the_twins_nights_at_each_flip_of_the_first_schedule_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    flip_schedules(
+        NightFrom::FirstMapping,
+        ZERO_ARM,
+        Reversal::MirroredFirst,
+        &FLIP_TWIN_GAPS,
+    );
+}
+
+/// The twin's nights on H-46's ninth schedule, from the assignment.
+#[test]
+#[ignore]
+fn the_twins_nights_at_each_flip_of_the_ninth_schedule_on_seed_22_from_the_assignment_explore() {
+    flip_schedules(
+        NightFrom::Eighth,
+        ZERO_ARM,
+        Reversal::AssignmentFirst,
+        &FLIP_TWIN_GAPS,
+    );
+}
+
+/// The twin's nights on H-46's ninth schedule, from the mirrored assignment.
+#[test]
+#[ignore]
+fn the_twins_nights_at_each_flip_of_the_ninth_schedule_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    flip_schedules(
+        NightFrom::Eighth,
+        ZERO_ARM,
+        Reversal::MirroredFirst,
+        &FLIP_TWIN_GAPS,
+    );
+}
+
+/// The consolidated twin on the default's first schedule, both arms.
+#[test]
+#[ignore]
+fn the_twin_at_each_flip_of_the_default_first_schedule_on_seed_22_explore() {
+    for arm in ZERO_ARMS {
+        flip_schedules(NightFrom::FirstMapping, ZERO_CONTROL, arm, &[FLIP_TWIN]);
+    }
+}
+
+/// The consolidated twin on the default's ninth schedule, both arms.
+#[test]
+#[ignore]
+fn the_twin_at_each_flip_of_the_default_ninth_schedule_on_seed_22_explore() {
+    for arm in ZERO_ARMS {
+        flip_schedules(NightFrom::Eighth, ZERO_CONTROL, arm, &[FLIP_TWIN]);
+    }
+}
