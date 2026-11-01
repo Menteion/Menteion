@@ -47043,8 +47043,20 @@ fn shared_run(
     blocks: usize,
     label: &str,
 ) -> Vec<u8> {
+    shared_run_from(site, pair, image, blocks, label, AS_IT_WAS)
+}
+
+/// `shared_run` from `from` (exploration 017).
+fn shared_run_from(
+    site: &NightSite,
+    pair: &SharedPair,
+    image: &[u8],
+    blocks: usize,
+    label: &str,
+    from: ReadFrom,
+) -> Vec<u8> {
     let mut exec = night_engine(image, site.form, 0, false, None, site.held(), |_| {});
-    let task = task_over(
+    let mut task = task_over(
         site.sets,
         SHAPE_F46,
         Some(site.made.derived.cancel),
@@ -47053,6 +47065,7 @@ fn shared_run(
         site.mirrored,
         DRAWN_DELIVERY,
     );
+    task.drive.seed = task.drive.seed.wrapping_add(from.drive);
     let mut kind_of = vec![usize::MAX; SCAN_UNITS as usize];
     for (kind, units) in pair.kinds.iter().enumerate() {
         for &unit in units {
@@ -47061,7 +47074,8 @@ fn shared_run(
     }
     let mut spikes = [[0u32; 6]; 2];
     let mut by_block: Vec<[[u32; 6]; 2]> = Vec::with_capacity(blocks);
-    let (read, trace) = run_on_presenting_over(
+    let (read, trace) = run_on_presenting_from(
+        from.trial,
         site.sets,
         site.presenting,
         &mut exec,
@@ -47426,4 +47440,342 @@ fn what_a_night_saves_of_a_shared_source_of_a_first_mapping_on_seed_22_from_the_
 fn what_a_night_saves_of_a_shared_source_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore()
  {
     what_a_night_saves_of_a_shared_source(NightFrom::FirstMapping, Reversal::MirroredFirst);
+}
+
+// ---------------------------------------------------- what a read spreads (exploration 017)
+
+/// Where a stretch of trials starts on its fork: the index of its first trial, and what is added to
+/// the drive's seed. A trial's stimulus is a function of its index and the drive a function of its
+/// seed and the tick, and an image carries its tick, so two forks of one image from one `ReadFrom`
+/// run one trace.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ReadFrom {
+    trial: u64,
+    drive: u64,
+}
+
+/// Every run before exploration 017.
+const AS_IT_WAS: ReadFrom = ReadFrom { trial: 0, drive: 0 };
+
+/// What the reads of one image vary: the stimuli alone, the drive alone, or both.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum ReadBy {
+    Trials,
+    Drive,
+    Both,
+}
+
+const READ_BYS: [ReadBy; 3] = [ReadBy::Trials, ReadBy::Drive, ReadBy::Both];
+
+/// The reads of an image under one `ReadBy`, the first of them `AS_IT_WAS`.
+const SPREAD_READS: u64 = 16;
+
+/// The blocks read on one engine, no fork between them.
+const RUNNING_BLOCKS: usize = 16;
+
+/// The `i`-th read under `by`: a block's trials on from the last in the index, one on in the seed.
+const fn read_from(by: ReadBy, i: u64) -> ReadFrom {
+    let trial = i.saturating_mul(BLOCK as u64);
+    match by {
+        ReadBy::Trials => ReadFrom { trial, drive: 0 },
+        ReadBy::Drive => ReadFrom { trial: 0, drive: i },
+        ReadBy::Both => ReadFrom { trial, drive: i },
+    }
+}
+
+/// `each` over `items`, two at a time: an engine is two threads and the host has four cores. The
+/// items share nothing, so their order changes no reading, only the order of the dumps.
+fn two_at_a_time<T: Sync>(items: &[T], each: impl Fn(&T) + Sync) {
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let runner = || {
+        for _ in 0..items.len() {
+            let at = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let Some(item) = items.get(at) else {
+                break;
+            };
+            each(item);
+        }
+    };
+    std::thread::scope(|scope| {
+        scope.spawn(runner);
+        runner();
+    });
+}
+
+/// `mapping_read` from `from`, its line as `mapping_read`'s with what the read was beside it: each
+/// trial's stimulus, whether it was correct and whether it tied, a bit a trial, the first the
+/// lowest. The block's count of A's trials and each stimulus's correct come from those words.
+/// Returns the trace.
+fn spread_read(site: &NightSite, image: &[u8], label: &str, what: &str, from: ReadFrom) -> u64 {
+    let mut exec = night_engine(image, site.form, 0, false, None, site.held(), |_| {});
+    let state = night_state(&exec, &site.sets);
+    let mut task = task_over(
+        site.sets,
+        SHAPE_F46,
+        Some(site.made.derived.cancel),
+        SCAN_UNITS,
+        Feedback::Withheld,
+        site.mirrored,
+        DRAWN_DELIVERY,
+    );
+    task.drive.seed = task.drive.seed.wrapping_add(from.drive);
+    let mut words = [0u64; 3];
+    let (read, trace) = run_on_presenting_from(
+        from.trial,
+        site.sets,
+        site.presenting,
+        &mut exec,
+        task,
+        SCAN_UNITS,
+        BLOCK,
+        &[],
+        &mut |_, trial, _, outcome| {
+            let bit = 1u64.wrapping_shl(trial as u32);
+            for (word, set) in words.iter_mut().zip([
+                outcome.stimulus == 1,
+                outcome.correct,
+                outcome.selection.is_none(),
+            ]) {
+                if set {
+                    *word |= bit;
+                }
+            }
+        },
+    );
+    eprintln!(
+        "DUMP {label} read mirrored {} correct {:?} ties {:?} trace {trace:#018x} state {state:?} blocks {read:?} spread {what} {from:?} stimuli {:#018x} right {:#018x} tied {:#018x} gain {}",
+        site.mirrored,
+        curve(&read),
+        read.iter().map(|b| b.11).collect::<Vec<u32>>(),
+        words[0],
+        words[1],
+        words[2],
+        exec.homeostasis().synaptic_gain_q16
+    );
+    undropped(exec, label);
+    trace
+}
+
+/// One read to make: of `site`'s mapping, from `image`.
+struct SpreadRead<'a> {
+    site: &'a NightSite<'a>,
+    image: &'a [u8],
+    label: String,
+    what: String,
+    from: ReadFrom,
+}
+
+/// The reads of `site`'s mapping on `image` under each of `bys`: the read as it was once, then each
+/// by's others.
+fn spread_reads<'a>(
+    site: &'a NightSite<'a>,
+    image: &'a [u8],
+    label: &str,
+    bys: &[ReadBy],
+    n: u64,
+) -> Vec<SpreadRead<'a>> {
+    let mut reads = vec![SpreadRead {
+        site,
+        image,
+        label: label.to_string(),
+        what: "as-it-was 0".to_string(),
+        from: AS_IT_WAS,
+    }];
+    for &by in bys {
+        for i in 1..n {
+            reads.push(SpreadRead {
+                site,
+                image,
+                label: label.to_string(),
+                what: format!("{by:?} {i}"),
+                from: read_from(by, i),
+            });
+        }
+    }
+    reads
+}
+
+/// Every read of `reads`, two at a time.
+fn read_all(reads: &[SpreadRead]) {
+    two_at_a_time(reads, |r| {
+        spread_read(r.site, r.image, &r.label, &r.what, r.from);
+    });
+}
+
+/// `blocks` blocks with the reward withheld on one engine from `image`, no fork between them: what
+/// reading itself does to the state. The first block is the read as it was, bit for bit. After each
+/// the block dumps the couplings and the sums by polarity, and the gain is dumped beside them.
+fn reads_running(site: &NightSite, image: &[u8], label: &str, blocks: usize) {
+    let mut exec = night_engine(image, site.form, 0, false, None, site.held(), |_| {});
+    let state = night_state(&exec, &site.sets);
+    let task = task_over(
+        site.sets,
+        SHAPE_F46,
+        Some(site.made.derived.cancel),
+        SCAN_UNITS,
+        Feedback::Withheld,
+        site.mirrored,
+        DRAWN_DELIVERY,
+    );
+    let mut gains = Vec::with_capacity(blocks);
+    let (read, trace) = run_on_presenting_from(
+        0,
+        site.sets,
+        site.presenting,
+        &mut exec,
+        task,
+        SCAN_UNITS,
+        blocks.saturating_mul(BLOCK),
+        &[],
+        &mut |exec, trial, _, _| {
+            if trial.wrapping_add(1) % BLOCK == 0 {
+                gains.push(exec.homeostasis().synaptic_gain_q16);
+            }
+        },
+    );
+    eprintln!(
+        "DUMP {label} running mirrored {} correct {:?} ties {:?} trace {trace:#018x} state {state:?} gains {gains:?} blocks {read:?}",
+        site.mirrored,
+        curve(&read),
+        read.iter().map(|b| b.11).collect::<Vec<u32>>()
+    );
+    undropped(exec, label);
+}
+
+/// What a start's reads share: its pair and groups, and the two mappings read.
+struct SpreadStart<'a> {
+    start: &'a SharedStart<'a>,
+    name: String,
+    half: String,
+    pair: &'a SharedPair,
+    site: NightSite<'a>,
+    theirs: NightSite<'a>,
+}
+
+/// Question 1 on `image`: A's and the pair's reads under each of `READ_BYS`, then the blocks read on
+/// one engine, A's and the pair's.
+fn spread_of_an_image(spread: &SpreadStart, image: &[u8], label: &str) {
+    let mut reads = spread_reads(
+        &spread.site,
+        image,
+        &format!("{label} first"),
+        &READ_BYS,
+        SPREAD_READS,
+    );
+    reads.extend(spread_reads(
+        &spread.theirs,
+        image,
+        &format!("{label} second"),
+        &READ_BYS,
+        SPREAD_READS,
+    ));
+    read_all(&reads);
+    let running = [
+        (&spread.site, format!("{label} first")),
+        (&spread.theirs, format!("{label} second")),
+    ];
+    two_at_a_time(&running, |(site, at)| {
+        reads_running(site, image, at, RUNNING_BLOCKS);
+    });
+}
+
+/// Question 1 from a start: the start image, A at its ceiling; the pair's 12 blocks; and its 24.
+/// Returns the two images the pair wrote.
+fn spread_of_a_start(spread: &SpreadStart) -> [Vec<u8>; 2] {
+    let image = spread.start.image;
+    let whole_blocks = SHARED_HALF_BLOCKS.saturating_mul(2);
+    let (twelve, whole) = (
+        format!("{} none blocks {SHARED_HALF_BLOCKS}", spread.half),
+        format!("{} blocks {whole_blocks}", spread.name),
+    );
+    let runs = [(SHARED_HALF_BLOCKS, &twelve), (whole_blocks, &whole)];
+    let written = std::sync::Mutex::new(BTreeMap::new());
+    two_at_a_time(&runs, |&(blocks, at)| {
+        let run = shared_run(&spread.theirs, spread.pair, image, blocks, at);
+        written.lock().expect("a run ended").insert(blocks, run);
+    });
+    let written = written.into_inner().expect("every run ended");
+    let images = [
+        written[&SHARED_HALF_BLOCKS].clone(),
+        written[&whole_blocks].clone(),
+    ];
+    spread_of_an_image(spread, image, &format!("{} blocks 0", spread.name));
+    spread_of_an_image(spread, &images[0], &twelve);
+    spread_of_an_image(spread, &images[1], &whole);
+    images
+}
+
+/// The trial of exploration 017's harness, on seed 22 from the assignment on the eighth image, at a
+/// half of the units shared, conflicting, each kind held apart: reads made one at a time and two at
+/// a time trace alike, with the milliseconds of each; then question 1 from that start.
+#[test]
+#[ignore]
+fn the_harness_of_what_a_read_spreads_explore() {
+    let form = ZERO_ARM;
+    let (from, arm) = (NightFrom::Eighth, Reversal::AssignmentFirst);
+    let name = format!("shared {} {arm:?} {from:?}", ZERO_NAMES[0][form]);
+    let made = probe_made(0, &name);
+    let groups = zero_groups(&made, &name);
+    let (image, mirrored) = night_image(&made, &groups, from, form, arm, &name);
+    let sets = geometry(SCAN_UNITS, made.derived.rotation);
+    let start = SharedStart {
+        made: &made,
+        groups: &groups,
+        sets,
+        second: second_sets(&sets),
+        image: &image,
+        mirrored,
+        name: &name,
+    };
+    let cut = SharedCut::Apart;
+    let name = format!(
+        "{} share {SHARED_HALF:#06b} {cut:?} conflict true",
+        start.name
+    );
+    let pair = shared_pair(&sets, &start.second, SHARED_HALF);
+    let held = shared_groups(start.groups, &pair, cut, start.image, &name);
+    let spread = SpreadStart {
+        start: &start,
+        half: format!("{name} half"),
+        pair: &pair,
+        site: NightSite {
+            made: start.made,
+            groups: &held,
+            form,
+            sets,
+            mirrored,
+            presenting: None,
+        },
+        theirs: NightSite {
+            made: start.made,
+            groups: &held,
+            form,
+            sets: start.second,
+            mirrored: !mirrored,
+            presenting: Some(&pair.presenting),
+        },
+        name,
+    };
+    let each = [1u64, 2, 3, 4].map(|i| read_from(ReadBy::Both, i));
+    let timed = std::time::Instant::now();
+    let alone = each.map(|from| spread_read(&spread.site, &image, "trial alone", "trial", from));
+    let one = timed.elapsed().as_millis();
+    let traces = std::sync::Mutex::new(BTreeMap::new());
+    let timed = std::time::Instant::now();
+    two_at_a_time(&each, |&from| {
+        let trace = spread_read(&spread.site, &image, "trial together", "trial", from);
+        traces
+            .lock()
+            .expect("a read ended")
+            .insert(from.drive, trace);
+    });
+    let two = timed.elapsed().as_millis();
+    let traces = traces.into_inner().expect("every read ended");
+    eprintln!("DUMP trial four reads alone {one} ms, two at a time {two} ms");
+    assert_eq!(
+        Vec::from(alone),
+        traces.into_values().collect::<Vec<u64>>(),
+        "two at a time reads as one at a time"
+    );
+    spread_of_a_start(&spread);
 }
