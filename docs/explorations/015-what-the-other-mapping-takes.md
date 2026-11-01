@@ -252,12 +252,12 @@ here.**
 | Pairing | Potentiation | Depression | Net |
 | :--- | ---: | ---: | ---: |
 | The first spike, its post in the same tick | 0 | 0 | 0 |
-| The first spike, its post 1 to 4 ticks ahead | 0 | 326 to 328 | −326 to −328 |
+| The first spike, its post 1 to 7 ticks ahead | 0 | 326 to 328 | −326 to −328 |
 | The first spike, its post in neither | 48 to 58 | 0 | +48 to +58 |
 | A later spike, its post in the same tick | 297 | 0 | **+297** |
 | A later spike, its post fired since the previous spike | 292 to 319 | 274 to 319 | −5 to +18 |
 | A later spike, its post silent since the previous spike | 0 | 229 to 260 | **−229 to −260** |
-| The next spike, 14 000 ticks or more on, its post after the replay's last | 233 | 0 | +233 |
+| The next spike, 14 000 ticks or more on, its post fired since the replay's last | 192 | 1 | +191 |
 
 The first spike has no previous spike in reach. A later pairing with its post near it, not on it, earns and pays almost
 equally: the window is ten times the gap between volleys, so the rule barely tells the order.
@@ -294,7 +294,7 @@ The sign of the net and of what reaches the weights is the same in all four star
 share in a tick:
 - **Quiet, plain**: from the eighth image the units firing twice net 274 and 287 a pairing, those firing three times 220 and
   53, a third spike being the one that loses its post. From a first mapping, where the third spike keeps it half the time,
-  they net 264 and 295 against 306 and 310.
+  they net 295 and 264 against 306 and 310.
 - **Under the twin's drive three spikes do not help**: units firing three times net −50 470 over 680 pairings.
 - **Under the plain drive two spikes do not hurt by their number**: of the 105 pairings of units firing twice, 3 share a tick,
   and they net −20 870.
