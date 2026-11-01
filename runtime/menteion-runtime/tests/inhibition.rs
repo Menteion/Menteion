@@ -44740,12 +44740,22 @@ struct NightSite<'a> {
     form: usize,
     sets: [Set; 4],
     mirrored: bool,
+    /// Exploration 016's stimuli, the units each presents in place of its set; none elsewhere.
+    presenting: Option<&'a [Vec<u32>; 2]>,
 }
 
 impl NightSite<'_> {
     /// The groups where the form holds them.
     fn held(&self) -> Option<&ZeroGroups> {
         (self.form == ZERO_ARM).then_some(self.groups)
+    }
+
+    /// Whether stimulus `s` presents unit `id`.
+    fn presents(&self, s: u8, id: u32) -> bool {
+        match self.presenting {
+            Some(units) => units[usize::from(s)].contains(&id),
+            None => self.sets[usize::from(s)].contains(id),
+        }
     }
 }
 
@@ -45104,11 +45114,10 @@ fn mapping_patterns(site: &NightSite, image: &[u8]) -> Vec<Vec<u32>> {
     };
     let mut patterns = Vec::new();
     for s in [0u8, 1] {
-        let from = site.sets[usize::from(s)];
         let into = site.sets[answer_of(s, site.mirrored).saturating_add(2)];
         for unit in exec.units() {
             let id = unit.id as u32;
-            if unit.flags & FLAG_INHIBITORY != 0 || !from.contains(id) {
+            if unit.flags & FLAG_INHIBITORY != 0 || !site.presents(s, id) {
                 continue;
             }
             let mut targets: Vec<(u32, i64)> = Vec::new();
@@ -45249,6 +45258,7 @@ fn what_a_night_keeps(from: NightFrom, form: usize, arm: Reversal, whole: bool) 
         form,
         sets: geometry(SCAN_UNITS, made.derived.rotation),
         mirrored,
+        presenting: None,
     };
     let patterns = mapping_patterns(&site, &image);
     eprintln!(
@@ -45496,6 +45506,7 @@ fn flip_schedule(
             form,
             sets,
             mirrored,
+            presenting: None,
         };
         let mut exec = night_engine(&image, form, 0, false, None, site.held(), |_| {});
         let task = task_over(
@@ -45595,6 +45606,7 @@ fn flip_schedules(from: NightFrom, form: usize, arm: Reversal, gaps: &[FlipGap])
         form,
         sets: geometry(SCAN_UNITS, made.derived.rotation),
         mirrored: first_mapping(arm),
+        presenting: None,
     };
     for &gap in gaps {
         flip_schedule(&site, &start, arm, gap, &name, pinned);
@@ -45617,6 +45629,7 @@ fn what_an_empty_night_moves(form: usize) {
             form,
             sets: geometry(SCAN_UNITS, made.derived.rotation),
             mirrored,
+            presenting: None,
         };
         for shift in NIGHT_SHIFTS {
             for (what, slow_wave) in [("empty driven", None), ("empty half driven", Some(ONE / 2))]
@@ -45966,8 +45979,9 @@ fn mapping_read(site: &NightSite, image: &[u8], label: &str) {
         site.mirrored,
         DRAWN_DELIVERY,
     );
-    let (read, trace) = run_on_scheduled_over(
+    let (read, trace) = run_on_presenting_over(
         site.sets,
+        site.presenting,
         &mut exec,
         task,
         SCAN_UNITS,
@@ -45996,8 +46010,9 @@ fn mapping_run(site: &NightSite, image: &[u8], blocks: usize, label: &str) -> Ve
         site.mirrored,
         DRAWN_DELIVERY,
     );
-    let (read, trace) = run_on_scheduled_over(
+    let (read, trace) = run_on_presenting_over(
         site.sets,
+        site.presenting,
         &mut exec,
         task,
         SCAN_UNITS,
@@ -46037,6 +46052,7 @@ fn what_the_other_mapping_takes(from: NightFrom, arm: Reversal, whole: bool) {
         form,
         sets,
         mirrored,
+        presenting: None,
     };
     let other = NightSite {
         made: &made,
@@ -46044,6 +46060,7 @@ fn what_the_other_mapping_takes(from: NightFrom, arm: Reversal, whole: bool) {
         form,
         sets,
         mirrored: !mirrored,
+        presenting: None,
     };
     let (lengths, after) = match from {
         NightFrom::Eighth => (&OTHER_BLOCKS_EIGHTH, &OTHER_AFTER_EIGHTH),
@@ -46209,6 +46226,7 @@ fn what_a_second_pair_takes(from: NightFrom, arm: Reversal, whole: bool) {
         form,
         sets,
         mirrored,
+        presenting: None,
     };
     mapping_read(&site, &image, &format!("{name} start first"));
     let longest = SECOND_BLOCKS[SECOND_BLOCKS.len().saturating_sub(1)];
@@ -46220,6 +46238,7 @@ fn what_a_second_pair_takes(from: NightFrom, arm: Reversal, whole: bool) {
             form,
             sets: second,
             mirrored: mirrored != flipped,
+            presenting: None,
         };
         let name = format!("{name} pair flipped {flipped}");
         mapping_read(&pair, &image, &format!("{name} start second"));
@@ -46743,6 +46762,7 @@ fn what_a_replay_pairs(arm: Reversal, whole: bool) {
             form,
             sets,
             mirrored,
+            presenting: None,
         };
         let patterns = mapping_patterns(&site, &image);
         let forms = if whole {
@@ -46847,4 +46867,416 @@ fn what_a_replay_pairs_on_seed_22_from_the_assignment_explore() {
 #[ignore]
 fn what_a_replay_pairs_on_seed_22_from_the_mirrored_assignment_explore() {
     what_a_replay_pairs(Reversal::MirroredFirst, true);
+}
+
+// -------------------------------------------- what a shared source takes (exploration 016)
+
+/// The periods whose units of A and B the second pair takes, a period `j` where bit `j & 3` is
+/// set: none, a quarter, a half, three quarters, all. 13, 26 and 39 of the 51 periods, spread round
+/// the ring, so that a shared unit and an unshared one differ in no place on it.
+const SHARED_NONE: u32 = 0b0000;
+const SHARED_QUARTER: u32 = 0b0001;
+const SHARED_HALF: u32 = 0b0101;
+const SHARED_THREE_QUARTERS: u32 = 0b0111;
+const SHARED_WHOLE: u32 = 0b1111;
+
+/// How the zero sum holds units a source of two stimuli, since `set_zero_sum` refuses a source named
+/// twice.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum SharedCut {
+    /// Each of the three kinds of unit a group of its own at its sum in the start image: A alone,
+    /// shared, C alone, and the same of B and D. Each stimulus's sum is held and neither takes from
+    /// the other's part; the shared units' weight moves only between the two readouts.
+    Apart,
+    /// The shared units left in A's and B's groups at H-42's values, as H-46 ran them, and C's and
+    /// D's own units held beside them at their sums in the start image. A's sum is held, C's is not,
+    /// and what a shared unit gains its group's other units pay for.
+    Kept,
+}
+
+/// A form of question 1: the share, the cut, and whether the pair's answers conflict with A's and
+/// B's, C's being the readout A's is not.
+type SharedForm = (u32, SharedCut, bool);
+
+/// Question 1's forms. The first is exploration 015's second pair; a whole share conflicting is
+/// the reversal, from the second pair's readouts.
+const SHARED_FORMS: [SharedForm; 11] = [
+    (SHARED_NONE, SharedCut::Kept, true),
+    (SHARED_QUARTER, SharedCut::Apart, true),
+    (SHARED_QUARTER, SharedCut::Apart, false),
+    (SHARED_HALF, SharedCut::Apart, true),
+    (SHARED_HALF, SharedCut::Apart, false),
+    (SHARED_THREE_QUARTERS, SharedCut::Apart, true),
+    (SHARED_THREE_QUARTERS, SharedCut::Apart, false),
+    (SHARED_WHOLE, SharedCut::Apart, true),
+    (SHARED_QUARTER, SharedCut::Kept, true),
+    (SHARED_HALF, SharedCut::Kept, true),
+    (SHARED_THREE_QUARTERS, SharedCut::Kept, true),
+];
+
+/// A second pair sharing `mask`'s periods of A's and B's units: the units C and D present, one a
+/// period, and the six kinds of unit: A alone, A's and C's, C alone, B alone, B's and D's, D alone.
+struct SharedPair {
+    mask: u32,
+    presenting: [Vec<u32>; 2],
+    kinds: [Vec<u32>; 6],
+}
+
+/// The pair of `mask`: C takes stimulus A's unit in a period the mask names and exploration 015's
+/// place 5 in any other, and D takes B's or place 16. The second task's sets stay `second_sets`',
+/// so its readouts do not change with the share, and `Task::check` reads those sets alone.
+fn shared_pair(sets: &[Set; 4], second: &[Set; 4], mask: u32) -> SharedPair {
+    let side = |s: usize| {
+        let (mut alone, mut shared, mut own, mut units) = (vec![], vec![], vec![], vec![]);
+        for (j, (first, theirs)) in (0u32..).zip(sets[s].units().zip(second[s].units())) {
+            if mask.wrapping_shr(j & 3) & 1 != 0 {
+                shared.push(first);
+                units.push(first);
+            } else {
+                alone.push(first);
+                own.push(theirs);
+                units.push(theirs);
+            }
+        }
+        (alone, shared, own, units)
+    };
+    let (a, ac, c, presents_c) = side(0);
+    let (b, bd, d, presents_d) = side(1);
+    let presenting = [presents_c, presents_d];
+    assert!(
+        presenting
+            .iter()
+            .flatten()
+            .all(|&u| !second[2].contains(u) && !second[3].contains(u))
+            && !presenting[0].iter().any(|u| presenting[1].contains(u)),
+        "the units presented lie in neither readout and in one stimulus"
+    );
+    SharedPair {
+        mask,
+        presenting,
+        kinds: [a, ac, c, b, bd, d],
+    }
+}
+
+/// The zero sum's groups under `cut`, read from `image`, over `groups`' targets; each kind's sum is
+/// dumped. A group's sources are refused if a unit lies in two, so none does.
+fn shared_groups(
+    groups: &ZeroGroups,
+    pair: &SharedPair,
+    cut: SharedCut,
+    image: &[u8],
+    name: &str,
+) -> ZeroGroups {
+    let exec = zero_from(image, SCAN_UNITS, ZERO_ARM);
+    let sum = |units: &Vec<u32>| {
+        exec.coupling_sum(units, &groups.targets)
+            .expect("excitatory units once each, and every unit in the arena")
+    };
+    let [a, ac, c, b, bd, d] = &pair.kinds;
+    let held = match cut {
+        SharedCut::Apart => ZeroGroups {
+            sources: [a.clone(), b.clone()],
+            values: [sum(a), sum(b)],
+            targets: groups.targets.clone(),
+            further: vec![
+                (ac.clone(), sum(ac)),
+                (bd.clone(), sum(bd)),
+                (c.clone(), sum(c)),
+                (d.clone(), sum(d)),
+            ],
+        },
+        SharedCut::Kept => ZeroGroups {
+            sources: groups.sources.clone(),
+            values: groups.values,
+            targets: groups.targets.clone(),
+            further: vec![(c.clone(), sum(c)), (d.clone(), sum(d))],
+        },
+    };
+    let near = pair.presenting[0].iter().fold(0u32, |n, &c| {
+        let within = pair.presenting[1].iter().filter(|&&d| {
+            let apart = c.abs_diff(d);
+            apart.min(SCAN_UNITS.saturating_sub(apart)) <= PRIOR_WINDOW
+        });
+        n.saturating_add(within.count() as u32)
+    });
+    eprintln!(
+        "DUMP {name} groups {:?} values {:?} further {:?} kinds {:?} pairs of C and D within a local synapse {near}",
+        cut,
+        held.values,
+        held.further.iter().map(|g| g.1).collect::<Vec<i64>>(),
+        pair.kinds.each_ref().map(|k| k.len())
+    );
+    undropped(exec, name);
+    held
+}
+
+/// Each kind's sum onto the two readouts and the second pair's two, from `image`: their rows add up
+/// to the four couplings of A and B, held here, and a kind's two readouts are its group's sum.
+fn shared_sums(site: &NightSite, pair: &SharedPair, second: &[Set; 4], image: &[u8], label: &str) {
+    let exec = zero_from(image, SCAN_UNITS, ZERO_ARM);
+    let into = [site.sets[2], site.sets[3], second[2], second[3]]
+        .map(|set| set.units().collect::<Vec<u32>>());
+    let sums = pair.kinds.each_ref().map(|kind| {
+        into.each_ref().map(|targets| {
+            exec.coupling_sum(kind, targets)
+                .expect("excitatory units once each, and every unit in the arena")
+        })
+    });
+    let whole = couplings(&exec, &site.sets);
+    let added = [
+        sums[0][0].saturating_add(sums[1][0]),
+        sums[0][1].saturating_add(sums[1][1]),
+        sums[3][0].saturating_add(sums[4][0]),
+        sums[3][1].saturating_add(sums[4][1]),
+    ];
+    assert_eq!(added, whole, "{label}: the kinds add up to the couplings");
+    eprintln!("DUMP {label} kinds {sums:?}");
+    undropped(exec, label);
+}
+
+/// `mapping_run` of the second pair, each kind's spikes a block dumped beside it: by the stimulus
+/// presented, over the whole trial.
+fn shared_run(
+    site: &NightSite,
+    pair: &SharedPair,
+    image: &[u8],
+    blocks: usize,
+    label: &str,
+) -> Vec<u8> {
+    let mut exec = night_engine(image, site.form, 0, false, None, site.held(), |_| {});
+    let task = task_over(
+        site.sets,
+        SHAPE_F46,
+        Some(site.made.derived.cancel),
+        SCAN_UNITS,
+        Feedback::Answer,
+        site.mirrored,
+        DRAWN_DELIVERY,
+    );
+    let mut kind_of = vec![usize::MAX; SCAN_UNITS as usize];
+    for (kind, units) in pair.kinds.iter().enumerate() {
+        for &unit in units {
+            kind_of[unit as usize] = kind;
+        }
+    }
+    let mut spikes = [[0u32; 6]; 2];
+    let mut by_block: Vec<[[u32; 6]; 2]> = Vec::with_capacity(blocks);
+    let (read, trace) = run_on_presenting_over(
+        site.sets,
+        site.presenting,
+        &mut exec,
+        task,
+        SCAN_UNITS,
+        blocks.saturating_mul(BLOCK),
+        &[],
+        &mut |exec, trial, start, outcome| {
+            let train = exec.train();
+            let from = train.partition_point(|s| s.0 < start);
+            let row = &mut spikes[usize::from(outcome.stimulus)];
+            for s in &train[from..] {
+                if let Some(slot) = row.get_mut(kind_of[s.1 as usize]) {
+                    *slot = slot.saturating_add(1);
+                }
+            }
+            if trial.wrapping_add(1) % BLOCK == 0 {
+                by_block.push(core::mem::take(&mut spikes));
+            }
+        },
+    );
+    eprintln!(
+        "DUMP {label} run mirrored {} correct {:?} ties {:?} trace {trace:#018x} gain {} inhibitory {:?} spikes {by_block:?}",
+        site.mirrored,
+        curve(&read),
+        read.iter().map(|b| b.11).collect::<Vec<u32>>(),
+        exec.homeostasis().synaptic_gain_q16,
+        read.last().map(|b| b.7)
+    );
+    quiet(&mut exec);
+    let written = Image::encode(&exec).expect("quiescent");
+    undropped(exec, label);
+    written
+}
+
+/// What a form reads from `image`: the kinds' sums, then A's and B's mapping, then the pair's.
+fn shared_read(
+    site: &NightSite,
+    theirs: &NightSite,
+    pair: &SharedPair,
+    second: &[Set; 4],
+    image: &[u8],
+    label: &str,
+) {
+    shared_sums(site, pair, second, image, label);
+    mapping_read(site, image, &format!("{label} first"));
+    mapping_read(theirs, image, &format!("{label} second"));
+}
+
+/// What stands still across a start's forms.
+struct SharedStart<'a> {
+    made: &'a Made,
+    groups: &'a ZeroGroups,
+    sets: [Set; 4],
+    second: [Set; 4],
+    image: &'a [u8],
+    mirrored: bool,
+    name: &'a str,
+}
+
+/// One form from the start: the pair's mapping read before it, then the pair run for each of
+/// `lengths` from the start image, read after each, A's mapping and the pair's.
+fn shared_form(start: &SharedStart, given: SharedForm, lengths: &[usize]) {
+    let (mask, cut, conflict) = given;
+    let (sets, second) = (start.sets, start.second);
+    let name = format!(
+        "{} share {mask:#06b} {cut:?} conflict {conflict}",
+        start.name
+    );
+    let pair = shared_pair(&sets, &second, mask);
+    assert_eq!(pair.mask, mask, "the pair of the form");
+    let held = shared_groups(start.groups, &pair, cut, start.image, &name);
+    let site = NightSite {
+        made: start.made,
+        groups: &held,
+        form: ZERO_ARM,
+        sets,
+        mirrored: start.mirrored,
+        presenting: None,
+    };
+    let theirs = NightSite {
+        made: start.made,
+        groups: &held,
+        form: ZERO_ARM,
+        sets: second,
+        mirrored: start.mirrored != conflict,
+        presenting: Some(&pair.presenting),
+    };
+    shared_sums(
+        &site,
+        &pair,
+        &second,
+        start.image,
+        &format!("{name} blocks 0"),
+    );
+    mapping_read(&theirs, start.image, &format!("{name} blocks 0 second"));
+    for &n in lengths {
+        let at = format!("{name} blocks {n}");
+        let run = shared_run(&theirs, &pair, start.image, n, &at);
+        shared_read(&site, &theirs, &pair, &second, &run, &at);
+    }
+}
+
+/// Question 1: from `from` under H-46's rules, each of `SHARED_FORMS`, the second pair learned for
+/// each of `SECOND_BLOCKS` with no gap, and both mappings read after.
+fn what_a_shared_source_takes(from: NightFrom, arm: Reversal) {
+    let form = ZERO_ARM;
+    let name = format!("shared {} {arm:?} {from:?}", ZERO_NAMES[0][form]);
+    let made = probe_made(0, &name);
+    let groups = zero_groups(&made, &name);
+    let (image, mirrored) = night_image(&made, &groups, from, form, arm, &name);
+    let sets = geometry(SCAN_UNITS, made.derived.rotation);
+    let site = NightSite {
+        made: &made,
+        groups: &groups,
+        form,
+        sets,
+        mirrored,
+        presenting: None,
+    };
+    mapping_read(&site, &image, &format!("{name} start first"));
+    let start = SharedStart {
+        made: &made,
+        groups: &groups,
+        sets,
+        second: second_sets(&sets),
+        image: &image,
+        mirrored,
+        name: &name,
+    };
+    for given in SHARED_FORMS {
+        shared_form(&start, given, &SECOND_BLOCKS);
+    }
+}
+
+/// The trial of exploration 016's harness, on seed 22 from the assignment on the eighth image: at
+/// no share the units presented are exploration 015's sets and the groups its groups, and a run is
+/// that run bit for bit; then a half, conflicting, by each cut, at short lengths.
+#[test]
+#[ignore]
+fn the_harness_of_what_a_shared_source_takes_explore() {
+    let form = ZERO_ARM;
+    let (from, arm) = (NightFrom::Eighth, Reversal::AssignmentFirst);
+    let name = format!("shared {} {arm:?} {from:?}", ZERO_NAMES[0][form]);
+    let made = probe_made(0, &name);
+    let groups = zero_groups(&made, &name);
+    let (image, mirrored) = night_image(&made, &groups, from, form, arm, &name);
+    let sets = geometry(SCAN_UNITS, made.derived.rotation);
+    let second = second_sets(&sets);
+    let pair = shared_pair(&sets, &second, SHARED_NONE);
+    let old = second_groups(&made, &groups, &second, &image, &name);
+    let new = shared_groups(&groups, &pair, SharedCut::Kept, &image, &name);
+    assert_eq!(
+        (old.sources, old.values, old.further),
+        (new.sources.clone(), new.values, new.further.clone()),
+        "at no share the groups are exploration 015's"
+    );
+    let site = |presenting| NightSite {
+        made: &made,
+        groups: &new,
+        form,
+        sets: second,
+        mirrored: !mirrored,
+        presenting,
+    };
+    let as_it_was = mapping_run(&site(None), &image, 2, &format!("{name} as it was"));
+    let presented = mapping_run(
+        &site(Some(&pair.presenting)),
+        &image,
+        2,
+        &format!("{name} presented"),
+    );
+    assert_eq!(
+        crc64(&as_it_was),
+        crc64(&presented),
+        "at no share a run through the units is the run through the sets, bit for bit"
+    );
+    let start = SharedStart {
+        made: &made,
+        groups: &groups,
+        sets,
+        second,
+        image: &image,
+        mirrored,
+        name: &name,
+    };
+    shared_form(&start, (SHARED_HALF, SharedCut::Apart, true), &[6]);
+    shared_form(&start, (SHARED_HALF, SharedCut::Kept, true), &[2]);
+}
+
+/// Question 1 from the eighth image, from the assignment.
+#[test]
+#[ignore]
+fn what_a_shared_source_takes_of_the_eighth_image_on_seed_22_from_the_assignment_explore() {
+    what_a_shared_source_takes(NightFrom::Eighth, Reversal::AssignmentFirst);
+}
+
+/// Question 1 from the eighth image, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_a_shared_source_takes_of_the_eighth_image_on_seed_22_from_the_mirrored_assignment_explore()
+{
+    what_a_shared_source_takes(NightFrom::Eighth, Reversal::MirroredFirst);
+}
+
+/// Question 1 from a first mapping, from the assignment.
+#[test]
+#[ignore]
+fn what_a_shared_source_takes_of_a_first_mapping_on_seed_22_from_the_assignment_explore() {
+    what_a_shared_source_takes(NightFrom::FirstMapping, Reversal::AssignmentFirst);
+}
+
+/// Question 1 from a first mapping, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_a_shared_source_takes_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore() {
+    what_a_shared_source_takes(NightFrom::FirstMapping, Reversal::MirroredFirst);
 }
