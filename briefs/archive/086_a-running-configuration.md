@@ -1,9 +1,14 @@
 ---
-status: proposed
+status: archived
 date: 2026-11-01
 affectedFiles: [runtime/menteion-runtime/src/**, runtime/menteion-runtime/tests/**, testkit/**, docs/**, briefs/**, CHANGELOG.md, CLAUDE.md, README.md, scripts/exhaustive-costs.tsv]
 protectedFiles: [crates/**, docs/explorations/0*.md, docs/benchmarks/results/**, benches/**, .github/workflows/**, .cargo/**, Cargo.toml, Cargo.lock, rust-toolchain.toml, clippy.toml, .spec-brief.json, package.json, package-lock.json, scripts/arm-run.sh, scripts/exhaustive-shard.sh, scripts/exhaustive-costs.mjs, scripts/check-additive.mjs, scripts/check-archive.mjs, scripts/check-scope.mjs, scripts/check-explorations.mjs, scripts/check-doc-shape.mjs, scripts/adr-index.mjs]
+integrity: sha256-cd16a77cf2a373ad27a52e8dd8653df2e028fb47d343ca0a1d4d9d08a4f07aeb
 ---
+
+<!-- spec-brief:banner -->
+> **Executed 2026-11-01 (UTC) in pull request [#263](https://github.com/Menteion/Menteion/pull/263).** ADR-0233 built ADR-0232's running configuration: Config::runs_a_settled_image(), ExponentBesideRead in Executor::new and Image::decode, and Executor::coupling_sum, with H-46's arm decoding under the name and its kept addresses unset. One scope=exhaustive dispatch and seed 22's two first halves at scope=arms held every pin on e130794. No hypothesis was asked, no format moved, and the arms' ten other long halves read the name's form unrun. The body below describes the tree before execution and is not maintained.
+<!-- /spec-brief:banner -->
 
 # Brief 086: A running configuration for a settled image
 
@@ -12,8 +17,8 @@ protectedFiles: [crates/**, docs/explorations/0*.md, docs/benchmarks/results/**,
 ## Mission
 
 **This brief puts H-46's exponent under a name, gives the host what it needs for the groups, and adds no rule.**
-H-46 read yes ([ADR-0230](../docs/adr/0230-a-zero-sum-at-the-stimulus-measured.md)).
-[ADR-0232](../docs/adr/0232-a-running-configuration-and-m12-closed.md) names a configuration an engine runs a settled image under, leaves the zero sum's groups to the host, and leaves the derivation H-42's.
+H-46 read yes ([ADR-0230](../../docs/adr/0230-a-zero-sum-at-the-stimulus-measured.md)).
+[ADR-0232](../../docs/adr/0232-a-running-configuration-and-m12-closed.md) names a configuration an engine runs a settled image under, leaves the zero sum's groups to the host, and leaves the derivation H-42's.
 
 When the round is done, the tree holds:
 - `Config::runs_a_settled_image()`, `Config::reads_its_targets()` with a quarter's exponent, and H-46's arm running under it, the kept addresses unset;
@@ -23,8 +28,8 @@ When the round is done, the tree holds:
 
 **There is no hypothesis.** The one thing the name changes from H-46's arm is that the kept addresses are unset, and every reward was at age zero, so no pinned row should move. The runs show it.
 
-It writes a built ADR and rewrites `docs/STATUS.md` ([briefs/README.md](README.md#a-rounds-documents)).
-The scope is the front matter's ([ADR-0191](../docs/adr/0191-a-rounds-scope-eighteen-shards-and-the-reproduction-first.md)).
+It writes a built ADR and rewrites `docs/STATUS.md` ([briefs/README.md](../README.md#a-rounds-documents)).
+The scope is the front matter's ([ADR-0191](../../docs/adr/0191-a-rounds-scope-eighteen-shards-and-the-reproduction-first.md)).
 
 **Do not run this round beside brief 065's**: both dispatch the weekly workflow.
 
@@ -40,13 +45,13 @@ The scope is the front matter's ([ADR-0191](../docs/adr/0191-a-rounds-scope-eigh
 - **No derivation, lead-in or arm is run beyond what the two dispatches run.** They are the round's evidence that nothing moved. No whole-domain test runs on the developer machine.
 - **The dispatches are made once the last commit under `src/` and `tests/` is pushed**: `scope=exhaustive` with nothing excluded, since a file under `src/` changes, and `scope=arms` on seed 22's two first halves. A change under either directory after them is dispatched again, or shown in the ADR to change no run.
 - **No record, section or format changes.** The format stays 26. No state crate changes.
-- **No `unsafe` beyond ADR-0023's.** No `f32`/`f64`; every operation on a state field saturates or wraps by name ([ADR-0029](../docs/adr/0029-structural-enforcement.md)); every loop ends by construction ([ADR-0062](../docs/adr/0062-the-first-complete-sweeps-list.md)).
-- **The mutation gate catches every mutant in the lines the change touches** ([ADR-0030](../docs/adr/0030-verification-governance.md)); a new rule carries a test over the lattice of `testkit/prop.rs`.
-- **The pull request opens as a draft with the round's first push** ([ADR-0223](../docs/adr/0223-the-gate-shortened-and-explorations-kept-as-tags.md)), and leaves draft with the commit that asks for the merge, which sets the round's ADR to `accepted`.
+- **No `unsafe` beyond ADR-0023's.** No `f32`/`f64`; every operation on a state field saturates or wraps by name ([ADR-0029](../../docs/adr/0029-structural-enforcement.md)); every loop ends by construction ([ADR-0062](../../docs/adr/0062-the-first-complete-sweeps-list.md)).
+- **The mutation gate catches every mutant in the lines the change touches** ([ADR-0030](../../docs/adr/0030-verification-governance.md)); a new rule carries a test over the lattice of `testkit/prop.rs`.
+- **The pull request opens as a draft with the round's first push** ([ADR-0223](../../docs/adr/0223-the-gate-shortened-and-explorations-kept-as-tags.md)), and leaves draft with the commit that asks for the merge, which sets the round's ADR to `accepted`.
 - **The branch is named `claude/brief-086-…`**, never rebased or force-pushed once a dispatch has run on it. Every commit is signed.
 - **The engine and the harness are read before a description of them is trusted**, this brief's and ADR-0232's included.
 - **The documents are ADR-0197's**: a new ADR in its shape, the tables written by `node scripts/adr-index.mjs`, new text within `npm run spec:shape`'s limits.
-- **No shard of the weekly job passes 60 per cent of its bound**, 240 minutes ([ADR-0179](../docs/adr/0179-the-bounds-rule-restated.md)). One that does is reported with its job's minutes.
+- **No shard of the weekly job passes 60 per cent of its bound**, 240 minutes ([ADR-0179](../../docs/adr/0179-the-bounds-rule-restated.md)). One that does is reported with its job's minutes.
 - **GitHub without gh.** Dispatches, the pull request, logs and artifacts go through the REST API with the repository's own token (`~/.claude/menteion-tools/ghapi.sh` and its README); `git push` uses the same token. The token is never printed or put on a command line.
 - **The maintainer is notified** as `briefs/README.md` says: when a question only they can answer stops the round, and when the pull request is ready for review.
 - Conventional Commits with a real body; never commit on `main`.
@@ -73,37 +78,37 @@ Re-derived on 2026-11-01 against `main` at `eacc1fd`. Line numbers move; the sym
 6. **The errors** (`ConfigError` and `ImageError::Config`): `Executor::new` returns a `ConfigError` for each refused field. `Image::decode` wraps one in `ImageError::Config`.
 7. **The tests that set an exponent today**: `engine` in `executor.rs`'s unit tests, the decode beside it, and `zero_from`. None stands beside a read, and each must keep passing.
 8. **The weekly job** (`scripts/exhaustive-shard.sh`) lists `--ignored exhaustive`, so a `…_paused` test runs only by name at `scope=arms`.
-9. **The process**: eighteen weekly shards ([ADR-0191](../docs/adr/0191-a-rounds-scope-eighteen-shards-and-the-reproduction-first.md)), the bound 240 minutes; `spec-brief archive --strict` measured from `origin/main`. The tools are `@spec-family/…` ([ADR-0231](../docs/adr/0231-the-spec-tools-under-their-new-scope.md)).
-10. **The sweep**: the schedule runs on 2026-11-04 at 20:17Z. If it has ended when this round's ADR merges, that ADR records it ([briefs/README.md](README.md#evidencing-a-round)).
+9. **The process**: eighteen weekly shards ([ADR-0191](../../docs/adr/0191-a-rounds-scope-eighteen-shards-and-the-reproduction-first.md)), the bound 240 minutes; `spec-brief archive --strict` measured from `origin/main`. The tools are `@spec-family/…` ([ADR-0231](../../docs/adr/0231-the-spec-tools-under-their-new-scope.md)).
+10. **The sweep**: the schedule runs on 2026-11-04 at 20:17Z. If it has ended when this round's ADR merges, that ADR records it ([briefs/README.md](../README.md#evidencing-a-round)).
 
 ## Deliverables
 
-- [ ] **The configuration, the boundary and the reader, built, in a new ADR at the next free number (`ls docs/adr`), kind `built`.**
+- [x] **The configuration, the boundary and the reader, built, in a new ADR at the next free number (`ls docs/adr`), kind `built`.**
   - `Config::runs_a_settled_image()`, its comment saying what the exponent alone is, and its test field by field against `Config::reads_its_targets()`.
   - `Executor::new` refusing an exponent other than one beside a read, by a `ConfigError` of its own.
   - `Image::decode` refusing, with the same error, an image with a read or a probe under way under such an exponent.
   - `Executor::coupling_sum(sources, targets)`, read between ticks.
   - A test over `testkit/prop.rs`'s lattice for each refusal, and one holding `coupling_sum` to a sum by hand.
-- [ ] **H-46's harness under the name.**
+- [x] **H-46's harness under the name.**
   - `zero_from` decodes the arm's form under `Config::runs_a_settled_image()`, its sizing by struct update and `kept_addresses` left at zero, the task on its plain path at age zero, its comment rewritten. The control's form stays what it was.
   - `zero_groups` reads each value through `coupling_sum`, its assertion against `made.couplings` kept.
   - The six short forms and the verdict's test unchanged, each pin held.
-- [ ] **The dispatches**, once the last commit under `src/` and `tests/` is pushed.
+- [x] **The dispatches**, once the last commit under `src/` and `tests/` is pushed.
   - `scope=exhaustive` with nothing excluded: its eighteen shards are green, and the cost table is regenerated from it.
   - `scope=arms` on seed 22's two first halves: each job green, its eight schedules' pinned rows held under the name.
-- [ ] **The ADR's reading.**
+- [x] **The ADR's reading.**
   - What was built, and the two refusals.
   - Each dispatch with its run id and commit, and each job's time against its bound.
   - That the arms' ten other long halves read the name's form unrun, and what their rows rest on.
   - Whether the schedule's sweep of 2026-11-04 has ended, and its record if it has.
-- [ ] **The documents, in the same pull request.**
+- [x] **The documents, in the same pull request.**
   - `docs/STATUS.md` rewritten whole.
   - Whitepaper §5.2.16: the running configuration beside the engine's default, with an `@assert-count` for the new name and the sentence on the exponent alone.
   - Whitepaper §5.2.1: `coupling_sum` in the zero sum's paragraph, and the exponent's paragraph no longer "unset by default" where the name sets it.
   - The tables written by `node scripts/adr-index.mjs`.
   - `CHANGELOG.md`, one entry of at most 400 characters.
   - The whitepaper's version in both declarations, with its date.
-- [ ] **The brief archived** with `spec-brief archive 086 --strict`, every deliverable dispositioned. The round's ADR is set to `accepted` by the commit that asks for the merge, and the pull request is marked ready for review with it.
+- [x] **The brief archived** with `spec-brief archive 086 --strict`, every deliverable dispositioned. The round's ADR is set to `accepted` by the commit that asks for the merge, and the pull request is marked ready for review with it.
 
 ## Not empowered
 
