@@ -47280,3 +47280,150 @@ fn what_a_shared_source_takes_of_a_first_mapping_on_seed_22_from_the_assignment_
 fn what_a_shared_source_takes_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore() {
     what_a_shared_source_takes(NightFrom::FirstMapping, Reversal::MirroredFirst);
 }
+
+/// What stands before the pair in question 2: a night's length awake, and a night of A's mapping
+/// at shift 7, plain and the twin. With no gap it is question 1's row, bit for bit.
+const SHARED_BEFORE: [FlipGap; 3] = [
+    FlipGap::Idle {
+        ticks: FLIP_NIGHT_TICKS,
+    },
+    other_night(7, false),
+    other_night(7, true),
+];
+
+/// The pair's blocks before a night halfway, and after it.
+const SHARED_HALF_BLOCKS: usize = 12;
+
+/// Question 2 at `mask`, conflicting, each kind held apart. Before the pair: a gap of
+/// `SHARED_BEFORE`, then the pair for each of `SECOND_BLOCKS` from what it left. Halfway: the pair
+/// for `SHARED_HALF_BLOCKS` from the start image, then nothing, a night's length awake, or a night
+/// of A's patterns, the pair's or both, plain and the twin, and the pair for as many blocks again.
+/// Both mappings are read after every stretch. A's patterns are the start image's and the pair's
+/// the image it wrote halfway, each night spending the older episodes.
+fn what_a_night_saves(start: &SharedStart, mask: u32) {
+    let (sets, second) = (start.sets, start.second);
+    let cut = SharedCut::Apart;
+    let name = format!("{} share {mask:#06b} {cut:?} conflict true", start.name);
+    let pair = shared_pair(&sets, &second, mask);
+    let held = shared_groups(start.groups, &pair, cut, start.image, &name);
+    let site = NightSite {
+        made: start.made,
+        groups: &held,
+        form: ZERO_ARM,
+        sets,
+        mirrored: start.mirrored,
+        presenting: None,
+    };
+    let theirs = NightSite {
+        made: start.made,
+        groups: &held,
+        form: ZERO_ARM,
+        sets: second,
+        mirrored: !start.mirrored,
+        presenting: Some(&pair.presenting),
+    };
+    let read = |image: &[u8], label: &str| {
+        shared_read(&site, &theirs, &pair, &second, image, label);
+    };
+    for gap in SHARED_BEFORE {
+        let what = match gap {
+            FlipGap::Idle { .. } => "awake",
+            FlipGap::Night { twin: true, .. } => "twin",
+            _ => "plain",
+        };
+        let label = format!("{name} before {what}");
+        let gapped = gap_on(&site, start.image, gap, &label);
+        read(&gapped, &format!("{label} blocks 0"));
+        for n in SECOND_BLOCKS {
+            let at = format!("{label} blocks {n}");
+            let run = shared_run(&theirs, &pair, &gapped, n, &at);
+            read(&run, &at);
+        }
+    }
+    let half = format!("{name} half");
+    let at = format!("{half} none blocks {SHARED_HALF_BLOCKS}");
+    let run = shared_run(&theirs, &pair, start.image, SHARED_HALF_BLOCKS, &at);
+    read(&run, &at);
+    let on = |image: &[u8], label: &str| {
+        let at = format!("{label} blocks {}", SHARED_HALF_BLOCKS.saturating_mul(2));
+        let more = shared_run(&theirs, &pair, image, SHARED_HALF_BLOCKS, &at);
+        read(&more, &at);
+    };
+    on(&run, &format!("{half} none"));
+    let idle = format!("{half} awake");
+    let awake = idle_on(&site, &run, &idle, FLIP_NIGHT_TICKS, true);
+    read(&awake, &format!("{idle} blocks {SHARED_HALF_BLOCKS}"));
+    on(&awake, &idle);
+    let first = mapping_patterns(&site, start.image);
+    let own = mapping_patterns(&theirs, &run);
+    let both = [first.clone(), own.clone()].concat();
+    for (what, patterns) in [("first", &first), ("second", &own), ("both", &both)] {
+        for (form_name, twin) in [("plain", false), ("twin", true)] {
+            let label = format!("{half} {form_name}-{what}");
+            let given = NightGiven {
+                shift: 7,
+                driven: true,
+                twin,
+                held: true,
+                slow_wave: Some(ONE / 2),
+                spend: true,
+                patterns,
+            };
+            let (night, _) = night_on(&site, &run, &label, given);
+            read(&night, &format!("{label} blocks {SHARED_HALF_BLOCKS}"));
+            on(&night, &label);
+        }
+    }
+}
+
+/// Question 2 from `from`, at the share question 1 took furthest with room to read a night's part.
+fn what_a_night_saves_of_a_shared_source(from: NightFrom, arm: Reversal) {
+    let form = ZERO_ARM;
+    let name = format!("shared {} {arm:?} {from:?}", ZERO_NAMES[0][form]);
+    let made = probe_made(0, &name);
+    let groups = zero_groups(&made, &name);
+    let (image, mirrored) = night_image(&made, &groups, from, form, arm, &name);
+    let sets = geometry(SCAN_UNITS, made.derived.rotation);
+    let start = SharedStart {
+        made: &made,
+        groups: &groups,
+        sets,
+        second: second_sets(&sets),
+        image: &image,
+        mirrored,
+        name: &name,
+    };
+    what_a_night_saves(&start, SHARED_HALF);
+}
+
+/// Question 2 from the eighth image, from the assignment.
+#[test]
+#[ignore]
+fn what_a_night_saves_of_a_shared_source_of_the_eighth_image_on_seed_22_from_the_assignment_explore()
+ {
+    what_a_night_saves_of_a_shared_source(NightFrom::Eighth, Reversal::AssignmentFirst);
+}
+
+/// Question 2 from the eighth image, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_a_night_saves_of_a_shared_source_of_the_eighth_image_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    what_a_night_saves_of_a_shared_source(NightFrom::Eighth, Reversal::MirroredFirst);
+}
+
+/// Question 2 from a first mapping, from the assignment.
+#[test]
+#[ignore]
+fn what_a_night_saves_of_a_shared_source_of_a_first_mapping_on_seed_22_from_the_assignment_explore()
+{
+    what_a_night_saves_of_a_shared_source(NightFrom::FirstMapping, Reversal::AssignmentFirst);
+}
+
+/// Question 2 from a first mapping, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_a_night_saves_of_a_shared_source_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    what_a_night_saves_of_a_shared_source(NightFrom::FirstMapping, Reversal::MirroredFirst);
+}
