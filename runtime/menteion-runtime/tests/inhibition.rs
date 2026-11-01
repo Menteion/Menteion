@@ -47680,8 +47680,9 @@ fn spread_of_an_image(spread: &SpreadStart, image: &[u8], label: &str) {
 }
 
 /// Question 1 from a start: the start image, A at its ceiling; the pair's 12 blocks; and its 24.
-/// Returns the two images the pair wrote.
-fn spread_of_a_start(spread: &SpreadStart) -> [Vec<u8>; 2] {
+/// Returns the two images the pair wrote. On `read` false, the start the harness's trial read:
+/// the images alone.
+fn spread_of_a_start(spread: &SpreadStart, read: bool) -> [Vec<u8>; 2] {
     let image = spread.start.image;
     let whole_blocks = SHARED_HALF_BLOCKS.saturating_mul(2);
     let (twelve, whole) = (
@@ -47699,9 +47700,11 @@ fn spread_of_a_start(spread: &SpreadStart) -> [Vec<u8>; 2] {
         written[&SHARED_HALF_BLOCKS].clone(),
         written[&whole_blocks].clone(),
     ];
-    spread_of_an_image(spread, image, &format!("{} blocks 0", spread.name));
-    spread_of_an_image(spread, &images[0], &twelve);
-    spread_of_an_image(spread, &images[1], &whole);
+    if read {
+        spread_of_an_image(spread, image, &format!("{} blocks 0", spread.name));
+        spread_of_an_image(spread, &images[0], &twelve);
+        spread_of_an_image(spread, &images[1], &whole);
+    }
     images
 }
 
@@ -47777,5 +47780,361 @@ fn the_harness_of_what_a_read_spreads_explore() {
         traces.into_values().collect::<Vec<u64>>(),
         "two at a time reads as one at a time"
     );
-    spread_of_a_start(&spread);
+    spread_of_a_start(&spread, true);
+}
+
+/// `from`, `arm` and the share question 2 of exploration 016 read, each kind held apart, conflicting,
+/// laid out for `body`.
+fn with_spread(from: NightFrom, arm: Reversal, body: impl FnOnce(&SpreadStart)) {
+    let form = ZERO_ARM;
+    let name = format!("shared {} {arm:?} {from:?}", ZERO_NAMES[0][form]);
+    let made = probe_made(0, &name);
+    let groups = zero_groups(&made, &name);
+    let (image, mirrored) = night_image(&made, &groups, from, form, arm, &name);
+    let sets = geometry(SCAN_UNITS, made.derived.rotation);
+    let start = SharedStart {
+        made: &made,
+        groups: &groups,
+        sets,
+        second: second_sets(&sets),
+        image: &image,
+        mirrored,
+        name: &name,
+    };
+    let cut = SharedCut::Apart;
+    let name = format!(
+        "{} share {SHARED_HALF:#06b} {cut:?} conflict true",
+        start.name
+    );
+    let pair = shared_pair(&sets, &start.second, SHARED_HALF);
+    let held = shared_groups(start.groups, &pair, cut, start.image, &name);
+    let spread = SpreadStart {
+        start: &start,
+        half: format!("{name} half"),
+        pair: &pair,
+        site: NightSite {
+            made: start.made,
+            groups: &held,
+            form,
+            sets,
+            mirrored,
+            presenting: None,
+        },
+        theirs: NightSite {
+            made: start.made,
+            groups: &held,
+            form,
+            sets: start.second,
+            mirrored: !mirrored,
+            presenting: Some(&pair.presenting),
+        },
+        name,
+    };
+    body(&spread);
+}
+
+/// A piece of work a stage of images holds.
+type Work<'a> = Box<dyn Fn() + Sync + 'a>;
+
+/// A stage's work, two at a time, each piece keeping what it wrote under its label.
+fn stage(work: &[Work]) {
+    two_at_a_time(work, |piece| piece());
+}
+
+/// Exploration 016's forms of question 2 from a start: a gap before the pair and 12 and 24 blocks
+/// from what it left; and a gap at the pair's 12 blocks, `twelve`, and 12 blocks more. Each night's
+/// patterns and each run are that question's, so that every image is its image. What it returns is
+/// each image a row is read at, by its label there.
+fn the_images_of_a_night(spread: &SpreadStart, twelve: &[u8]) -> BTreeMap<String, Vec<u8>> {
+    let (site, theirs, pair) = (&spread.site, &spread.theirs, spread.pair);
+    let image = spread.start.image;
+    let (name, half) = (&spread.name, &spread.half);
+    let images = std::sync::Mutex::new(BTreeMap::new());
+    let keep = |at: String, image: Vec<u8>| {
+        images.lock().expect("a piece ended").insert(at, image);
+    };
+    let first = mapping_patterns(site, image);
+    let own = mapping_patterns(theirs, twelve);
+    let both = [first.clone(), own.clone()].concat();
+    let mut gaps: Vec<Work> = Vec::new();
+    let mut before = Vec::new();
+    for gap in SHARED_BEFORE {
+        let what = match gap {
+            FlipGap::Idle { .. } => "awake",
+            FlipGap::Night { twin: true, .. } => "twin",
+            _ => "plain",
+        };
+        let label = format!("{name} before {what}");
+        before.push(label.clone());
+        let keep = &keep;
+        gaps.push(Box::new(move || {
+            keep(label.clone(), gap_on(site, image, gap, &label));
+        }));
+    }
+    let mut halfway = vec![format!("{half} awake")];
+    let idle = halfway[0].clone();
+    {
+        let keep = &keep;
+        gaps.push(Box::new(move || {
+            keep(
+                idle.clone(),
+                idle_on(site, twelve, &idle, FLIP_NIGHT_TICKS, true),
+            );
+        }));
+    }
+    for (what, patterns) in [("first", &first), ("second", &own), ("both", &both)] {
+        for (form_name, twin) in [("plain", false), ("twin", true)] {
+            let label = format!("{half} {form_name}-{what}");
+            halfway.push(label.clone());
+            let keep = &keep;
+            gaps.push(Box::new(move || {
+                let given = NightGiven {
+                    shift: 7,
+                    driven: true,
+                    twin,
+                    held: true,
+                    slow_wave: Some(ONE / 2),
+                    spend: true,
+                    patterns,
+                };
+                keep(label.clone(), night_on(site, twelve, &label, given).0);
+            }));
+        }
+    }
+    stage(&gaps);
+    drop(gaps);
+    let written = |label: &str| images.lock().expect("a piece ended")[label].clone();
+    let whole = SHARED_HALF_BLOCKS.saturating_mul(2);
+    let mut runs: Vec<Work> = Vec::new();
+    for label in &before {
+        for n in [SHARED_HALF_BLOCKS, whole] {
+            let at = format!("{label} blocks {n}");
+            let gapped = written(label);
+            let keep = &keep;
+            runs.push(Box::new(move || {
+                keep(at.clone(), shared_run(theirs, pair, &gapped, n, &at));
+            }));
+        }
+    }
+    let none = format!("{half} none blocks {whole}");
+    {
+        let keep = &keep;
+        runs.push(Box::new(move || {
+            let more = shared_run(theirs, pair, twelve, SHARED_HALF_BLOCKS, &none);
+            keep(none.clone(), more);
+        }));
+    }
+    for label in &halfway {
+        let at = format!("{label} blocks {whole}");
+        let gapped = written(label);
+        let keep = &keep;
+        runs.push(Box::new(move || {
+            let more = shared_run(theirs, pair, &gapped, SHARED_HALF_BLOCKS, &at);
+            keep(at.clone(), more);
+        }));
+    }
+    stage(&runs);
+    drop(runs);
+    let mut images = images.into_inner().expect("every piece ended");
+    for label in &halfway {
+        let gapped = images.remove(label).expect("the gap's image");
+        images.insert(format!("{label} blocks {SHARED_HALF_BLOCKS}"), gapped);
+    }
+    for label in &before {
+        images.remove(label).expect("the gap's image");
+    }
+    images
+}
+
+/// Question 2 from a start: question 1, then A read `SPREAD_READS` times under `ReadBy::Both` at every
+/// row's block 12 and 24 but the two images question 1 read. Both, since under one drive a position's
+/// outcome stands on its stimulus: more stimuli alone read the same cells again (the trial's log).
+/// On `read` false, the start the harness's trial read.
+fn what_a_read_spreads(spread: &SpreadStart, read: bool) {
+    let (by, n) = (ReadBy::Both, SPREAD_READS);
+    let [twelve, _] = spread_of_a_start(spread, read);
+    let images = the_images_of_a_night(spread, &twelve);
+    let mut reads = Vec::new();
+    for (label, image) in &images {
+        reads.extend(spread_reads(
+            &spread.site,
+            image,
+            &format!("{label} first"),
+            &[by],
+            n,
+        ));
+    }
+    read_all(&reads);
+}
+
+/// The trials a run's first index moves by from one path to the next: more than the 24 blocks and
+/// than a read's reach, so that no two paths share a stretch.
+const PATH_TRIALS: u64 = 4_096;
+
+/// The paths of question 3 past exploration 016's own, which question 2 reads.
+const PATHS: u64 = 8;
+
+/// The first of those that run on a drive of their own; those before it differ in their stimuli alone.
+const PATHS_ON_ONE_DRIVE: u64 = 4;
+
+/// Question 3 from a start: for each path, the pair's 12 blocks, then the awake gap or a plain night
+/// of A's patterns, then 12 blocks more, each run from the path's first index and, past
+/// `PATHS_ON_ONE_DRIVE`, on the path's drive, the gaps under the drive they had; A read
+/// `SPREAD_READS` times under `ReadBy::Both` after the gap and after the 12 blocks.
+fn what_a_path_spreads(spread: &SpreadStart) {
+    let (by, n) = (ReadBy::Both, SPREAD_READS);
+    let (site, theirs, pair) = (&spread.site, &spread.theirs, spread.pair);
+    let image = spread.start.image;
+    let half = &spread.half;
+    let first = mapping_patterns(site, image);
+    let whole = SHARED_HALF_BLOCKS.saturating_mul(2);
+    let paths: Vec<(u64, ReadFrom)> = (1..=PATHS)
+        .map(|j| {
+            let from = ReadFrom {
+                trial: j.saturating_mul(PATH_TRIALS),
+                drive: if j > PATHS_ON_ONE_DRIVE { j } else { 0 },
+            };
+            (j, from)
+        })
+        .collect();
+    let images = std::sync::Mutex::new(BTreeMap::new());
+    two_at_a_time(&paths, |&(j, from)| {
+        let at = format!("{half} path {j} none blocks {SHARED_HALF_BLOCKS}");
+        let run = shared_run_from(theirs, pair, image, SHARED_HALF_BLOCKS, &at, from);
+        images.lock().expect("a run ended").insert(j, run);
+    });
+    let images = images.into_inner().expect("every run ended");
+    let gapped = std::sync::Mutex::new(BTreeMap::new());
+    let gaps: Vec<(u64, ReadFrom, bool)> = paths
+        .iter()
+        .flat_map(|&(j, from)| [(j, from, false), (j, from, true)])
+        .collect();
+    two_at_a_time(&gaps, |&(j, from, night)| {
+        let twelve = &images[&j];
+        let label = format!(
+            "{half} path {j} {}",
+            if night { "plain-first" } else { "awake" }
+        );
+        let image = if night {
+            let given = NightGiven {
+                shift: 7,
+                driven: true,
+                twin: false,
+                held: true,
+                slow_wave: Some(ONE / 2),
+                spend: true,
+                patterns: &first,
+            };
+            night_on(site, twelve, &label, given).0
+        } else {
+            idle_on(site, twelve, &label, FLIP_NIGHT_TICKS, true)
+        };
+        gapped
+            .lock()
+            .expect("a gap ended")
+            .insert((j, night), (label, from, image));
+    });
+    let gapped = gapped.into_inner().expect("every gap ended");
+    let on = std::sync::Mutex::new(BTreeMap::new());
+    let rows: Vec<&(u64, bool)> = gapped.keys().collect();
+    two_at_a_time(&rows, |&key| {
+        let (label, from, image) = &gapped[key];
+        let at = format!("{label} blocks {whole}");
+        let more = shared_run_from(theirs, pair, image, SHARED_HALF_BLOCKS, &at, *from);
+        on.lock().expect("a run ended").insert(*key, (at, more));
+    });
+    let on = on.into_inner().expect("every run ended");
+    let mut reads = Vec::new();
+    for (key, (label, _, image)) in &gapped {
+        let at = format!("{label} blocks {SHARED_HALF_BLOCKS} first");
+        reads.extend(spread_reads(site, image, &at, &[by], n));
+        let (at, more) = &on[key];
+        reads.extend(spread_reads(site, more, &format!("{at} first"), &[by], n));
+    }
+    read_all(&reads);
+}
+
+/// Questions 1 and 2 from the eighth image, from the assignment; the harness's trial read its
+/// question 1.
+#[test]
+#[ignore]
+fn what_a_read_spreads_of_the_eighth_image_on_seed_22_from_the_assignment_explore() {
+    with_spread(NightFrom::Eighth, Reversal::AssignmentFirst, |spread| {
+        what_a_read_spreads(spread, false);
+    });
+}
+
+/// Questions 1 and 2 from the eighth image, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_a_read_spreads_of_the_eighth_image_on_seed_22_from_the_mirrored_assignment_explore() {
+    with_spread(NightFrom::Eighth, Reversal::MirroredFirst, |spread| {
+        what_a_read_spreads(spread, true);
+    });
+}
+
+/// Questions 1 and 2 from a first mapping, from the assignment.
+#[test]
+#[ignore]
+fn what_a_read_spreads_of_a_first_mapping_on_seed_22_from_the_assignment_explore() {
+    with_spread(
+        NightFrom::FirstMapping,
+        Reversal::AssignmentFirst,
+        |spread| {
+            what_a_read_spreads(spread, true);
+        },
+    );
+}
+
+/// Questions 1 and 2 from a first mapping, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_a_read_spreads_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore() {
+    with_spread(NightFrom::FirstMapping, Reversal::MirroredFirst, |spread| {
+        what_a_read_spreads(spread, true);
+    });
+}
+
+/// Question 3 from the eighth image, from the assignment.
+#[test]
+#[ignore]
+fn what_a_path_spreads_of_the_eighth_image_on_seed_22_from_the_assignment_explore() {
+    with_spread(
+        NightFrom::Eighth,
+        Reversal::AssignmentFirst,
+        what_a_path_spreads,
+    );
+}
+
+/// Question 3 from the eighth image, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_a_path_spreads_of_the_eighth_image_on_seed_22_from_the_mirrored_assignment_explore() {
+    with_spread(
+        NightFrom::Eighth,
+        Reversal::MirroredFirst,
+        what_a_path_spreads,
+    );
+}
+
+/// Question 3 from a first mapping, from the assignment.
+#[test]
+#[ignore]
+fn what_a_path_spreads_of_a_first_mapping_on_seed_22_from_the_assignment_explore() {
+    with_spread(
+        NightFrom::FirstMapping,
+        Reversal::AssignmentFirst,
+        what_a_path_spreads,
+    );
+}
+
+/// Question 3 from a first mapping, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_a_path_spreads_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore() {
+    with_spread(
+        NightFrom::FirstMapping,
+        Reversal::MirroredFirst,
+        what_a_path_spreads,
+    );
 }
