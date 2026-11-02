@@ -36,29 +36,32 @@ runs bit for bit.
 - **The patterns point at the right answer, in all four cells.** Every target of A's 102 patterns lies on the answer's readout under the
   mapping in force; none lies on the other readout. A shared unit's pattern points at A's answer, which is the other readout from the one the
   pair asks of that unit. In a replay's ripple, beyond the pattern's own units, 11.3 to 11.7 spikes land on the answer's readout and 12.2 to
-  13.8 on the other, about the same in the two cells that failed and the two that did not.
+  13.8 on the other, the other more by 0.79 to 2.13 in every row, in the two cells that failed as in the two that did not.
 - **On A's and B's units, every plain night moves the margin A's way, in all four cells.** Each of the four kinds of A's and B's units rose
   in each of the 48 path-nights, by 0.03 to 0.43 M. The pairings put weight onto the units' own patterns, +388 714 to +735 248 over four nights
   a class, and took it from the other readout in every class of every cell. Summed over the four nights, A's margin rose 3.33 to 3.56 M under
   plain nights and −0.22 to +0.48 M under nights without replay.
-- **Beyond A's and B's units, the same nights take weight from the readouts and add inhibition, in all four cells alike.** Over four plain
-  nights the readouts' excitatory units lost 19.75 to 23.59 M of weight. Of it, −2.99 to −3.74 M each way lay between the two readouts'
-  pattern targets. Inhibitory weight rose 17.56 to 27.05 M, 5.90 to 9.69 M of it onto each readout's targets. The pair's blocks took back 7.41
-  to 16.90 M of the inhibitory weight and none of the excitatory. At block 36 a read's readout spikes on A's trials stood 20 % to 35 % under
-  the night without replay's.
+- **Beyond A's and B's units, the same nights take weight from the readouts and add inhibition, in all four cells.** Over four plain nights
+  the readouts' excitatory units lost 19.75 to 23.59 M of weight, 13.26 to 15.64 M of it from the units A's patterns reach. The largest
+  single parts, 2.99 to 3.74 M each way, lay between the two readouts' pattern targets. Inhibitory weight rose 17.56 to 27.05 M, 5.90 to
+  9.69 M of it onto each readout's targets. The pair's blocks then lowered the inhibitory weight by 7.41 to 16.90 M and moved none of the
+  excitatory. Matched by start, the cell that failed lost a little more of that excitatory weight and gained a little more of that
+  inhibitory weight than seed 22's. At block 36 a read's readout spikes on
+  A's trials stood 20 % to 35 % under the night without replay's.
 - **The pair takes the shared units' margin about equally under both forms.** Over its blocks it took 0.98 to 2.05 M of A and C's margin
   under plain nights and 0.83 to 2.20 M under nights without replay. Plain nights gave 0.91 to 1.18 M back, nights without replay 0.05 to
   0.21 M.
-- **So none of the three readings separates the two cells that failed from the two that did not.** Each is about the same in all four.
+- **So none of the three readings separates the two cells that failed from the two that did not.** Each is present in all four, and of
+  similar size.
 - **The cells part by stimulus.** At block 36, plain less without replay on stimulus A's trials read −5.2 ± 1.50 on seed 23, +0.2 ± 0.76 on
   seed 24, and −0.4 ± 0.83 and −1.6 ± 0.88 on seed 22's two cells; on B's trials +0.3 ± 0.88, +1.6 ± 1.50, +5.4 ± 1.47 and +3.8 ± 0.81. At
   block 6 every cell read more on A's trials under plain nights, +0.6 to +2.5.
-- **On seed 23 the cost is all on A's trials.** Its 2.88 M of margin are spread over all four kinds, +0.68 to +0.74 M each. Its −4.9 lie on
+- **On seed 23 the cost lies on A's trials.** Its 2.88 M of margin are spread over all four kinds, +0.68 to +0.74 M each. Its −4.9 lie on
   A's trials, where A read 24.1 against 29.3 and wrong answers 5.8 against 2.0. On B's trials it read 24.2 against 23.9.
 - **One reading of the nights sets seed 23 apart, and it lies outside A's margin.** C's own units, the pair's stimulus at place 5 inside
-  readout 0, lost margin onto A's answer in each of seed 23's twelve plain path-nights and in each of its twelve without replay. On seed 22's
-  two cells they lost it in 1 and 0 of the twelve plain ones. At block 36 plain less without replay stood −0.26 M for C's own and −0.29 M for D's
-  own on seed 23, against −0.06 to +0.21 M on the other three cells.
+  readout 0, lost margin onto A's answer in each of seed 23's twelve plain path-nights and in each of its twelve without replay. In the
+  other three cells they lost it in 0 to 5 of the twelve plain ones and 6 to 9 of the twelve without replay. At block 36, plain less without
+  replay, C's own stood −0.26 M on seed 23 and +0.10 to +0.21 M on the other three cells; D's own −0.29 M, and −0.06 to +0.13 M.
 
 ## What ran
 
@@ -113,6 +116,9 @@ alone, A and C, B alone, and B and D. C's own and D's own lie outside it.
 
 ## 1. A's patterns
 
+The targets of each kind are counted once a pattern, so a unit two patterns reach counts twice; the last row of each cell counts each unit
+once.
+
 | Cell | Kind of the first unit | Patterns | Targets | On the answer's readout | On the other | Outside | The pair's own | A's answer | The pair's answer |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Seed 23, first mapping, mirrored | A alone | 25 | 188 | 188 | 0 | 0 | 1 | R1 | – |
@@ -139,12 +145,14 @@ alone, A and C, B alone, and B and D. C's own and D's own lie outside it.
 - **Every target lies on the answer's readout under the mapping in force**, 745 of 745 on seed 23, 743 of 743 on seed 24,
   and 752 of 752 in each of seed 22's two cells. So does every pattern tagged in every night: the same 102, drawn from the start image.
 - **A shared unit's pattern points at A's answer**, readout 1 for A and C, readout 0 for B and D. The pair asks the opposite of those units.
-- **Some targets are the pair's own units.** A and C's patterns reach 21 to 29 of D's own in readout 1, and B alone's 19 to 29 of C's own in
-  readout 0.
+- **Some targets are the pair's own units.** A and C's patterns reach D's own units in readout 1 as 21 to 29 targets, and B alone's reach
+  C's own in readout 0 as 19 to 29. Over all 102 patterns they are 37 to 48 distinct units of the pair's 50.
 - **The ledger replays each episode about as often in every cell**: 13.4 to 13.7 times at the first night for A's kinds and 12.6 to 12.7 for
-  B's, falling to 11.0 to 11.6 and 10.6 at the fourth. In 99.2 % to 100 % of the replays of each kind, the first unit fired twice or more.
+  B's, falling to 11.0 to 11.6 and 10.6 at the fourth. For each kind at each night, the three paths pooled, the first unit fired twice or more
+  in 99.2 % to 100 % of the replays.
 
-Spikes in a ripple that replays one of A's patterns, a ripple's mean over the four plain nights and the three paths, by the pattern's stimulus:
+Spikes in a ripple that replays one of A's patterns, by the pattern's stimulus. The ripples are the total over the four plain nights and the
+three paths, and each other column a ripple's mean over them:
 
 | Cell | Stimulus | Ripples | The first unit | The rest of the pattern | Pair's own in the answer's readout | Pair's own in the other readout | The answer's readout | The other readout | Another stimulus unit | Elsewhere |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -157,16 +165,16 @@ Spikes in a ripple that replays one of A's patterns, a ripple's mean over the fo
 | Seed 22, eighth, assignment | A | 7 508 | 3.1 | 21.5 | 0.5 | 0.7 | 11.7 | 13.1 | 1.9 | 0.2 |
 | Seed 22, eighth, assignment | B | 7 169 | 3.0 | 23.2 | 0.4 | 0.7 | 11.7 | 13.1 | 2.0 | 0.2 |
 
-- **Beyond the pattern, a replay drives both readouts about alike.** On the answer's readout 11.3 to 11.7 spikes a ripple, on the other 12.2
-  to 13.8, in all four cells.
+- **Beyond the pattern, a replay drives both readouts, the other a little more.** On the answer's readout 11.3 to 11.7 spikes a ripple, on
+  the other 12.2 to 13.8, the other more by 0.79 to 2.13 in each of the eight rows.
 - **The pattern's first unit fires about three times a ripple**, 3.04 to 3.07, and the rest of the pattern 21.5 to 23.2 times.
 - **Its pairings onto the other readout lose weight.** In a unit's own replay, a pairing with a post in the same tick is 32.4 % to 34.6 % of
   those onto its own pattern, and 0.0 % to 0.1 % of those onto the other readout. Over four nights those onto the other readout moved −133 557
   to −507 432 into the weights a class and cell, and those onto the pattern +155 063 to +484 926.
 
 **On a pattern that points at the wrong answer**, this note finds nothing in any of the four cells. Each pattern's targets lie on A's answer.
-The replay's spikes off the pattern spread over both readouts alike in all four. The pairings onto the other readout lose weight in all
-four.
+The replay's spikes off the pattern land on both readouts, a little more on the other, in all four. The pairings onto the other readout lose
+weight in all four.
 
 ## 2. What a replay moves, night by night
 
@@ -234,7 +242,8 @@ Summed over the four nights:
   the other three cells; D's own −0.06 to −0.22 M on all four.
 
 What the pairings of A's and B's units put into the weights, summed over the four nights, the mean over the three paths, by the unit's class
-and the target's:
+and the target's. The pair's own takes its units in both readouts, and elsewhere the other stimulus units and the units outside the
+readouts:
 
 | Cell | Class | Without replay: its own pattern | the answer's readout | the other readout | the pair's own | elsewhere | Plain: its own pattern | the answer's readout | the other readout | the pair's own | elsewhere |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -283,17 +292,22 @@ nights, and the 12 blocks to block 36), the mean over the three paths, in millio
 | Seed 22, eighth, assignment | plain-first | four nights | −3.56 | −3.74 | −22.69 | +8.80 | +9.21 | +25.68 | −0.07 |
 | Seed 22, eighth, assignment | plain-first | the pair's blocks | 0.00 | 0.00 | +0.01 | −2.72 | −3.07 | −7.41 | 0.00 |
 
-- **Plain nights take the readouts' excitatory weight**, 19.75 to 23.59 M over four nights. The largest part lies between the two readouts'
-  pattern targets, −2.99 to −3.74 M each way. Nights without replay moved it by −0.62 to +1.69 M.
+- **Plain nights take the readouts' excitatory weight**, 19.75 to 23.59 M over four nights, 13.26 to 15.64 M of it from the units A's
+  patterns reach. The largest single parts lie between the two readouts' pattern targets, −2.99 to −3.74 M each way. Nights without replay
+  moved it by −0.62 to +1.69 M.
 - **Plain nights add inhibitory weight**, 17.56 to 27.05 M, of it 5.90 to 9.69 M onto each readout's targets. Nights without replay moved it
   by −5.50 to +1.33 M.
-- **The pair's blocks move no excitatory weight of the readouts' units**, at most 0.01 M either way, and take back 7.41 to 16.90 M of the
-  inhibitory weight under plain nights.
+- **The pair's blocks move no excitatory weight of the readouts' units**, at most 0.01 M either way. They lowered the inhibitory weight by
+  7.41 to 16.90 M under plain nights. Under nights without replay they lowered it by 12.54 and 12.95 M from a first mapping and raised it by
+  2.27 and 1.27 M from the eighth image. So the blocks' fall is not only the nights' rise given back.
 - **A's and B's units' weight onto everything stays where the zero sum holds it**, −0.03 to −0.10 M over the four nights.
+- **Matched by start, the cell that failed lost a little more and gained a little more than seed 22's**: the readouts' excitatory loss 20.10 against
+  19.75 M and 23.59 against 22.69 M, the inhibitory rise 21.08 against 17.56 M and 27.05 against 25.68 M. Two pairs of cells cannot say
+  whether that order means anything.
 
 **On a replay that moves the wrong synapses**, the answer has two parts. On A's and B's synapses the replay moves the margin A's way in
-every night of every cell. Beyond them it takes excitatory weight from the readout units its patterns reach and adds inhibition onto them, as
-much in the cells that held as in the cells that failed. Neither part separates the two cells.
+every night of every cell. Beyond them it takes excitatory weight from the readouts' units, most of it from those its patterns reach, and
+adds inhibition onto them, in every cell. Neither part separates the two cells, beyond the small order matched by start above.
 
 ## 3. The shared units and the pair
 
@@ -323,7 +337,7 @@ more back. That does not separate the two cells either.
 ## 4. Why the margin and the count part
 
 A's count, plain nights less nights without replay, the 48 differences of a checkpoint ± their paired SE, split by the stimulus a trial
-presented, with the ties and the readouts' spikes on A's trials:
+presented, with the ties on both stimuli's trials and the readouts' spikes on A's trials:
 
 | Cell | Block | A's count | Correct on A | Correct on B | Ties | Readout spikes on A's trials |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -348,13 +362,14 @@ presented, with the ties and the readouts' spikes on A's trials:
 | Seed 22, eighth, assignment | 24 | +2.8 ± 0.89 | −0.3 ± 0.99 | +3.1 ± 1.17 | 0.0 ± 0.24 | −590.9 ± 12.79 |
 | Seed 22, eighth, assignment | 36 | +2.2 ± 0.65 | −1.6 ± 0.88 | +3.8 ± 0.81 | −0.1 ± 0.18 | −438.4 ± 10.48 |
 
-- **On stimulus A's trials plain nights never read more at block 36**: −5.2 ± 1.50, +0.2 ± 0.76, −0.4 ± 0.83 and −1.6 ± 0.88. At block 6
-  they read more in every cell, +0.6 to +2.5.
+- **On stimulus A's trials no cell reads more under plain nights at block 36 by as much as its paired SE**: −5.2 ± 1.50, +0.2 ± 0.76,
+  −0.4 ± 0.83 and −1.6 ± 0.88. At block 6 every cell read more, +0.6 to +2.5.
 - **On stimulus B's trials they read more in seed 22's two cells**, +5.4 ± 1.47 and +3.8 ± 0.81 at block 36, and on seed 24 +1.6 ± 1.50. On
   seed 23 they read +0.3 ± 0.88.
 - **The readouts fire less on A's trials under plain nights at every checkpoint of every cell**, by 226 to 903 spikes a read. At block 36 that
   is 20.2 % under on seed 23, 34.8 % on seed 24, and 21.6 % and 25.7 % on seed 22's two cells.
-- **Seed 24 reads less on both stimuli at blocks 18 and 24**, A −3.6 and −3.9, B −2.4 and −2.0.
+- **Seed 24 reads less on both stimuli at blocks 18 and 24**: on A's trials −3.6 ± 0.86 and −3.9 ± 0.78, beyond twice the SE, and on B's
+  −2.4 ± 1.34 and −2.0 ± 1.34, within it.
 
 At block 36, each form, A's count of 64 split by stimulus, the six kinds' margins onto A's answer, A's margin and the sums:
 
@@ -382,12 +397,12 @@ At block 36, each form, A's count of 64 split by stimulus, the six kinds' margin
   trials it read 24.2 against 23.9.
 - **The margin does not order the count across cells.** Seed 23 without replay read 53.1 at 0.56 M, and seed 22's first mapping under plain
   nights 49.1 at 4.26 M.
-- **The night without replay keeps B on seed 23 where plain nights do**, 23.9 and 24.2. On seed 22's first mapping it lets B fall to 16.4,
-  and plain nights hold it at 21.8.
+- **On B's trials the two forms end apart on seed 22's first mapping and together on seed 23.** From block 6 to block 36 seed 23 read 24.6
+  to 23.9 without replay and 25.9 to 24.2 under plain nights; seed 22's first mapping 26.0 to 16.4 and 26.4 to 21.8.
 - **At block 36 the sums stand apart in all four cells**: the excitatory sum 189.8 to 193.5 M under plain nights and 213.1
   to 214.7 M without replay, the inhibitory sum 15.7 to 22.1 M higher under plain nights.
-- **C's own and D's own stand lower under plain nights on seed 23 alone**: −0.26 and −0.29 M against the night without replay, where seed 24
-  reads +0.21 and +0.13 and seed 22's cells +0.10 and −0.06, and +0.19 and −0.04.
+- **C's own stands lower under plain nights on seed 23 alone**, −0.26 M against the night without replay, where seed 24 reads +0.21 and
+  seed 22's cells +0.10 and +0.19. D's own stands −0.29 M on seed 23, +0.13 on seed 24, and −0.06 and −0.04 on seed 22's cells.
 
 Where A's and B's units put their margin at block 36: onto the readouts' units outside the targets and the pair's own (the rest), onto the
 targets, and onto the pair's own, each readout's part onto the answer's less the same part onto the other, in millions:
@@ -414,27 +429,30 @@ targets, and onto the pair's own, each readout's part onto the answer's less the
   on A's trials, against −5.2.
 
 **On the margin and the count**, seed 23's margin rises on every kind of A's and B's units, and its count falls on stimulus A's trials
-alone. Its readouts fire a fifth less on those trials, as in the cells that held. What sets seed 23 apart, among everything this note read,
-is C's own units: they lost margin onto A's answer in every night of either form, and stood 0.26 M lower under plain nights at block 36. On
-seed 24, at blocks 18 and 24 the cost lies on both stimuli. Nothing this note read of the nights sets it apart from seed 22's eighth image.
+alone. Its readouts fire a fifth less on those trials, as in the cells that held. Among everything this note read of the nights, what sets
+seed 23 apart is C's own units. They lost margin onto A's answer in every path-night of either form, and stood 0.26 M lower under plain
+nights at block 36. On seed 24 at blocks 18 and 24 plain nights read less on A's trials beyond twice the SE and on B's within it. Nothing in
+the tables above sets its nights apart from seed 22's eighth image.
 
 ## What it costs
 
 The trial took 383 s. The four cells took 3 874, 3 898, 3 918 and 4 106 s, at most 28.5 % of a job's 240 minutes; H-47's jobs of the same
-forms took 3 935 to 4 010 s. A watched night took 26 to 27 s where the same night unwatched took 21 s. Nothing was cut: every night of every
-path was watched, and all four cells ran. A first dispatch, [41499230117](https://github.com/Menteion/Menteion/actions/runs/41499230117) on
+forms took 3 935 to 4 010 s. In the trial the first night without replay took 26 s watched and 21 s unwatched, and the plain night 27 s
+watched; the three ran two at a time, so the times include sharing the runner. Nothing was cut: every night of every path was watched, and
+all four cells ran. A first dispatch, [41499230117](https://github.com/Menteion/Menteion/actions/runs/41499230117) on
 `b8f6c65`, was cancelled seven minutes in, its logs unread, to add the class matrix. Seven jobs started, five ran to the end.
 
 ## What it suggests
 
-**What a replay costs A on these networks is not where H-47's margin looks.** On A's and B's synapses every plain night moved the margin
-A's way, in the cells that failed as in those that held. The pattern pointed at the right answer, and the pair took the shared units' margin
-under both forms alike. What the cells did differently was the read: the stimulus whose trials gained, and how many.
+**On these four cells, what the nights moved on A's and B's synapses did not separate the cells that failed.** Every plain night moved the
+margin A's way, in the cells that failed as in those that held. The patterns pointed at the right answer, and the pair took the shared
+units' margin under both forms alike. The cells differed in the reads: which stimulus's trials gained, and by how much.
 
-**The replay reaches past the patterns.** In every cell four plain nights took 19.75 to 23.59 M of the readouts' excitatory weight, the largest
-part between the pattern targets of the two readouts. They added inhibition onto those targets that the pair's blocks gave back only in part.
-At block 36 the readouts fired a fifth to a third less on A's trials than without replay. Whether that costs the count, and on which stimulus, was not separated from the
-rest here. A night whose replay drives the readouts' units without moving their own synapses would be the contrast that separates it.
+**The replay reaches past the patterns.** In every cell four plain nights took 19.75 to 23.59 M of the readouts' excitatory weight, most of it
+from the units the patterns reach, and added inhibition onto those units. At block 36 the inhibitory sum stood 15.7 to 22.1 M above the night
+without replay's, and the readouts fired a fifth to a third less on A's trials. Whether that costs the count, and on which stimulus, was not
+separated from the rest here. A night whose replay drives the readouts' units without moving their own synapses would be one contrast that
+separates it.
 
 **The pair's own units sit in A's readouts.** C's own lie in readout 0 and D's own in readout 1, and A's and B's patterns reach some of them.
 Their margin onto A's answer was the one reading of the nights that set seed 23 apart. Four cells cannot say whether that is a cause.
@@ -452,7 +470,8 @@ Questions this suggests for a later exploration or a round:
   class, from the images before and after each gap, not pairing by pairing.
 - **REM's depotentiations and the zero sum's rounds** are not split out of a night's change.
 - **A read unit by unit.** A read's trials give each readout's spike count, not which units fired.
-- **H-47's other eight cells**, and any SE but the count's paired SE: the kinds, the split and the matrix are means over three paths.
+- **H-47's other eight cells**, and any SE but the paired SEs of section 4's differences: the kinds, the split, the matrix and the pairings
+  are means over three paths.
 - **Any other form, shift, baseline or network.**
 
 ## The runs
