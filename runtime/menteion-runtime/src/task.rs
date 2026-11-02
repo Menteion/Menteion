@@ -12,8 +12,9 @@
 //!
 //! A trial is `ticks` fine ticks: the stimulus set's units each receive the stimulus's
 //! messages before the first tick (integrated on the tick after the one that drains the
-//! injector ring, so the set fires together about twelve ticks on, as a replay does,
-//! ADR-0038), the background drive runs every tick, the train is read once at the end over
+//! injector ring, and scaled there by the tick's gain as a replay's are, F-47: two of 1.25
+//! arrive as 4.375 at the reference network's gain of 1.75, see [`Stimulus`]), the
+//! background drive runs every tick, the train is read once at the end over
 //! the task's [`Window`] of the trial (the whole trial, or the ticks in which a stimulus's
 //! local synapses land; ADR-0065), the channels select, and the reward is delivered
 //! before the next trial's first tick, inside the eligibility trace's window
@@ -292,20 +293,32 @@ impl Stimulus {
     /// Injects the stimulus; returns the messages injected. An injector that refuses one stops
     /// the stimulus there, as [`Drive::step`] stops.
     pub fn inject(&self, inject: &Inject) -> Result<u32, InjectError> {
-        self.send(
-            inject,
-            self.messages,
-            spike_message(self.efficacy_q16, false),
-        )
+        self.inject_to(inject, Presenting::Set)
     }
 
     /// Injects the cancel's messages before trial tick `k` when the stimulus carries a cancel
     /// that is due there; returns the messages injected, none otherwise. An injector that
     /// refuses one stops the cancel there, as [`inject`](Self::inject) stops.
     pub fn cancel_at(&self, inject: &Inject, k: u32) -> Result<u32, InjectError> {
+        self.cancel_to(inject, k, Presenting::Set)
+    }
+
+    /// [`inject`](Self::inject) into the units `to` names.
+    fn inject_to(&self, inject: &Inject, to: Presenting) -> Result<u32, InjectError> {
+        self.send(
+            inject,
+            to,
+            self.messages,
+            spike_message(self.efficacy_q16, false),
+        )
+    }
+
+    /// [`cancel_at`](Self::cancel_at) into the units `to` names.
+    fn cancel_to(&self, inject: &Inject, k: u32, to: Presenting) -> Result<u32, InjectError> {
         match self.cancel {
             Some(cancel) if cancel.is_due(k) => self.send(
                 inject,
+                to,
                 cancel.messages,
                 spike_message(cancel.efficacy_q16, false),
             ),
@@ -313,18 +326,42 @@ impl Stimulus {
         }
     }
 
-    /// `messages` of `message` into every unit of the set, in the set's order.
-    fn send(&self, inject: &Inject, messages: u32, message: u32) -> Result<u32, InjectError> {
-        send(&self.set, inject, messages, message)
+    /// `messages` of `message` into every unit `to` names: the set's, in the set's order, or the
+    /// host's, in the order given.
+    fn send(
+        &self,
+        inject: &Inject,
+        to: Presenting,
+        messages: u32,
+        message: u32,
+    ) -> Result<u32, InjectError> {
+        match to {
+            Presenting::Set => send(self.set.units(), inject, messages, message),
+            Presenting::Units(units) => send(units.iter().copied(), inject, messages, message),
+        }
     }
 }
 
-/// `messages` of `message` into every unit of `set`, in the set's order; returns the messages
-/// injected. An injector that refuses one stops there.
-fn send(set: &Set, inject: &Inject, messages: u32, message: u32) -> Result<u32, InjectError> {
+/// The units a trial presents its stimulus to (ADR-0235): the stimulus's set, or the units a host
+/// gives in its place (`Task::trial_presenting`).
+#[derive(Clone, Copy, Debug)]
+enum Presenting<'a> {
+    Set,
+    Units(&'a [u32]),
+}
+
+/// `messages` of `message` into every unit of `units`, in order; returns the messages injected.
+/// An injector that refuses one stops there.
+fn send(
+    units: impl Iterator<Item = u32>,
+    inject: &Inject,
+    messages: u32,
+    message: u32,
+) -> Result<u32, InjectError> {
     let mut sent = 0u32;
-    // Every unit below the arena, which `Task::check` bounded.
-    for unit in set.units() {
+    // Every unit below the arena, which `Task::check` bounded for a set and
+    // `Task::trial_presenting` for the units a host gives.
+    for unit in units {
         for _ in 0..messages {
             inject.inject(unit, message)?;
             sent = sent.saturating_add(1);
@@ -546,7 +583,7 @@ impl<const N: usize> Readout<N> {
         let mut sent = 0u32;
         for (set, channel) in self.sets.iter().zip(self.channels.iter()) {
             if channel.gpi_snr_inhibition > 0 {
-                sent = sent.saturating_add(send(set, inject, hold.messages, message)?);
+                sent = sent.saturating_add(send(set.units(), inject, hold.messages, message)?);
             }
         }
         Ok(sent)
@@ -1266,12 +1303,63 @@ impl<const N: usize> Task<N> {
         exec: &mut Executor<CAP>,
         trial: u64,
     ) -> Result<Outcome<N>, TaskError> {
+        self.trial_to(exec, trial, None)
+    }
+
+    /// [`trial`](Self::trial), the drawn stimulus's messages and its cancel going to
+    /// `presenting`'s units for that stimulus, in the order given, in place of its set (ADR-0234,
+    /// ADR-0235): a stimulus that shares some of another's units, which no [`Set`] can name.
+    /// Everything else is the trial's: the sets `check` holds, the stimulus drawn, its messages,
+    /// its cancel, the readout and the reward; under the addressed delivery the units given are
+    /// the address's sources, as the set's are. Given each stimulus's own units in its set's
+    /// order it is the trial it was, bit for bit. Refused as `trial` refuses, and, before
+    /// anything is injected, as `check` refuses a set: for no unit given for a stimulus
+    /// ([`TaskError::EmptySet`]), a unit outside the arena ([`TaskError::SetOutsideArena`]), and
+    /// a unit in a readout's set or given for both stimuli ([`TaskError::SetsOverlap`]).
+    pub fn trial_presenting<const CAP: usize>(
+        &mut self,
+        exec: &mut Executor<CAP>,
+        trial: u64,
+        presenting: [&[u32]; 2],
+    ) -> Result<Outcome<N>, TaskError> {
+        let arena = exec.units().len() as u64;
+        for units in presenting {
+            if units.is_empty() {
+                return Err(TaskError::EmptySet);
+            }
+            if units.iter().any(|&unit| u64::from(unit) >= arena) {
+                return Err(TaskError::SetOutsideArena);
+            }
+            if units
+                .iter()
+                .any(|&unit| self.readout.sets.iter().any(|set| set.contains(unit)))
+            {
+                return Err(TaskError::SetsOverlap);
+            }
+        }
+        let [a, b] = presenting;
+        if a.iter().any(|unit| b.contains(unit)) {
+            return Err(TaskError::SetsOverlap);
+        }
+        self.trial_to(exec, trial, Some(presenting))
+    }
+
+    /// A trial, presented to the stimulus's set or to the units given.
+    fn trial_to<const CAP: usize>(
+        &mut self,
+        exec: &mut Executor<CAP>,
+        trial: u64,
+        presenting: Option<[&[u32]; 2]>,
+    ) -> Result<Outcome<N>, TaskError> {
         self.check(exec)?;
         let start = exec.ticks();
         let stimulus = self.stimulus_at(trial);
         let inject = exec.injector();
         let presented = self.stimuli[usize::from(stimulus)];
-        presented.inject(&inject)?;
+        let to = presenting.map_or(Presenting::Set, |units| {
+            Presenting::Units(units[usize::from(stimulus)])
+        });
+        presented.inject_to(&inject, to)?;
         // The train's stamp is the tick's low word (§8.4), as `start` is read here; the
         // window's first tick is inside the trial, which `check` held, and so is its close.
         let opens = (start as u32).wrapping_add(self.window.from);
@@ -1279,7 +1367,7 @@ impl<const N: usize> Task<N> {
         let mut decided: Option<([u32; N], Option<u8>)> = None;
         let mut held = 0u32;
         for k in 0..self.ticks {
-            presented.cancel_at(&inject, k)?;
+            presented.cancel_to(&inject, k, to)?;
             if let Some(hold) = self.hold.filter(|hold| hold.is_due(close, k)) {
                 // The selection, made once, before the first tick the hold is due at: the
                 // tick the window closes at, every tick of the window run and in the train.
@@ -1336,12 +1424,15 @@ impl<const N: usize> Task<N> {
         match self.delivery {
             Delivery::Global => exec.address_all(),
             Delivery::Addressed => {
-                let sources = self.stimuli[usize::from(stimulus)].set.units();
-                match selection {
-                    Some(readout) => {
-                        exec.address(sources, self.readout.sets[usize::from(readout)].units())?
-                    }
-                    None => exec.address(sources, core::iter::empty())?,
+                // The units presented are the sources, the set's or the host's (ADR-0235).
+                let readout = selection.map(|readout| self.readout.sets[usize::from(readout)]);
+                match to {
+                    Presenting::Set => addressed(
+                        exec,
+                        self.stimuli[usize::from(stimulus)].set.units(),
+                        readout,
+                    )?,
+                    Presenting::Units(units) => addressed(exec, units.iter().copied(), readout)?,
                 }
             }
             Delivery::Drawn => match selection {
@@ -1438,6 +1529,22 @@ impl<const N: usize> Task<N> {
     }
 }
 
+/// A trial's close under the addressed delivery (ADR-0068): the address from `sources`, the
+/// units presented, onto the readout's set selected, and onto none at a tie.
+fn addressed<const CAP: usize, S>(
+    exec: &mut Executor<CAP>,
+    sources: S,
+    readout: Option<Set>,
+) -> Result<(), AddressError>
+where
+    S: Iterator<Item = u32> + Clone,
+{
+    match readout {
+        Some(set) => exec.address(sources, set.units()),
+        None => exec.address(sources, core::iter::empty()),
+    }
+}
+
 /// A trial's close under the drawn delivery or the released one: the address drawn onto
 /// `targets` (ADR-0139), or, while the engine keeps addresses, kept (ADR-0208).
 fn drawn_close<const CAP: usize, T>(
@@ -1479,7 +1586,8 @@ mod tests {
     use menteion_neuromod::{DOPAMINE_TAU_SHIFT, NeuromodulatorState, ValueCritic};
 
     const ONE: i32 = MODULATION_ONE_Q16;
-    /// The replay drive's message (ADR-0038): two of 1.25 fire an armed unit once.
+    /// The replay drive's message (ADR-0038): two of 1.25 fire an armed unit once at the gain of
+    /// 1.0 these tests run at, which scales them by one (F-47).
     const CUE_Q16: i32 = 0x0001_4000;
     const TICKS: u32 = 64;
     const REWARD: i32 = 0x4000;
@@ -8438,5 +8546,270 @@ mod prop {
             );
             assert!(usize::from(got) < n, "{draw} among {n}");
         }
+    }
+}
+
+#[cfg(test)]
+mod presenting_prop {
+    use super::*;
+    use crate::executor::Config;
+    use menteion_core::{STP_MAX, STP_U, SynapseBlock, THRESHOLD_BASE};
+    use menteion_neuromod::NeuromodulatorState;
+    include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../testkit/prop.rs"
+    ));
+
+    const TICKS: u32 = 64;
+    /// The replay drive's message (ADR-0038), at the gain of 1.0 these tests run at (F-47).
+    const CUE_Q16: i32 = 0x0001_4000;
+    /// The units of the two stimuli's places and the readout's two sets.
+    const STIMULUS_UNITS: [u32; 8] = [0, 1, 2, 3, 8, 9, 10, 11];
+    const READOUTS: [Set; 2] = [Set::contiguous(4, 4), Set::contiguous(12, 4)];
+
+    /// Sixteen armed units at a baseline of a half, each unit of the stimuli's places wired onto
+    /// the readout unit four above it, so that a presentation reaches a readout and a reward
+    /// moves a weight.
+    fn network() -> Executor<8> {
+        let mut exec = Executor::<8>::new(Config {
+            workers: 1,
+            units: 16,
+            blocks: 16,
+            injector_capacity: 128,
+            train_capacity: spikes_per_unit(TICKS).saturating_mul(16) as usize,
+            modulation_baseline_q16: 0x8000,
+            ..Config::default()
+        })
+        .unwrap();
+        {
+            let blocks = exec.blocks_mut();
+            for unit in STIMULUS_UNITS {
+                let target = unit.saturating_add(4);
+                assert!(blocks[unit as usize].set_synapse(0, target, 20_000, 1, false));
+            }
+        }
+        for (i, unit) in exec.units_mut().iter_mut().enumerate() {
+            unit.v_thresh = THRESHOLD_BASE;
+            unit.stp_u_rel = STP_U;
+            unit.stp_r_ves = STP_MAX;
+            assert!(unit.set_first_block(i as u32));
+        }
+        exec
+    }
+
+    fn stimulus(set: Set, cancel: Option<Cancel>) -> Stimulus {
+        Stimulus {
+            set,
+            messages: 2,
+            efficacy_q16: CUE_Q16,
+            cancel,
+        }
+    }
+
+    fn task(stimuli: [Stimulus; 2], delivery: Delivery, feedback: Feedback, seed: u64) -> Task {
+        Task {
+            stimuli,
+            readout: Readout::new(READOUTS),
+            drive: Drive {
+                every: 3,
+                messages: 1,
+                efficacy_q16: CUE_Q16,
+                units: 16,
+                seed: seed.rotate_left(17),
+            },
+            ticks: TICKS,
+            window: Window::whole(TICKS),
+            seed,
+            reward_q16: 0x4000,
+            answers: [0, 1],
+            feedback,
+            delivery,
+            critic: None,
+            hold: None,
+            exploration: Exploration::Unset,
+            delay: Delay::ON_TIME,
+        }
+    }
+
+    /// What an engine holds after its trials: its units, its synapses, its train, its clock and
+    /// its modulator.
+    type Held = (
+        Vec<[u8; 64]>,
+        Vec<SynapseBlock>,
+        Vec<(u32, u32)>,
+        u64,
+        NeuromodulatorState,
+    );
+
+    fn held(exec: &mut Executor<8>) -> Held {
+        (
+            exec.units().iter().map(|u| u.encode()).collect(),
+            exec.blocks().to_vec(),
+            exec.train().to_vec(),
+            exec.ticks(),
+            *exec.modulator(),
+        )
+    }
+
+    /// A seeded cancel, valid for a trial of `TICKS`, or none.
+    fn seeded_cancel(lcg: &mut Lcg) -> Option<Cancel> {
+        (lcg.below(2) == 0).then(|| Cancel {
+            offset: lcg.below(20).saturating_add(1),
+            ticks: lcg.below(4).saturating_add(1),
+            messages: lcg.below(3).saturating_add(1),
+            efficacy_q16: (lcg.below(0x0002_0000) as i32)
+                .saturating_neg()
+                .saturating_sub(1),
+        })
+    }
+
+    /// The shapes a stimulus takes in its place, from `first`: the place whole, every other unit
+    /// from the first or the second, and the last three.
+    fn shapes(first: u32) -> [Set; 4] {
+        let every_other = |from: u32| Set {
+            first: from,
+            period: 2,
+            mask: 1,
+            count: 2,
+        };
+        [
+            Set::contiguous(first, 4),
+            every_other(first),
+            every_other(first.saturating_add(1)),
+            Set::contiguous(first.saturating_add(1), 3),
+        ]
+    }
+
+    /// Over seeded tasks — each stimulus's shape, a cancel or none, the delivery, the feedback,
+    /// the seeds and the trial's index from the lattice — three trials presented to each
+    /// stimulus's own units in its set's order are the three trials it ran, bit for bit: every
+    /// outcome and everything the engine holds after them (ADR-0235).
+    #[test]
+    fn a_trial_presented_to_each_stimulus_s_own_units_is_the_trial_it_was() {
+        let mut lcg = Lcg::new(0x0235);
+        let mut rewarded = 0u32;
+        for round in 0..64u32 {
+            let cancel = seeded_cancel(&mut lcg);
+            let stimuli = [
+                stimulus(lcg.pick(&shapes(0)), cancel),
+                stimulus(lcg.pick(&shapes(8)), cancel),
+            ];
+            let delivery = lcg.pick(&[Delivery::Global, Delivery::Addressed]);
+            let feedback = lcg.pick(&[Feedback::Answer, Feedback::Withheld]);
+            let seed = lcg.next_u64();
+            let first = u64::from(lcg.pick(&U32_LATTICE));
+            let (mut set, mut given) = (network(), network());
+            let mut by_set = task(stimuli, delivery, feedback, seed);
+            let mut by_units = task(stimuli, delivery, feedback, seed);
+            let units = stimuli.map(|s| s.set.units().collect::<Vec<u32>>());
+            for i in 0..3u64 {
+                let at = first.wrapping_add(i);
+                let one = by_set.trial(&mut set, at).unwrap();
+                let two = by_units
+                    .trial_presenting(&mut given, at, [&units[0], &units[1]])
+                    .unwrap();
+                assert_eq!(one, two, "round {round}, trial {at}");
+                rewarded = rewarded.saturating_add(u32::from(one.selection.is_some()));
+            }
+            assert_eq!(held(&mut set), held(&mut given), "round {round}");
+        }
+        assert!(rewarded > 20, "trials that selected: {rewarded}");
+    }
+
+    /// Units given in place of the sets are where the stimulus's messages, its cancel and, under
+    /// the addressed delivery, the address's sources go: a trial presented to them is the trial
+    /// of a task whose stimuli are sets of exactly those units, bit for bit, under every seeded
+    /// cancel, delivery and feedback; and it is not the trial of the sets it replaced.
+    #[test]
+    fn a_trial_presented_to_other_units_is_the_trial_of_sets_of_those_units() {
+        let mut lcg = Lcg::new(0x0234);
+        let mut apart = 0u32;
+        for round in 0..48u32 {
+            let cancel = seeded_cancel(&mut lcg);
+            let (whole, given) = (shapes(0)[0], [shapes(0)[1], shapes(8)[3]]);
+            let delivery = lcg.pick(&[Delivery::Global, Delivery::Addressed]);
+            let feedback = lcg.pick(&[Feedback::Answer, Feedback::Withheld]);
+            let seed = lcg.next_u64();
+            let replaced = [stimulus(whole, cancel), stimulus(shapes(8)[0], cancel)];
+            let of_them = [stimulus(given[0], cancel), stimulus(given[1], cancel)];
+            let units = given.map(|s| s.units().collect::<Vec<u32>>());
+            let (mut presented, mut sets, mut before) = (network(), network(), network());
+            let mut by_units = task(replaced, delivery, feedback, seed);
+            let mut by_sets = task(of_them, delivery, feedback, seed);
+            let mut by_replaced = task(replaced, delivery, feedback, seed);
+            for at in 0..3u64 {
+                let one = by_units
+                    .trial_presenting(&mut presented, at, [&units[0], &units[1]])
+                    .unwrap();
+                assert_eq!(one, by_sets.trial(&mut sets, at).unwrap(), "round {round}");
+                by_replaced.trial(&mut before, at).unwrap();
+            }
+            let held_presented = held(&mut presented);
+            assert_eq!(held_presented, held(&mut sets), "round {round}");
+            if held_presented != held(&mut before) {
+                apart = apart.saturating_add(1);
+            }
+        }
+        assert_eq!(apart, 48, "the units given, not the sets they replaced");
+    }
+
+    /// The units given are held as `check` holds a set, before anything is injected: none for a
+    /// stimulus, a unit at the arena's end or past it, one in either readout's set at its edges,
+    /// and one given for both stimuli are refused, and the engine is untouched; a unit just below
+    /// the arena's end and just outside a readout is presented.
+    #[test]
+    fn units_given_are_refused_where_a_set_would_be_before_anything_is_injected() {
+        let stimuli = [
+            stimulus(Set::contiguous(0, 4), None),
+            stimulus(Set::contiguous(8, 4), None),
+        ];
+        let refused = |given: [&[u32]; 2]| {
+            let mut exec = network();
+            let mut t = task(stimuli, Delivery::Global, Feedback::Answer, 7);
+            let err = t.trial_presenting(&mut exec, 0, given).err();
+            assert_eq!(exec.ticks(), 0, "{given:?}: no tick");
+            assert!(exec.is_quiescent(), "{given:?}: nothing injected");
+            err
+        };
+        assert_eq!(refused([&[], &[8]]), Some(TaskError::EmptySet));
+        assert_eq!(refused([&[0], &[]]), Some(TaskError::EmptySet));
+        assert_eq!(refused([&[0, 16], &[8]]), Some(TaskError::SetOutsideArena));
+        assert_eq!(
+            refused([&[0], &[8, u32::MAX]]),
+            Some(TaskError::SetOutsideArena)
+        );
+        for readout in [4u32, 7, 12, 15] {
+            assert_eq!(
+                refused([&[0, readout], &[8]]),
+                Some(TaskError::SetsOverlap),
+                "{readout}"
+            );
+            assert_eq!(
+                refused([&[0], &[readout, 8]]),
+                Some(TaskError::SetsOverlap),
+                "{readout}"
+            );
+        }
+        assert_eq!(refused([&[0, 9], &[8, 9]]), Some(TaskError::SetsOverlap));
+        assert_eq!(refused([&[8], &[3, 8]]), Some(TaskError::SetsOverlap));
+        for (a, b) in [([3u32, 0], [11u32, 8]), ([0, 3], [8, 11])] {
+            let mut exec = network();
+            let mut t = task(stimuli, Delivery::Global, Feedback::Answer, 7);
+            assert!(t.trial_presenting(&mut exec, 0, [&a, &b]).is_ok(), "{a:?}");
+            assert_eq!(exec.ticks(), u64::from(TICKS));
+        }
+        let mut exec = network();
+        let mut t = task(stimuli, Delivery::Global, Feedback::Answer, 7);
+        let last = [0u32, 1, 2, 3];
+        assert!(t.trial_presenting(&mut exec, 0, [&last, &[8]]).is_ok());
+        let mut t = Task {
+            readout: Readout::new([Set::contiguous(4, 4), Set::contiguous(12, 3)]),
+            ..task(stimuli, Delivery::Global, Feedback::Answer, 7)
+        };
+        let mut exec = network();
+        assert!(
+            t.trial_presenting(&mut exec, 0, [&[0], &[15]]).is_ok(),
+            "the arena's last unit, past the readout"
+        );
     }
 }

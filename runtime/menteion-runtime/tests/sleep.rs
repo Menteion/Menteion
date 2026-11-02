@@ -21,7 +21,7 @@
 use menteion_connectome::{MenteionFileHeader, SECTION_HOMEOSTASIS, SectionEntry, crc64};
 use menteion_core::{
     ISTDP_ALPHA_Q1_15, MODULATION_ONE_Q16, NO_SPIKE_ON_RECORD, Polarity, STP_MAX, STP_U,
-    SynapseBlock, THRESHOLD_BASE,
+    SynapseBlock, THRESHOLD_BASE, spike_message,
 };
 use menteion_hippocampus::{Episode, HippocampalAttractorState, PATTERN_MAX, RIPPLE_SHIFT};
 use menteion_homeostasis::{
@@ -517,4 +517,144 @@ fn tagging_is_refused_for_a_full_ledger_a_missing_unit_or_a_bad_pattern_and_the_
     assert_eq!(quiet.sleep_stage(), STAGE_AWAKE);
     assert_eq!(quiet.hippocampus(), &HippocampalAttractorState::new());
     assert!(!quiet.wake());
+}
+
+// ---------------------------------------- the slow-wave baseline and the ledger spent (ADR-0235)
+
+include!(concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/../../testkit/prop.rs"
+));
+
+/// The replay drive's message, given by hand: two of them, as a ripple gives each unit (ADR-0038).
+const DRIVE: u32 = spike_message(0x0001_4000, false);
+
+/// The two rings in `stage` with the regulation off and no episode, the image's baseline at
+/// `baseline_q16` and the slow-wave baseline at `slow_wave`.
+fn rings_under(stage: u8, baseline_q16: i32, slow_wave: Option<i32>) -> Executor<64> {
+    let built = Config {
+        modulation_baseline_q16: baseline_q16,
+        ..config(1, 8, 8, 2, 0)
+    };
+    let mut exec = Executor::<64>::new(built.clone()).unwrap();
+    wire_rings(&mut exec);
+    let under = Config {
+        slow_wave_baseline_q16: slow_wave,
+        ..built
+    };
+    reload_with(&exec, under, |p| {
+        p.sleep_stage = stage;
+        p.sleep_pressure_q16 = PRESSURE_MAX_Q16;
+    })
+}
+
+/// What an engine holds: its units, its synapses, its homeostasis record, its counters and its
+/// spikes.
+type Held = (
+    Vec<[u8; 64]>,
+    Vec<SynapseBlock>,
+    HomeostaticDrivePool,
+    (u64, u64),
+    Vec<(u32, u32)>,
+);
+
+/// `ripples` ripples' ticks of `exec`, the first ring given the replay drive by hand at the start
+/// of each, so that it fires and pairs in every stage: what the engine then holds.
+fn driven(mut exec: Executor<64>, ripples: u32) -> Held {
+    let inject = exec.injector();
+    for _ in 0..ripples {
+        for unit in 0..4u32 {
+            for _ in 0..2 {
+                inject.inject(unit, DRIVE).unwrap();
+            }
+        }
+        exec.run(RIPPLE);
+    }
+    let units = exec.units().iter().map(|u| u.encode()).collect();
+    let blocks = exec.blocks().to_vec();
+    let homeostasis = *exec.homeostasis();
+    let counters = (exec.replays(), exec.depotentiations());
+    (
+        units,
+        blocks,
+        homeostasis,
+        counters,
+        spikes(&exec.shutdown()),
+    )
+}
+
+/// The slow-wave baseline over the lattice (ADR-0235): an engine that sets it at `b` and whose
+/// own baseline is zero is, bit for bit, the engine that sets none and whose own baseline is `b`
+/// in slow-wave sleep and zero in REM and awake; set at the engine's own baseline, it is the
+/// engine as it was in every stage. In slow-wave sleep a whole one moves synapses the engine's
+/// zero leaves where they were, so the first comparison is not of two engines that do nothing.
+#[test]
+fn a_slow_wave_tick_consolidates_under_the_slow_wave_baseline_and_every_other_tick_under_the_engine_s()
+ {
+    let mut lcg = Lcg::new(0x0235);
+    let mut baselines: Vec<i32> = I32_LATTICE
+        .iter()
+        .copied()
+        .filter(|b| (0..=MODULATION_ONE_Q16).contains(b))
+        .collect();
+    for _ in 0..3 {
+        baselines.push(lcg.below(MODULATION_ONE_Q16 as u32 + 1) as i32);
+    }
+    for &b in &baselines {
+        for stage in [STAGE_SWS, STAGE_REM, STAGE_AWAKE] {
+            let engine_s = if stage == STAGE_SWS { b } else { 0 };
+            assert_eq!(
+                driven(rings_under(stage, 0, Some(b)), 3),
+                driven(rings_under(stage, engine_s, None), 3),
+                "{b} {stage}: in the baseline's place in slow-wave sleep alone"
+            );
+            assert_eq!(
+                driven(rings_under(stage, b, Some(b)), 3),
+                driven(rings_under(stage, b, None), 3),
+                "{b} {stage}: at the engine's own, the engine as it was"
+            );
+        }
+    }
+    let whole = driven(rings_under(STAGE_SWS, 0, Some(MODULATION_ONE_Q16)), 3);
+    let zero = driven(rings_under(STAGE_SWS, 0, None), 3);
+    assert_ne!(whole.1, zero.1, "a whole baseline consolidates");
+}
+
+/// The ledger spent (ADR-0235), at every priority of the lattice: a ring tagged and spent before
+/// a night is never replayed, and a ring tagged after the call replays on every ripple, as it
+/// does in a ledger of its own, its synapses and every spike bit for bit; with no call the two
+/// replay in turn.
+#[test]
+fn a_night_after_the_ledger_is_spent_replays_what_is_tagged_after_and_nothing_before() {
+    for priority in U8_LATTICE.iter().copied().filter(|&p| p > 0) {
+        let mut spent = rings_asleep(1, STAGE_SWS);
+        assert_eq!(spent.tag_episode(&[0, 1, 2, 3], priority), Ok(0));
+        spent.spend_episodes();
+        assert!(spent.episodes()[0].is_spent());
+        assert_eq!(spent.tag_episode(&[4, 5, 6, 7], priority), Ok(1));
+        let mut alone = rings_asleep(1, STAGE_SWS);
+        assert_eq!(alone.tag_episode(&[4, 5, 6, 7], priority), Ok(0));
+        spent.run(4 * RIPPLE);
+        alone.run(4 * RIPPLE);
+        assert_eq!((spent.replays(), alone.replays()), (4, 4), "{priority}");
+        let (first, second) = (spent.episodes()[0], spent.episodes()[1]);
+        assert_eq!((first.replays, first.tag), (0, 0), "{priority}");
+        assert_eq!((second.replays, second.tag), (4, priority), "{priority}");
+        assert_eq!(spent.blocks(), alone.blocks(), "{priority}: the synapses");
+        assert_eq!(
+            spikes(&spent.shutdown()),
+            spikes(&alone.shutdown()),
+            "{priority}: the spikes"
+        );
+    }
+    let mut kept = rings_asleep(1, STAGE_SWS);
+    assert_eq!(kept.tag_episode(&[0, 1, 2, 3], 5), Ok(0));
+    assert_eq!(kept.tag_episode(&[4, 5, 6, 7], 5), Ok(1));
+    kept.run(4 * RIPPLE);
+    let replays = kept
+        .episodes()
+        .iter()
+        .map(|e| e.replays)
+        .collect::<Vec<_>>();
+    assert_eq!(replays, [2, 2], "unspent, the two in turn");
 }
