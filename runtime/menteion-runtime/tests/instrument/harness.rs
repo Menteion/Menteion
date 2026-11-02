@@ -666,6 +666,43 @@ pub(crate) fn run_on_scheduled(
 pub(crate) fn run_on_scheduled_over(
     sets: [Set; 4],
     exec: &mut Engine,
+    task: Task,
+    units: u32,
+    trials: usize,
+    flips: &[usize],
+    observe: &mut dyn FnMut(&mut Engine, usize, u32, &Outcome),
+) -> (Vec<Block>, u64) {
+    run_on_presenting_over(sets, None, exec, task, units, trials, flips, observe)
+}
+
+/// `run_on_scheduled_over`, each stimulus's messages going to `presenting`'s units in place of its
+/// set where they are given (exploration 016). The readings stay `sets`'.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn run_on_presenting_over(
+    sets: [Set; 4],
+    presenting: Option<&[Vec<u32>; 2]>,
+    exec: &mut Engine,
+    task: Task,
+    units: u32,
+    trials: usize,
+    flips: &[usize],
+    observe: &mut dyn FnMut(&mut Engine, usize, u32, &Outcome),
+) -> (Vec<Block>, u64) {
+    run_on_presenting_from(
+        0, sets, presenting, exec, task, units, trials, flips, observe,
+    )
+}
+
+/// `run_on_presenting_over` from the trial of index `first` (exploration 017): the index is what a
+/// trial's stimulus is drawn from, so a run from another index presents another stream under the
+/// same seed. Blocks, flips and `observe` count from the run's first trial; from index 0 it is the
+/// run it was.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn run_on_presenting_from(
+    first: u64,
+    sets: [Set; 4],
+    presenting: Option<&[Vec<u32>; 2]>,
+    exec: &mut Engine,
     mut task: Task,
     units: u32,
     trials: usize,
@@ -720,7 +757,9 @@ pub(crate) fn run_on_scheduled_over(
         let before =
             task.readout
                 .count_window(exec.train(), start.wrapping_sub(WINDOW.ticks), WINDOW.ticks);
-        let outcome = task.trial(exec, trial as u64).expect("a trial runs");
+        let outcome = task
+            .trial_presenting(exec, first.wrapping_add(trial as u64), presenting)
+            .expect("a trial runs");
         assert!(
             exec.train_overwritten().saturating_sub(overwritten)
                 <= u64::from(spikes_per_unit(TRIAL_TICKS)).saturating_mul(u64::from(units)),
