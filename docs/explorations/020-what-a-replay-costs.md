@@ -37,7 +37,7 @@ runs bit for bit.
   mapping in force; none lies on the other readout. A shared unit's pattern points at A's answer, which is the other readout from the one the
   pair asks of that unit. In a replay's ripple, beyond the pattern's own units, 11.3 to 11.7 spikes land on the answer's readout and 12.2 to
   13.8 on the other, the other more by 0.79 to 2.13 in every row. On A's patterns, matched by start, that excess was larger in the cell
-  that failed, 2.13 against 0.91 and 2.06 against 1.35; on B's it was not.
+  that failed, 2.13 against 0.91 and 2.06 against 1.35; on B's in one pair of the two, 0.79 against 0.94 and 1.73 against 1.37.
 - **On A's and B's units, every plain night moves the margin A's way, in all four cells.** Each of the four kinds of A's and B's units rose
   in each of the 48 path-nights, by 0.03 to 0.43 M. The pairings put weight onto the units' own patterns, +388 714 to +735 248 over four nights
   a class, and took it from the other readout in every class of every cell. Summed over the four nights, A's margin rose 3.33 to 3.56 M under
@@ -52,9 +52,10 @@ runs bit for bit.
 - **The pair takes the shared units' margin about equally under both forms.** Over its blocks it took 0.98 to 2.05 M of A and C's margin
   under plain nights and 0.83 to 2.20 M under nights without replay. Plain nights gave 0.91 to 1.18 M back, nights without replay 0.05 to
   0.21 M.
-- **So none of the three readings separates the two cells that failed from the two that did not.** In each, plain nights against nights
-  without replay read the same way in all four cells; matched by start, the cells that failed read somewhat more of the replay's reach past
-  the patterns.
+- **So none of the three readings separates the two cells that failed from the two that did not.** The patterns point at the right answer
+  in all four cells, and in the other two readings plain nights against nights without replay read the same way in all four. Matched by
+  start, the cells that failed read more of the replay's reach past the patterns, and on A's patterns more of the ripples' excess on the other
+  readout.
 - **The cells part by stimulus.** At block 36, plain less without replay on stimulus A's trials read −5.2 ± 1.50 on seed 23, +0.2 ± 0.76 on
   seed 24, and −0.4 ± 0.83 and −1.6 ± 0.88 on seed 22's two cells; on B's trials +0.3 ± 0.88, +1.6 ± 1.50, +5.4 ± 1.47 and +3.8 ± 0.81. At
   block 6 every cell read more on A's trials under plain nights, +0.6 to +2.5.
@@ -438,8 +439,9 @@ targets, and onto the pair's own, each readout's part onto the answer's less the
 alone. Its readouts fire a fifth less on those trials, as in the cells that held. Among everything this note read of the nights, what sets
 seed 23 apart is C's own units. They lost margin onto A's answer in every path-night of either form, and stood 0.26 M lower under plain
 nights at block 36. On seed 24 at blocks 18 and 24 plain nights read less on A's trials beyond twice the SE and on B's within it. Against
-seed 22's eighth image its nights differ, in the tables above, only in the order matched by start: the replay's reach past the patterns and
-its ripples' excess on the other readout a little larger, and C's own losing margin in 5 of its twelve plain path-nights against none.
+seed 22's eighth image its nights differ, in what this note read, in three ways: the replay's reach past the patterns 4 % and 5 % larger,
+its ripples' excess on the other readout 52 % larger on A's patterns and 26 % on B's, and C's own losing margin in 5 of its twelve plain
+path-nights against none.
 
 ## What it costs
 
