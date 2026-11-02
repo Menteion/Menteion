@@ -48182,9 +48182,10 @@ struct NightsRun {
     reads: u64,
 }
 
-/// Exploration 016's own path and three of exploration 017's that differ from it and from each
-/// other in their stimuli and their drive.
-const NIGHTS_PATHS: [u64; 4] = [0, 5, 6, 7];
+/// Exploration 016's own path and two of exploration 017's that differ from it and from each other
+/// in their stimuli and their drive. Four would take each job past the hour it was scoped to: the
+/// harness's trial timed a read at 3.0 s and a gap at 11 s.
+const NIGHTS_PATHS: [u64; 3] = [0, 5, 6];
 
 /// The whole of a form: gaps to block 24, then 12 blocks on with none.
 const NIGHTS_WHOLE: NightsRun = NightsRun {
