@@ -2646,6 +2646,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0233](adr/0233-a-running-configuration-built.md) | A running configuration for a settled image, built | accepted |
 | [ADR-0234](adr/0234-learning-that-sleep-keeps.md) | Learning that sleep keeps, a night with replay against one without | accepted |
 | [ADR-0235](adr/0235-learning-that-sleep-keeps-built.md) | Learning that sleep keeps, built | proposed |
+| [ADR-0236](adr/0236-learning-that-sleep-keeps-its-protocol.md) | Learning that sleep keeps, its protocol | proposed |
 <!-- adr-index: end decisions -->
 
 ---
@@ -2845,7 +2846,7 @@ A hypothesis's text, its stopping rule and its rounds' readings are in its repor
 | H-44 | a reward right three times in four, on the default, beside a control at step zero | yes | [ADR-0212](adr/0212-three-in-four-on-the-default.md), [ADR-0213](adr/0213-three-in-four-on-the-default-its-protocol.md), [ADR-0214](adr/0214-three-in-four-on-the-default-measured.md) | [H-44](research/H-44.md) |
 | H-45 | a delay the engine is not told, read from its kept addresses, on three networks | yes | [ADR-0216](adr/0216-a-delay-the-engine-reads.md), [ADR-0218](adr/0218-a-delay-the-engine-reads-its-protocol.md), [ADR-0219](adr/0219-a-delay-the-engine-reads-measured.md) | [H-45](research/H-45.md) |
 | H-46 | the couplings bounded over sixteen schedules by a zero sum at the stimulus and a quarter's depression exponent, on three networks | yes | [ADR-0226](adr/0226-a-zero-sum-at-the-stimulus.md), [ADR-0229](adr/0229-a-zero-sum-at-the-stimulus-its-protocol.md), [ADR-0230](adr/0230-a-zero-sum-at-the-stimulus-measured.md) | [H-46](research/H-46.md) |
-| H-47 | a mapping that a conflicting second one takes, more of it kept by nights with replay than by nights without, on three networks | open | [ADR-0234](adr/0234-learning-that-sleep-keeps.md) | [H-47](research/H-47.md) |
+| H-47 | a mapping that a conflicting second one takes, more of it kept by nights with replay than by nights without, on three networks | open | [ADR-0234](adr/0234-learning-that-sleep-keeps.md), [ADR-0236](adr/0236-learning-that-sleep-keeps-its-protocol.md) | [H-47](research/H-47.md) |
 <!-- adr-index: end hypotheses -->
 
 **The open questions, and those settled,** that no hypothesis numbers:
