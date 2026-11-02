@@ -47707,21 +47707,24 @@ fn e020_split(start: &NightsStart, image: &[u8], label: &str, targets: &[u32]) {
         "DUMP {label} split {sums:?} parts {:?}",
         parts.iter().map(Vec::len).collect::<Vec<usize>>()
     );
-    e020_classes(start, &exec, label);
+    e020_classes(start, &exec, label, targets);
     undropped(exec, label);
 }
 
 /// The classes of a unit in exploration 020's matrix: A alone, A's and C's, B alone, B's and D's,
-/// C's own, D's own (exploration 016's six kinds), readout 0's other excitatory units, readout 1's,
-/// every other excitatory unit, then the inhibitory units in readout 0, in readout 1 and elsewhere.
-const E020_CLASSES: [&str; 12] = [
+/// C's own, D's own (exploration 016's six kinds), readout 0's excitatory units that A's patterns
+/// reach and its other excitatory units, the same of readout 1, every other excitatory unit, then
+/// the inhibitory units in readout 0, in readout 1 and elsewhere.
+const E020_CLASSES: [&str; 14] = [
     "A alone",
     "A and C",
     "B alone",
     "B and D",
     "C's own",
     "D's own",
+    "readout 0's pattern targets",
     "readout 0's other excitatory",
+    "readout 1's pattern targets",
     "readout 1's other excitatory",
     "other excitatory",
     "inhibitory in readout 0",
@@ -47732,7 +47735,7 @@ const E020_CLASSES: [&str; 12] = [
 /// Each class's weights onto each class (exploration 020): the sum of the weights of the synapses
 /// a unit of one class sends to a unit of another, an inhibitory unit's as a magnitude. The
 /// excitatory rows and the inhibitory rows add up to `weights_by_polarity`'s two sums, held here.
-fn e020_classes(start: &NightsStart, exec: &Engine, label: &str) {
+fn e020_classes(start: &NightsStart, exec: &Engine, label: &str, targets: &[u32]) {
     let sets = start.site.sets;
     let mut class = vec![u8::MAX; exec.units().len()];
     for (c, kind) in [(0u8, 0usize), (1, 1), (2, 3), (3, 4), (4, 2), (5, 5)] {
@@ -47749,16 +47752,17 @@ fn e020_classes(start: &NightsStart, exec: &Engine, label: &str) {
             continue;
         }
         let at = [sets[2].contains(id), sets[3].contains(id)];
+        let target = u8::from(targets.binary_search(&id).is_err());
         *slot = match (inhibitory, at) {
-            (false, [true, _]) => 6,
-            (false, [_, true]) => 7,
-            (false, _) => 8,
-            (true, [true, _]) => 9,
-            (true, [_, true]) => 10,
-            (true, _) => 11,
+            (false, [true, _]) => 6u8.saturating_add(target),
+            (false, [_, true]) => 8u8.saturating_add(target),
+            (false, _) => 10,
+            (true, [true, _]) => 11,
+            (true, [_, true]) => 12,
+            (true, _) => 13,
         };
     }
-    let mut m = [[0i64; 12]; 12];
+    let mut m = [[0i64; 14]; 14];
     for unit in exec.units() {
         let from = usize::from(class[unit.id as usize]);
         let inhibitory = unit.flags & FLAG_INHIBITORY != 0;
@@ -47775,7 +47779,7 @@ fn e020_classes(start: &NightsStart, exec: &Engine, label: &str) {
             .fold(0i64, |t, &v| t.saturating_add(v))
     };
     assert_eq!(
-        (total(9..12), total(0..9)),
+        (total(11..14), total(0..11)),
         weights_by_polarity(exec),
         "{label}: the classes add up to the two sums"
     );
