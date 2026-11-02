@@ -48138,3 +48138,536 @@ fn what_a_path_spreads_of_a_first_mapping_on_seed_22_from_the_mirrored_assignmen
         what_a_path_spreads,
     );
 }
+
+// ---------------------------------------------------- what nights keep (exploration 018)
+
+/// What fills every gap of a form: a night's length awake under the drive, or a night at shift 7 as
+/// exploration 016's halfway. A's patterns are the start image's, the pair's the image the night
+/// follows, each night spending the older episodes.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum NightsGap {
+    Awake,
+    PlainFirst,
+    TwinSecond,
+    PlainBoth,
+}
+
+impl NightsGap {
+    /// Its name in a label, exploration 016's where the form is one of its.
+    const fn name(self) -> &'static str {
+        match self {
+            Self::Awake => "awake",
+            Self::PlainFirst => "plain-first",
+            Self::TwinSecond => "twin-second",
+            Self::PlainBoth => "plain-both",
+        }
+    }
+}
+
+/// A form: its gaps, the pair's blocks before each, and the blocks read right after their gaps.
+#[derive(Clone, Copy, Debug)]
+struct NightsForm {
+    gap: NightsGap,
+    every: usize,
+    read_at: &'static [usize],
+}
+
+/// How far the forms of a run go: the block of the last gap, the blocks that run on with none after
+/// it, the paths, and each mapping's reads of an image, the read as it was among them.
+#[derive(Clone, Copy, Debug)]
+struct NightsRun {
+    last: usize,
+    on: usize,
+    paths: &'static [u64],
+    reads: u64,
+}
+
+/// Exploration 016's own path and three of exploration 017's that differ from it and from each
+/// other in their stimuli and their drive.
+const NIGHTS_PATHS: [u64; 4] = [0, 5, 6, 7];
+
+/// The whole of a form: gaps to block 24, then 12 blocks on with none.
+const NIGHTS_WHOLE: NightsRun = NightsRun {
+    last: 24,
+    on: 12,
+    paths: &NIGHTS_PATHS,
+    reads: SPREAD_READS,
+};
+
+/// Question 1, a gap every 6 blocks, read after each. Its four forms take two jobs a start.
+const fn every_six(gap: NightsGap) -> NightsForm {
+    NightsForm {
+        gap,
+        every: 6,
+        read_at: &[6, 12, 18, 24],
+    }
+}
+
+/// The two forms of question 2's plain nights and their awake rows, a gap every `every` blocks, read
+/// at the blocks every density shares.
+const fn by_density(gap: NightsGap, every: usize) -> NightsForm {
+    NightsForm {
+        gap,
+        every,
+        read_at: &[12, 24],
+    }
+}
+
+/// Question 1's first job.
+const NIGHTS_AWAKE_AND_PLAIN: [NightsForm; 2] = [
+    every_six(NightsGap::Awake),
+    every_six(NightsGap::PlainFirst),
+];
+
+/// Question 1's second job.
+const NIGHTS_TWIN_AND_BOTH: [NightsForm; 2] = [
+    every_six(NightsGap::TwinSecond),
+    every_six(NightsGap::PlainBoth),
+];
+
+/// Question 2.
+const NIGHTS_DENSITY: [NightsForm; 4] = [
+    by_density(NightsGap::Awake, 12),
+    by_density(NightsGap::PlainFirst, 12),
+    by_density(NightsGap::Awake, 3),
+    by_density(NightsGap::PlainFirst, 3),
+];
+
+/// Path `j` of exploration 017: the first index of each of its stretches, and its drive.
+const fn path_from(j: u64) -> ReadFrom {
+    ReadFrom {
+        trial: j.saturating_mul(PATH_TRIALS),
+        drive: if j > PATHS_ON_ONE_DRIVE { j } else { 0 },
+    }
+}
+
+/// The pair's `blocks` from `image` as `shared_run_from` runs them, its image and its trace, with
+/// A's four couplings and the gain read at each block's end, and the pair's couplings and the sums
+/// by polarity from the blocks. Reading them changes nothing of the run.
+fn nights_run(
+    spread: &SpreadStart,
+    image: &[u8],
+    blocks: usize,
+    label: &str,
+    from: ReadFrom,
+) -> Vec<u8> {
+    let site = &spread.theirs;
+    let first = spread.site.sets;
+    let mut exec = night_engine(image, site.form, 0, false, None, site.held(), |_| {});
+    let mut task = task_over(
+        site.sets,
+        SHAPE_F46,
+        Some(site.made.derived.cancel),
+        SCAN_UNITS,
+        Feedback::Answer,
+        site.mirrored,
+        DRAWN_DELIVERY,
+    );
+    task.drive.seed = task.drive.seed.wrapping_add(from.drive);
+    let mut ends: Vec<([i64; 4], u32)> = Vec::with_capacity(blocks);
+    let (read, trace) = run_on_presenting_from(
+        from.trial,
+        site.sets,
+        site.presenting,
+        &mut exec,
+        task,
+        SCAN_UNITS,
+        blocks.saturating_mul(BLOCK),
+        &[],
+        &mut |exec, trial, _, _| {
+            if trial.wrapping_add(1) % BLOCK == 0 {
+                ends.push((
+                    couplings(exec, &first),
+                    exec.homeostasis().synaptic_gain_q16,
+                ));
+            }
+        },
+    );
+    eprintln!(
+        "DUMP {label} run mirrored {} correct {:?} ties {:?} trace {trace:#018x} gain {} inhibitory {:?} ends {ends:?} pair {:?} polarity {:?}",
+        site.mirrored,
+        curve(&read),
+        read.iter().map(|b| b.11).collect::<Vec<u32>>(),
+        exec.homeostasis().synaptic_gain_q16,
+        read.last().map(|b| b.7),
+        read.iter().map(|b| b.10).collect::<Vec<_>>(),
+        read.iter().map(|b| (b.7, b.8)).collect::<Vec<_>>()
+    );
+    quiet(&mut exec);
+    let written = Image::encode(&exec).expect("quiescent");
+    undropped(exec, label);
+    written
+}
+
+/// What an image holds at a read, past what each read dumps: each kind's sum on the readouts, held
+/// to the four couplings, and each group's sum on its targets beside the value it is held at.
+fn nights_state(spread: &SpreadStart, image: &[u8], label: &str) {
+    let groups = spread.site.groups;
+    shared_sums(
+        &spread.site,
+        spread.pair,
+        &spread.start.second,
+        image,
+        label,
+    );
+    let exec = zero_from(image, SCAN_UNITS, ZERO_ARM);
+    let sum = |units: &Vec<u32>| {
+        exec.coupling_sum(units, &groups.targets)
+            .expect("excitatory units once each, and every unit in the arena")
+    };
+    let sums: Vec<i64> = groups
+        .sources
+        .iter()
+        .chain(groups.further.iter().map(|g| &g.0))
+        .map(sum)
+        .collect();
+    let held: Vec<i64> = groups
+        .values
+        .iter()
+        .copied()
+        .chain(groups.further.iter().map(|g| g.1))
+        .collect();
+    eprintln!("DUMP {label} held {sums:?} at {held:?}");
+    undropped(exec, label);
+}
+
+/// The gap `gap` from `image`, the pair's blocks having written it.
+fn nights_gap(
+    spread: &SpreadStart,
+    gap: NightsGap,
+    image: &[u8],
+    first: &[Vec<u32>],
+    label: &str,
+) -> Vec<u8> {
+    let site = &spread.site;
+    let given = |patterns, twin| NightGiven {
+        shift: 7,
+        driven: true,
+        twin,
+        held: true,
+        slow_wave: Some(ONE / 2),
+        spend: true,
+        patterns,
+    };
+    let own = || mapping_patterns(&spread.theirs, image);
+    let timed = std::time::Instant::now();
+    let written = match gap {
+        NightsGap::Awake => idle_on(site, image, label, FLIP_NIGHT_TICKS, true),
+        NightsGap::PlainFirst => night_on(site, image, label, given(first, false)).0,
+        NightsGap::TwinSecond => night_on(site, image, label, given(&own(), true)).0,
+        NightsGap::PlainBoth => {
+            let both = [first, own().as_slice()].concat();
+            night_on(site, image, label, given(&both, false)).0
+        }
+    };
+    eprintln!("DUMP {label} took {} ms", timed.elapsed().as_millis());
+    written
+}
+
+/// `forms` from a start on `run`'s paths: on each path the pair's blocks to a gap, the form's gap,
+/// and so on to the block of the last gap, then the blocks that run on with none. Every stretch
+/// starts from the path's first index again, as exploration 017's second stretch did. Each form's
+/// images at its `read_at` and at the run's end are read by `reads` of A and of the pair, on forks.
+fn what_nights_keep(spread: &SpreadStart, forms: &[NightsForm], run: NightsRun) {
+    let image = spread.start.image;
+    let half = &spread.half;
+    let first = mapping_patterns(&spread.site, image);
+    let timed = std::time::Instant::now();
+    let mut heads: Vec<(u64, usize)> = run
+        .paths
+        .iter()
+        .flat_map(|&j| forms.iter().map(move |f| (j, f.every)))
+        .collect();
+    heads.sort_unstable();
+    heads.dedup();
+    let written = std::sync::Mutex::new(BTreeMap::new());
+    two_at_a_time(&heads, |&(j, every)| {
+        let at = format!("{half} nights path {j} every {every} none blocks {every}");
+        let head = nights_run(spread, image, every, &at, path_from(j));
+        written
+            .lock()
+            .expect("a run ended")
+            .insert((j, every), head);
+    });
+    let written = written.into_inner().expect("every run ended");
+    let heads_ms = timed.elapsed().as_millis();
+    let chains: Vec<(u64, NightsForm)> = run
+        .paths
+        .iter()
+        .flat_map(|&j| forms.iter().map(move |&f| (j, f)))
+        .collect();
+    let kept = std::sync::Mutex::new(BTreeMap::new());
+    let timed = std::time::Instant::now();
+    two_at_a_time(&chains, |&(j, form)| {
+        let name = format!(
+            "{half} nights path {j} every {} {}",
+            form.every,
+            form.gap.name()
+        );
+        let keep = |block: usize, image: &[u8]| {
+            kept.lock()
+                .expect("a form ended")
+                .insert(format!("{name} blocks {block}"), image.to_vec());
+        };
+        let mut at = written[&(j, form.every)].clone();
+        for block in (form.every..=run.last).step_by(form.every) {
+            if block != form.every {
+                let label = format!("{name} blocks {block}");
+                at = nights_run(spread, &at, form.every, &label, path_from(j));
+            }
+            let label = format!("{name} gap {block}");
+            at = nights_gap(spread, form.gap, &at, &first, &label);
+            if form.read_at.contains(&block) {
+                keep(block, &at);
+            }
+        }
+        let end = run.last.saturating_add(run.on);
+        let label = format!("{name} blocks {end}");
+        keep(end, &nights_run(spread, &at, run.on, &label, path_from(j)));
+    });
+    let kept = kept.into_inner().expect("every form ended");
+    let forms_ms = timed.elapsed().as_millis();
+    let mut reads = Vec::new();
+    for (label, image) in &kept {
+        nights_state(spread, image, label);
+        reads.extend(spread_reads(
+            &spread.site,
+            image,
+            &format!("{label} first"),
+            &[ReadBy::Both],
+            run.reads,
+        ));
+        reads.extend(spread_reads(
+            &spread.theirs,
+            image,
+            &format!("{label} second"),
+            &[ReadBy::Both],
+            run.reads,
+        ));
+    }
+    let timed = std::time::Instant::now();
+    read_all(&reads);
+    eprintln!(
+        "DUMP timing heads {heads_ms} ms for {} forms {forms_ms} ms for {} reads {} ms for {}",
+        heads.len(),
+        chains.len(),
+        timed.elapsed().as_millis(),
+        reads.len()
+    );
+}
+
+/// The trial of exploration 018's harness, on seed 22 from the assignment on the eighth image: the
+/// images and the reads of explorations 016 and 017 this branch can stand beside theirs, then every
+/// form of question 1 on one path to its second gap, read twice, and the timings of each.
+#[test]
+#[ignore]
+fn the_harness_of_what_nights_keep_explore() {
+    with_spread(NightFrom::Eighth, Reversal::AssignmentFirst, |spread| {
+        let (site, theirs, image) = (&spread.site, &spread.theirs, spread.start.image);
+        let (name, half) = (&spread.name, &spread.half);
+        let first = mapping_patterns(site, image);
+        let six = format!("{name} blocks 6");
+        let twelve = format!("{half} none blocks {SHARED_HALF_BLOCKS}");
+        let path = format!("{half} path 5 none blocks {SHARED_HALF_BLOCKS}");
+        let runs = [
+            (6, six.clone(), AS_IT_WAS),
+            (SHARED_HALF_BLOCKS, twelve.clone(), AS_IT_WAS),
+            (SHARED_HALF_BLOCKS, path, path_from(5)),
+        ];
+        let written = std::sync::Mutex::new(BTreeMap::new());
+        two_at_a_time(&runs, |(blocks, at, from)| {
+            let run = nights_run(spread, image, *blocks, at, *from);
+            written.lock().expect("a run ended").insert(at.clone(), run);
+        });
+        let written = written.into_inner().expect("every run ended");
+        spread_read(
+            site,
+            &written[&six],
+            &format!("{six} first"),
+            "as-it-was 0",
+            AS_IT_WAS,
+        );
+        let gaps = [false, true].map(|night| {
+            let label = format!(
+                "{half} path 5 {}",
+                if night { "plain-first" } else { "awake" }
+            );
+            let from = &written[&format!("{half} path 5 none blocks {SHARED_HALF_BLOCKS}")];
+            let gap = if night {
+                NightsGap::PlainFirst
+            } else {
+                NightsGap::Awake
+            };
+            (nights_gap(spread, gap, from, &first, &label), label)
+        });
+        let by = [ReadBy::Both];
+        let mut reads = spread_reads(
+            site,
+            &written[&twelve],
+            &format!("{twelve} first"),
+            &by,
+            SPREAD_READS,
+        );
+        reads.extend(spread_reads(
+            theirs,
+            &written[&twelve],
+            &format!("{twelve} second"),
+            &by,
+            SPREAD_READS,
+        ));
+        for (gapped, label) in &gaps {
+            let at = format!("{label} blocks {SHARED_HALF_BLOCKS} first");
+            reads.extend(spread_reads(site, gapped, &at, &by, SPREAD_READS));
+        }
+        let timed = std::time::Instant::now();
+        read_all(&reads);
+        eprintln!(
+            "DUMP timing the images' {} reads {} ms",
+            reads.len(),
+            timed.elapsed().as_millis()
+        );
+        let forms = [
+            every_six(NightsGap::Awake),
+            every_six(NightsGap::PlainFirst),
+            every_six(NightsGap::TwinSecond),
+            every_six(NightsGap::PlainBoth),
+        ]
+        .map(|form| NightsForm {
+            read_at: &[6, 12],
+            ..form
+        });
+        let run = NightsRun {
+            last: 12,
+            on: 6,
+            paths: &[0],
+            reads: 2,
+        };
+        what_nights_keep(spread, &forms, run);
+    });
+}
+
+/// Question 1's awake and plain rows from the eighth image, from the assignment.
+#[test]
+#[ignore]
+fn what_nights_keep_awake_and_plain_of_the_eighth_image_on_seed_22_from_the_assignment_explore() {
+    with_spread(NightFrom::Eighth, Reversal::AssignmentFirst, |spread| {
+        what_nights_keep(spread, &NIGHTS_AWAKE_AND_PLAIN, NIGHTS_WHOLE);
+    });
+}
+
+/// Question 1's twin and both rows from the eighth image, from the assignment.
+#[test]
+#[ignore]
+fn what_nights_keep_twin_and_both_of_the_eighth_image_on_seed_22_from_the_assignment_explore() {
+    with_spread(NightFrom::Eighth, Reversal::AssignmentFirst, |spread| {
+        what_nights_keep(spread, &NIGHTS_TWIN_AND_BOTH, NIGHTS_WHOLE);
+    });
+}
+
+/// Question 1's awake and plain rows from the eighth image, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_nights_keep_awake_and_plain_of_the_eighth_image_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    with_spread(NightFrom::Eighth, Reversal::MirroredFirst, |spread| {
+        what_nights_keep(spread, &NIGHTS_AWAKE_AND_PLAIN, NIGHTS_WHOLE);
+    });
+}
+
+/// Question 1's twin and both rows from the eighth image, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_nights_keep_twin_and_both_of_the_eighth_image_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    with_spread(NightFrom::Eighth, Reversal::MirroredFirst, |spread| {
+        what_nights_keep(spread, &NIGHTS_TWIN_AND_BOTH, NIGHTS_WHOLE);
+    });
+}
+
+/// Question 1's awake and plain rows from a first mapping, from the assignment.
+#[test]
+#[ignore]
+fn what_nights_keep_awake_and_plain_of_a_first_mapping_on_seed_22_from_the_assignment_explore() {
+    with_spread(
+        NightFrom::FirstMapping,
+        Reversal::AssignmentFirst,
+        |spread| {
+            what_nights_keep(spread, &NIGHTS_AWAKE_AND_PLAIN, NIGHTS_WHOLE);
+        },
+    );
+}
+
+/// Question 1's twin and both rows from a first mapping, from the assignment.
+#[test]
+#[ignore]
+fn what_nights_keep_twin_and_both_of_a_first_mapping_on_seed_22_from_the_assignment_explore() {
+    with_spread(
+        NightFrom::FirstMapping,
+        Reversal::AssignmentFirst,
+        |spread| {
+            what_nights_keep(spread, &NIGHTS_TWIN_AND_BOTH, NIGHTS_WHOLE);
+        },
+    );
+}
+
+/// Question 1's awake and plain rows from a first mapping, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_nights_keep_awake_and_plain_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    with_spread(NightFrom::FirstMapping, Reversal::MirroredFirst, |spread| {
+        what_nights_keep(spread, &NIGHTS_AWAKE_AND_PLAIN, NIGHTS_WHOLE);
+    });
+}
+
+/// Question 1's twin and both rows from a first mapping, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_nights_keep_twin_and_both_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    with_spread(NightFrom::FirstMapping, Reversal::MirroredFirst, |spread| {
+        what_nights_keep(spread, &NIGHTS_TWIN_AND_BOTH, NIGHTS_WHOLE);
+    });
+}
+
+/// Question 2 from the eighth image, from the assignment.
+#[test]
+#[ignore]
+fn what_nights_keep_by_density_of_the_eighth_image_on_seed_22_from_the_assignment_explore() {
+    with_spread(NightFrom::Eighth, Reversal::AssignmentFirst, |spread| {
+        what_nights_keep(spread, &NIGHTS_DENSITY, NIGHTS_WHOLE);
+    });
+}
+
+/// Question 2 from the eighth image, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_nights_keep_by_density_of_the_eighth_image_on_seed_22_from_the_mirrored_assignment_explore()
+{
+    with_spread(NightFrom::Eighth, Reversal::MirroredFirst, |spread| {
+        what_nights_keep(spread, &NIGHTS_DENSITY, NIGHTS_WHOLE);
+    });
+}
+
+/// Question 2 from a first mapping, from the assignment.
+#[test]
+#[ignore]
+fn what_nights_keep_by_density_of_a_first_mapping_on_seed_22_from_the_assignment_explore() {
+    with_spread(
+        NightFrom::FirstMapping,
+        Reversal::AssignmentFirst,
+        |spread| {
+            what_nights_keep(spread, &NIGHTS_DENSITY, NIGHTS_WHOLE);
+        },
+    );
+}
+
+/// Question 2 from a first mapping, from the mirrored assignment.
+#[test]
+#[ignore]
+fn what_nights_keep_by_density_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore()
+{
+    with_spread(NightFrom::FirstMapping, Reversal::MirroredFirst, |spread| {
+        what_nights_keep(spread, &NIGHTS_DENSITY, NIGHTS_WHOLE);
+    });
+}
