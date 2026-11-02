@@ -46983,3 +46983,981 @@ fn a_plain_night_after_the_pair_s_head_of_a_first_mapping_on_seed_24_from_the_mi
  {
     nights_short(2, 3);
 }
+
+// ------------------------------- exploration 020: what a replay costs A (on its branch alone)
+
+/// The gaps whose nights exploration 020 reads tick by tick: all four.
+const WATCH_GAPS: [usize; 4] = [6, 12, 18, 24];
+
+/// The bins of a pairing's interval in ticks (exploration 015): none, to 4, 16, 64, 256, 1 024
+/// and past it.
+const PAIR_BINS: usize = 7;
+
+fn pair_bin(ticks: u32) -> usize {
+    match ticks {
+        0 => 0,
+        1..=4 => 1,
+        5..=16 => 2,
+        17..=64 => 3,
+        65..=256 => 4,
+        257..=1024 => 5,
+        _ => 6,
+    }
+}
+
+/// What the rule read of one synapse at one presynaptic spike (exploration 015): the ticks from
+/// the previous presynaptic spike to the target's last spike where a potentiation read them, the
+/// ticks from the target's last spike to this one where a depression read them, whether the target
+/// fired on this tick, each term as it entered the trace, and what consolidation took from the
+/// trace.
+#[derive(Clone, Copy, Debug, Default)]
+struct PairRead {
+    after_previous: Option<u32>,
+    since_post: Option<u32>,
+    same_tick: bool,
+    potentiation: i16,
+    depression: i16,
+    absorbed: i32,
+}
+
+/// Pairings summed (exploration 015): how many, the potentiations with their intervals, the
+/// depressions with theirs, the targets that fired on the tick, and what consolidation took.
+#[derive(Clone, Copy, Debug, Default)]
+struct PairTally {
+    pairings: u32,
+    potentiated: u32,
+    potentiation: i64,
+    after_previous: [u32; PAIR_BINS],
+    depressed: u32,
+    depression: i64,
+    since_post: [u32; PAIR_BINS],
+    same_tick: u32,
+    absorbed: i64,
+}
+
+impl PairTally {
+    fn add(&mut self, read: &PairRead) {
+        self.pairings = self.pairings.saturating_add(1);
+        self.same_tick = self.same_tick.saturating_add(u32::from(read.same_tick));
+        self.absorbed = self.absorbed.saturating_add(i64::from(read.absorbed));
+        if let Some(ticks) = read.after_previous {
+            self.potentiated = self.potentiated.saturating_add(1);
+            self.potentiation = self
+                .potentiation
+                .saturating_add(i64::from(read.potentiation));
+            let bin = &mut self.after_previous[pair_bin(ticks)];
+            *bin = bin.saturating_add(1);
+        }
+        if let Some(ticks) = read.since_post {
+            self.depressed = self.depressed.saturating_add(1);
+            self.depression = self.depression.saturating_add(i64::from(read.depression));
+            let bin = &mut self.since_post[pair_bin(ticks)];
+            *bin = bin.saturating_add(1);
+        }
+    }
+}
+
+/// An excitatory pairing's depression at `since_post` ticks and a weight, under `exponent`
+/// (exploration 015).
+fn pair_depression(since_post: u32, weight: i16, exponent: DepressionExponent) -> i16 {
+    let magnitude = u64::try_from(weight).unwrap_or(0);
+    let shaped = match exponent {
+        DepressionExponent::One => magnitude,
+        DepressionExponent::Half => magnitude.saturating_mul(1 << 13).isqrt(),
+        DepressionExponent::Quarter => magnitude.saturating_mul(1 << 39).isqrt().isqrt(),
+    };
+    (i64::from(pair_window(STDP_A_MINUS_Q1_15, since_post))
+        .saturating_mul(shaped as i64)
+        .saturating_add(1 << 12)
+        >> 13) as i16
+}
+
+/// A trace after `elapsed` ticks, as `SynapseBlock::decay_eligibility` leaves it (exploration 015).
+fn pair_decayed(trace: i16, elapsed: u32) -> i16 {
+    if elapsed == 0 || trace == 0 {
+        return trace;
+    }
+    let factor = i64::from(stp_decay_factor_q16(elapsed, ELIGIBILITY_TAU_SHIFT));
+    let magnitude = i64::from(trace).abs();
+    let kept = (magnitude.saturating_mul(factor).saturating_add(0x8000) >> 16)
+        .min(magnitude.saturating_sub(1));
+    kept.saturating_mul(i64::from(trace).signum()) as i16
+}
+
+/// What consolidation takes of `trace` into `weight` at `modulation` at or above zero, as
+/// `SynapseBlock::consolidate` does (exploration 015): the magnitude moved, a rail keeping the rest
+/// in the trace.
+fn pair_absorbed(trace: i16, weight: i16, modulation: i32) -> i32 {
+    let m = i64::from(modulation.clamp(0, ONE));
+    let amount = (i64::from(trace)
+        .abs()
+        .saturating_mul(m)
+        .saturating_add(0x8000)
+        >> 16) as i32;
+    let transfer = amount.saturating_mul(i32::from(trace).signum());
+    let before = i32::from(weight).max(0);
+    before
+        .saturating_add(transfer)
+        .clamp(0, i32::from(i16::MAX))
+        .saturating_sub(before)
+}
+
+/// A pairing's ordinal (exploration 015): the first, second, third and later spikes of its
+/// presynaptic unit in its own replay; the unit's next spike after that replay, which reads the
+/// replay's last; and any other in slow-wave sleep, and in any other stage.
+const PAIR_AFTER: u8 = 4;
+const PAIR_ELSE_SWS: u8 = 5;
+const PAIR_ELSE: u8 = 6;
+
+/// A watched unit's class, its kind of exploration 016: A alone, A's and C's, B alone, B's and D's.
+const WATCH_PRE: [&str; 4] = ["A alone", "A and C", "B alone", "B and D"];
+
+/// A target's class, against the watched unit's stimulus under the mapping in force: the pair's
+/// own units (C's at place 5, in readout 0, and D's at place 16, in readout 1) in the answer's
+/// readout or in the other; the other units of the unit's own pattern; the answer's readout and the
+/// other readout outside those; a stimulus unit of A or B; anywhere else.
+const WATCH_POST: [&str; 7] = [
+    "pair's own in the answer's readout",
+    "pair's own in the other readout",
+    "its own pattern",
+    "the answer's readout",
+    "the other readout",
+    "a stimulus unit",
+    "elsewhere",
+];
+
+/// A spike's class in a ripple that replays one of A's patterns, against the pattern's stimulus:
+/// the pattern's first unit, the rest of the pattern, the pair's own units in the answer's readout
+/// or in the other, the answer's readout and the other outside those, another stimulus unit,
+/// anywhere else.
+const WATCH_SPIKE: [&str; 8] = [
+    "the first unit",
+    "the rest of the pattern",
+    "pair's own in the answer's readout",
+    "pair's own in the other readout",
+    "the answer's readout",
+    "the other readout",
+    "another stimulus unit",
+    "elsewhere",
+];
+
+/// Exploration 015's `PairWatch` on A's patterns (exploration 020): every pairing of each
+/// stimulus unit of A and B, the first unit of each of A's patterns, read tick by tick from the
+/// arena and the train with no change under `src/`, whether the night tags the patterns or not, so
+/// that a night without replay is read on the same synapses. Each is worked out by the rule as the
+/// block held it and checked against the trace the engine then holds, `wrong` counting every miss.
+/// The weights a round of the zero sum may move are read before every tick; every watched unit is
+/// held, so its weight is not checked. In a ripple that replays one of A's patterns, every spike
+/// of the ripple is classed against it.
+struct ReplayWatch {
+    label: String,
+    exponent: DepressionExponent,
+    slow_wave: Option<i32>,
+    baseline: i32,
+    mirrored: bool,
+    patterns: Vec<Vec<u32>>,
+    own: Vec<Option<usize>>,
+    pre: Vec<Option<u8>>,
+    stimulus: Vec<Option<u8>>,
+    readout: Vec<Option<u8>>,
+    pair_own: Vec<bool>,
+    held_unit: Vec<bool>,
+    chains: Vec<Vec<u32>>,
+    held_blocks: Vec<u32>,
+    shadow: Vec<SynapseBlock>,
+    last: Vec<u32>,
+    next: u32,
+    stage: u8,
+    modulation: i32,
+    episode: Option<usize>,
+    spiked: Vec<u8>,
+    replayed: Vec<Option<(u32, usize, u8)>>,
+    pending: Vec<(u8, u8, u8, u32, PairRead)>,
+    tallies: BTreeMap<(u8, u8, u8, u8), PairTally>,
+    fired: [[u32; 5]; 4],
+    replays: Vec<u32>,
+    ripples: [u32; 2],
+    spikes: [[u64; 8]; 2],
+    wrong: u64,
+}
+
+impl ReplayWatch {
+    fn new(label: &str, start: &NightsStart, exec: &mut Engine, patterns: &[Vec<u32>]) -> Self {
+        let next = exec.train().last().map_or(0, |s| s.0.wrapping_add(1));
+        let site = &start.site;
+        let (units, blocks) = (exec.units(), exec.blocks());
+        let n = units.len();
+        let mut own = vec![None; n];
+        for (e, pattern) in patterns.iter().enumerate() {
+            own[pattern[0] as usize] = Some(e);
+        }
+        let kinds = &start.pair.kinds;
+        let mut pre = vec![None; n];
+        for (class, kind) in [(0u8, 0usize), (1, 1), (2, 3), (3, 4)] {
+            for &unit in &kinds[kind] {
+                pre[unit as usize] = Some(class);
+            }
+        }
+        let mut pair_own = vec![false; n];
+        for &unit in kinds[2].iter().chain(&kinds[5]) {
+            pair_own[unit as usize] = true;
+        }
+        let in_sets = |offset: usize| -> Vec<Option<u8>> {
+            (0..n as u32)
+                .map(|id| {
+                    (0u8..2)
+                        .find(|&s| site.sets[usize::from(s).saturating_add(offset)].contains(id))
+                })
+                .collect()
+        };
+        let (stimulus, readout) = (in_sets(0), in_sets(2));
+        let mut held_unit = vec![false; n];
+        let groups = site.groups;
+        for &unit in groups
+            .sources
+            .iter()
+            .flatten()
+            .chain(groups.further.iter().flat_map(|g| g.0.iter()))
+        {
+            held_unit[unit as usize] = true;
+        }
+        let mut chains: Vec<Vec<u32>> = vec![Vec::new(); n];
+        let mut held_blocks: Vec<u32> = Vec::new();
+        for pattern in patterns {
+            let unit = pattern[0] as usize;
+            assert!(
+                pre[unit].is_some(),
+                "{label}: every pattern's first unit is a stimulus unit of A or B"
+            );
+            chains[unit] = units[unit].chain(blocks).collect();
+            if held_unit[unit] {
+                held_blocks.extend(chains[unit].iter().copied());
+            }
+        }
+        Self {
+            label: label.to_string(),
+            exponent: exec.depression_exponent(),
+            slow_wave: exec.slow_wave_baseline_q16(),
+            baseline: exec.modulation_baseline_q16(),
+            mirrored: site.mirrored,
+            patterns: patterns.to_vec(),
+            own,
+            pre,
+            stimulus,
+            readout,
+            pair_own,
+            held_unit,
+            chains,
+            held_blocks,
+            shadow: blocks.to_vec(),
+            last: units.iter().map(|u| u.last_soma_spike_tick).collect(),
+            next,
+            stage: exec.sleep_stage(),
+            modulation: 0,
+            episode: None,
+            spiked: vec![0; n],
+            replayed: vec![None; n],
+            pending: Vec::new(),
+            tallies: BTreeMap::new(),
+            fired: [[0; 5]; 4],
+            replays: vec![0; patterns.len()],
+            ripples: [0; 2],
+            spikes: [[0; 8]; 2],
+            wrong: 0,
+        }
+    }
+
+    /// The answer's readout of the stimulus `unit` lies in, under the mapping in force.
+    fn answer(&self, unit: u32) -> Option<u8> {
+        self.stimulus[unit as usize].map(|s| answer_of(s, self.mirrored) as u8)
+    }
+
+    /// A ripple from its first tick, of the pattern it replays, where one is: one of A's patterns.
+    fn open(&mut self, pattern: Option<&[u32]>) {
+        self.episode = pattern
+            .and_then(|p| p.first())
+            .and_then(|&u| self.own[u as usize]);
+        if let Some(e) = self.episode {
+            assert_eq!(
+                pattern,
+                Some(self.patterns[e].as_slice()),
+                "{}: the episode replayed is one of A's patterns",
+                self.label
+            );
+            self.replays[e] = self.replays[e].saturating_add(1);
+            if let Some(s) = self.stimulus[self.patterns[e][0] as usize] {
+                let ripples = &mut self.ripples[usize::from(s)];
+                *ripples = ripples.saturating_add(1);
+            }
+        }
+    }
+
+    /// Before a tick: the modulation its consolidations read, as `Executor::tick` publishes it,
+    /// and the weights the last tick's round moved.
+    fn before(&mut self, exec: &Engine) {
+        self.stage = exec.sleep_stage();
+        let baseline = match self.slow_wave {
+            Some(baseline) if self.stage == STAGE_SWS => baseline,
+            _ => self.baseline,
+        };
+        self.modulation = exec.modulator().signed_modulation(baseline);
+        let blocks = exec.blocks();
+        for &b in &self.held_blocks {
+            self.shadow[b as usize].weights_q1_15 = blocks[b as usize].weights_q1_15;
+        }
+    }
+
+    /// After a tick: its spikes on record and classed in a replay's ripple, then each watched
+    /// unit's pairings.
+    fn after(&mut self, exec: &mut Engine) {
+        let train = exec.train();
+        let from = train.partition_point(|s| s.0 < self.next);
+        let spikes: Vec<(u32, u32)> = train[from..].to_vec();
+        let Some(&(now, _)) = spikes.last() else {
+            return;
+        };
+        self.next = now.wrapping_add(1);
+        for &(t, unit) in &spikes {
+            self.wrong = self.wrong.saturating_add(u64::from(t != now));
+            self.last[unit as usize] = t;
+        }
+        if let Some(e) = self.episode {
+            for &(_, unit) in &spikes {
+                let first = self.patterns[e][0];
+                let (s, class) = (self.stimulus[first as usize], self.spike_class(e, unit));
+                if let Some(s) = s {
+                    let n = &mut self.spikes[usize::from(s)][usize::from(class)];
+                    *n = n.saturating_add(1);
+                }
+            }
+        }
+        for &(_, unit) in &spikes {
+            if !self.chains[unit as usize].is_empty() {
+                self.spike(exec, unit, now);
+            }
+        }
+    }
+
+    fn spike_class(&self, e: usize, unit: u32) -> u8 {
+        let pattern = &self.patterns[e];
+        if pattern[0] == unit {
+            return 0;
+        }
+        if pattern[1..].contains(&unit) {
+            return 1;
+        }
+        let (answer, readout) = (self.answer(pattern[0]), self.readout[unit as usize]);
+        if self.pair_own[unit as usize] {
+            return if readout == answer { 2 } else { 3 };
+        }
+        match readout {
+            Some(_) if readout == answer => 4,
+            Some(_) => 5,
+            None if self.stimulus[unit as usize].is_some() => 6,
+            None => 7,
+        }
+    }
+
+    fn post_class(&self, pre: u32, post: u32) -> u8 {
+        let (answer, readout) = (self.answer(pre), self.readout[post as usize]);
+        if self.pair_own[post as usize] {
+            return if readout == answer { 0 } else { 1 };
+        }
+        if self.own[pre as usize].is_some_and(|e| self.patterns[e][1..].contains(&post)) {
+            return 2;
+        }
+        match readout {
+            Some(_) if readout == answer => 3,
+            Some(_) => 4,
+            None if self.stimulus[post as usize].is_some() => 5,
+            None => 6,
+        }
+    }
+
+    fn spike(&mut self, exec: &Engine, unit: u32, now: u32) {
+        let u = unit as usize;
+        let mine = self.episode.filter(|&e| self.patterns[e][0] == unit);
+        let chain = core::mem::take(&mut self.chains[u]);
+        let previous = self.shadow[chain[0] as usize].last_spike_tick;
+        let ordinal = match (mine, self.replayed[u]) {
+            (Some(_), _) => self.spiked[u].min(3),
+            (None, Some((tick, _, _))) if tick == previous => PAIR_AFTER,
+            _ if self.stage == STAGE_SWS => PAIR_ELSE_SWS,
+            _ => PAIR_ELSE,
+        };
+        let class = self.pre[u].unwrap_or(u8::MAX);
+        for &b in &chain {
+            let old = self.shadow[b as usize];
+            let new = exec.blocks()[b as usize];
+            self.wrong = self
+                .wrong
+                .saturating_add(u64::from(new.last_spike_tick != now));
+            for slot in 0..SYNAPSES_PER_BLOCK {
+                let Some(post) = new.target(slot) else {
+                    continue;
+                };
+                let read = self.pairing(&old, &new, slot, post, now, unit);
+                let to = self.post_class(unit, post);
+                self.pending.push((class, to, ordinal, unit, read));
+            }
+            self.shadow[b as usize] = new;
+        }
+        self.chains[u] = chain;
+        if let Some(e) = mine {
+            self.spiked[u] = self.spiked[u].saturating_add(1);
+            self.replayed[u] = Some((now, e, 0));
+        }
+    }
+
+    /// The rule at `now` on one slot, held to what the engine wrote (exploration 015).
+    fn pairing(
+        &mut self,
+        old: &SynapseBlock,
+        new: &SynapseBlock,
+        slot: usize,
+        post: u32,
+        now: u32,
+        unit: u32,
+    ) -> PairRead {
+        let previous = old.last_spike_tick;
+        let post_last = self.last[post as usize];
+        let weight = old.weights_q1_15[slot];
+        let mut trace = pair_decayed(old.eligibility_q1_15[slot], now.wrapping_sub(previous));
+        let mut read = PairRead {
+            same_tick: post_last == now,
+            ..PairRead::default()
+        };
+        if post_last != NO_SPIKE_ON_RECORD {
+            let since_post = now.wrapping_sub(post_last) as i32;
+            if previous != NO_SPIKE_ON_RECORD {
+                let after = post_last.wrapping_sub(previous) as i32;
+                if after > 0 && since_post >= 0 {
+                    read.after_previous = Some(after as u32);
+                    read.potentiation = pair_window(STDP_A_PLUS_Q1_15, after as u32);
+                    trace = trace.saturating_add(read.potentiation);
+                }
+            }
+            if since_post > 0 {
+                read.since_post = Some(since_post as u32);
+                read.depression = pair_depression(since_post as u32, weight, self.exponent);
+                trace = trace.saturating_sub(read.depression);
+            }
+        }
+        read.absorbed = i32::from(trace).saturating_sub(i32::from(new.eligibility_q1_15[slot]));
+        let by_the_rule = pair_absorbed(trace, weight, self.modulation);
+        let moved = i32::from(new.weights_q1_15[slot]).saturating_sub(i32::from(weight));
+        let right = self.modulation < 0
+            || read.absorbed == by_the_rule
+                && (self.held_unit[unit as usize] || moved == read.absorbed);
+        if !right && self.wrong < 8 {
+            eprintln!(
+                "DUMP {} wrong pre {unit} post {post} at {now} previous {previous} post last {post_last} weight {weight} modulation {} trace {trace} {read:?} by the rule {by_the_rule} {old:?} {new:?}",
+                self.label, self.modulation
+            );
+        }
+        self.wrong = self.wrong.saturating_add(u64::from(!right));
+        read
+    }
+
+    /// A ripple's end: its pairings tallied by the spikes their unit fired in it.
+    fn close(&mut self) {
+        let pending = core::mem::take(&mut self.pending);
+        for (class, to, ordinal, pre, read) in &pending {
+            let u = *pre as usize;
+            let spikes = match *ordinal {
+                0..=3 => self.spiked[u].min(4),
+                PAIR_AFTER => self.replayed[u].map_or(0, |r| r.2),
+                _ => 0,
+            };
+            self.tallies
+                .entry((*class, *to, *ordinal, spikes))
+                .or_default()
+                .add(read);
+        }
+        self.pending = pending;
+        self.pending.clear();
+        let Some(e) = self.episode else {
+            return;
+        };
+        let first = self.patterns[e][0] as usize;
+        let spikes = self.spiked[first].min(4);
+        if let Some(class) = self.pre[first] {
+            let fired = &mut self.fired[usize::from(class)][usize::from(spikes)];
+            *fired = fired.saturating_add(1);
+        }
+        if let Some(replayed) = &mut self.replayed[first] {
+            replayed.2 = spikes;
+        }
+        self.spiked[first] = 0;
+    }
+
+    fn dump(&self) {
+        let by_class: Vec<(u32, u32)> = (0u8..4)
+            .map(|class| {
+                self.patterns
+                    .iter()
+                    .zip(&self.replays)
+                    .filter(|(p, _)| self.pre[p[0] as usize] == Some(class))
+                    .fold((0u32, 0u32), |(n, r), (_, &k)| {
+                        (n.saturating_add(1), r.saturating_add(k))
+                    })
+            })
+            .collect();
+        eprintln!(
+            "DUMP {} watch wrong {} classes {WATCH_PRE:?} fired {:?} of none, one, two, three, more; episodes and replays {by_class:?}; replays {:?}",
+            self.label, self.wrong, self.fired, self.replays
+        );
+        for s in 0..2 {
+            eprintln!(
+                "DUMP {} watch ripple spikes stimulus {s} ripples {} {:?} of {WATCH_SPIKE:?}",
+                self.label, self.ripples[s], self.spikes[s]
+            );
+        }
+        for ((class, to, ordinal, spikes), tally) in &self.tallies {
+            eprintln!(
+                "DUMP {} watch pairings pre {class} post {to} ordinal {ordinal} spikes {spikes} {tally:?}",
+                self.label
+            );
+        }
+        eprintln!("DUMP {} watch post classes {WATCH_POST:?}", self.label);
+    }
+}
+
+/// `night_on` with exploration 020's watch where `watch` says: the same engine, stages and dumps,
+/// each ripple ticked one tick at a time while the watch reads it. Reading changes nothing of the
+/// run.
+fn e020_night(
+    start: &NightsStart,
+    image: &[u8],
+    label: &str,
+    patterns: &[Vec<u32>],
+    tag: bool,
+    watch: bool,
+) -> (Vec<u8>, (u32, u32)) {
+    let site = &start.site;
+    let sets = site.sets;
+    let mut exec = night_engine(image, patterns.len(), Some(site.groups), |h| {
+        h.sleep_shift = NIGHT_SHIFT;
+        h.sleep_stage = STAGE_SWS;
+        h.sleep_pressure_q16 = PRESSURE_MAX_Q16;
+    });
+    exec.spend_episodes();
+    if tag {
+        for pattern in patterns {
+            exec.tag_episode(pattern, NIGHT_PRIORITY)
+                .expect("the ledger has room and the pattern is one");
+        }
+    }
+    let start_state = night_state(&exec, &sets);
+    eprintln!(
+        "DUMP {label} start {start_state:?} target {:?} step {} period {} pattern sums {:?}",
+        exec.rate_target_per_window(),
+        exec.homeostasis().control_step_q0_16,
+        exec.istdp_target_period_ticks(),
+        pattern_sums(&exec, patterns)
+    );
+    let source = drive(SCAN_UNITS);
+    let driven = Some(&source);
+    let began = exec.ticks();
+    let lead = NIGHT_RIPPLE.wrapping_sub(began) & NIGHT_RIPPLE.wrapping_sub(1);
+    night_ticks(&mut exec, driven, lead);
+    let mut watching = watch.then(|| ReplayWatch::new(label, start, &mut exec, patterns));
+    let mut read = RippleRead::default();
+    let mut spikes = 0u64;
+    for _ in 0..NIGHT_RIPPLES_MAX {
+        let at = exec.ticks();
+        let hand = exec.hippocampus().replay_hand as usize;
+        let pattern = (exec.sleep_stage() == STAGE_SWS)
+            .then(|| exec.episodes().get(hand))
+            .flatten()
+            .filter(|e| !e.is_spent())
+            .map(|e| e.pattern().to_vec());
+        match &mut watching {
+            None => night_ticks(&mut exec, driven, NIGHT_RIPPLE),
+            Some(w) => {
+                w.open(pattern.as_deref());
+                for _ in 0..NIGHT_RIPPLE {
+                    w.before(&exec);
+                    night_ticks(&mut exec, driven, 1);
+                    w.after(&mut exec);
+                }
+                w.close();
+            }
+        }
+        let train = exec.train();
+        let from = train.partition_point(|s| s.0 < at as u32);
+        let mine = &train[from..];
+        spikes = spikes.saturating_add(mine.len() as u64);
+        if let Some(pattern) = &pattern {
+            ripple_read(&mut read, mine, at as u32, pattern);
+        }
+        if exec.ticks() & WINDOW_TICKS.wrapping_sub(1) == 0 {
+            eprintln!(
+                "DUMP {label} window {:?} spikes {spikes} replays {} depotentiations {} {read:?}",
+                night_state(&exec, &sets),
+                exec.replays(),
+                exec.depotentiations()
+            );
+            spikes = 0;
+            read = RippleRead::default();
+        }
+        if exec.sleep_stage() == STAGE_AWAKE {
+            break;
+        }
+    }
+    assert_eq!(exec.sleep_stage(), STAGE_AWAKE, "{label}: the night ended");
+    if let Some(w) = &watching {
+        w.dump();
+    }
+    let ticks = exec.ticks().wrapping_sub(began);
+    let quiet_ticks = quiet(&mut exec);
+    let end = night_state(&exec, &sets);
+    eprintln!(
+        "DUMP {label} end {end:?} quiet in {quiet_ticks} ticks, ticks {ticks}, replays {} depotentiations {} pattern sums {:?}",
+        exec.replays(),
+        exec.depotentiations(),
+        pattern_sums(&exec, patterns)
+    );
+    let awake = night_engine(&Image::encode(&exec).expect("quiescent"), 0, None, |h| {
+        h.sleep_shift = 0
+    });
+    undropped(exec, label);
+    let written = Image::encode(&awake).expect("quiescent");
+    undropped(awake, label);
+    (written, (start_state.gain, end.gain))
+}
+
+/// `nights_gap` with the night without replay and the plain night on A's patterns watched where
+/// `watch` says.
+fn e020_gap(
+    start: &NightsStart,
+    gap: NightsGap,
+    image: &[u8],
+    first: &[Vec<u32>],
+    label: &str,
+    watch: bool,
+) -> (Vec<u8>, (u32, u32)) {
+    match gap {
+        NightsGap::NoReplay => e020_night(start, image, label, first, false, watch),
+        NightsGap::PlainFirst => e020_night(start, image, label, first, true, watch),
+        NightsGap::PlainBoth | NightsGap::Awake => nights_gap(start, gap, image, first, label),
+    }
+}
+
+/// The units A's patterns reach past their first, once each.
+fn e020_targets(patterns: &[Vec<u32>]) -> Vec<u32> {
+    let mut targets: Vec<u32> = patterns
+        .iter()
+        .flat_map(|p| p[1..].iter().copied())
+        .collect();
+    targets.sort_unstable();
+    targets.dedup();
+    targets
+}
+
+/// Each kind's sum onto six parts of A's readouts (exploration 020): readout 0 less the pair's own
+/// units in it (C's) and A's patterns' targets, those targets, C's own; then readout 1 less D's own
+/// and the targets, the targets, D's own. The first three add up to the kind's sum onto readout 0
+/// and the last three onto readout 1, held here.
+fn e020_split(start: &NightsStart, image: &[u8], label: &str, targets: &[u32]) {
+    let exec = zero_from(image, SCAN_UNITS, ZERO_ARM);
+    let sets = start.site.sets;
+    let kinds = &start.pair.kinds;
+    let mut parts: Vec<Vec<u32>> = Vec::new();
+    for (r, own) in [(0usize, &kinds[2]), (1, &kinds[5])] {
+        let readout = sets[r.saturating_add(2)];
+        assert!(
+            own.iter().all(|&u| readout.contains(u)),
+            "{label}: the pair's own units lie in A's readout"
+        );
+        let outside = |u: &u32| !own.contains(u);
+        parts.push(
+            readout
+                .units()
+                .filter(|u| outside(u) && targets.binary_search(u).is_err())
+                .collect(),
+        );
+        parts.push(
+            readout
+                .units()
+                .filter(|u| outside(u) && targets.binary_search(u).is_ok())
+                .collect(),
+        );
+        parts.push(own.clone());
+    }
+    let sum = |sources: &[u32], into: &[u32]| {
+        exec.coupling_sum(sources, into)
+            .expect("excitatory units once each, and every unit in the arena")
+    };
+    let sums: Vec<Vec<i64>> = kinds
+        .iter()
+        .map(|kind| parts.iter().map(|part| sum(kind, part)).collect())
+        .collect();
+    for (kind, row) in kinds.iter().zip(&sums) {
+        for r in 0..2usize {
+            let whole: Vec<u32> = sets[r.saturating_add(2)].units().collect();
+            let at = r.saturating_mul(3);
+            let parted = row[at..at.saturating_add(3)]
+                .iter()
+                .fold(0i64, |t, &v| t.saturating_add(v));
+            assert_eq!(parted, sum(kind, &whole), "{label}: the parts add up");
+        }
+    }
+    eprintln!(
+        "DUMP {label} split {sums:?} parts {:?}",
+        parts.iter().map(Vec::len).collect::<Vec<usize>>()
+    );
+    undropped(exec, label);
+}
+
+/// A's patterns (exploration 020): each one's stimulus, its first unit and its kind (exploration
+/// 016's six), the answer's readout under the mapping in force and, where the unit is shared, the
+/// readout the pair answers with it; then its targets, where they lie.
+fn e020_patterns(start: &NightsStart, patterns: &[Vec<u32>]) {
+    let site = &start.site;
+    let kinds = &start.pair.kinds;
+    let mut summary = [[0u32; 6]; 6];
+    for (i, pattern) in patterns.iter().enumerate() {
+        let first = pattern[0];
+        let s = (0u8..2)
+            .find(|&s| site.sets[usize::from(s)].contains(first))
+            .expect("a stimulus unit");
+        let kind = kinds
+            .iter()
+            .position(|k| k.contains(&first))
+            .expect("a kind of exploration 016");
+        let answer = answer_of(s, site.mirrored);
+        let theirs = matches!(kind, 1 | 4).then(|| answer_of(s, start.theirs.mirrored));
+        let (mut on_answer, mut on_other, mut outside, mut pair_own) = (0u32, 0u32, 0u32, 0u32);
+        for &unit in &pattern[1..] {
+            let readout = (0usize..2).find(|&r| site.sets[r.saturating_add(2)].contains(unit));
+            match readout {
+                Some(r) if r == answer => on_answer = on_answer.saturating_add(1),
+                Some(_) => on_other = on_other.saturating_add(1),
+                None => outside = outside.saturating_add(1),
+            }
+            if kinds[2].contains(&unit) || kinds[5].contains(&unit) {
+                pair_own = pair_own.saturating_add(1);
+            }
+        }
+        eprintln!(
+            "DUMP {} pattern {i} stimulus {s} kind {kind} first {first} answer {answer} the pair's answer {theirs:?} targets {:?} on the answer's readout {on_answer} on the other {on_other} outside {outside} the pair's own {pair_own}",
+            start.name,
+            &pattern[1..]
+        );
+        let row = &mut summary[kind];
+        for (slot, v) in row.iter_mut().zip([
+            1,
+            pattern.len().saturating_sub(1) as u32,
+            on_answer,
+            on_other,
+            outside,
+            pair_own,
+        ]) {
+            *slot = slot.saturating_add(v);
+        }
+    }
+    let targets = e020_targets(patterns);
+    eprintln!(
+        "DUMP {} patterns {} by kind [patterns, targets, on the answer's readout, on the other, outside, the pair's own] {summary:?}; distinct targets {}, of them the pair's own {}",
+        start.name,
+        patterns.len(),
+        targets.len(),
+        targets
+            .iter()
+            .filter(|u| kinds[2].contains(u) || kinds[5].contains(u))
+            .count()
+    );
+}
+
+/// Exploration 020's trial: on network `n` from start `s`, on path 0, the pair's head, then the
+/// first night without replay and the first plain night on A's patterns, both watched, and the
+/// night without replay again unwatched, each timed; each image and its read as it was of A held
+/// to the row H-47 pinned there.
+fn e020_trial(n: usize, s: usize) {
+    with_nights(n, s, "e020 trial", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        e020_patterns(start, &first);
+        let targets = e020_targets(&first);
+        let label = format!("{} path 0 head blocks {NIGHTS_EVERY}", start.name);
+        let (head, _) = nights_run(start, start.image, NIGHTS_EVERY, &label, path_from(0));
+        let before = format!("{} path 0 gap {NIGHTS_EVERY} before", start.name);
+        shared_sums(start, &head, &before);
+        e020_split(start, &head, &before, &targets);
+        let nights = [(0usize, true), (1, true), (0, false)];
+        two_at_a_time(&nights, |&(f, watch)| {
+            let gap = NIGHTS_GAPS[f];
+            let at = format!("{} path 0 {} watched {watch}", start.name, gap.name());
+            let clock = std::time::Instant::now();
+            let (image, gain) = e020_gap(
+                start,
+                gap,
+                &head,
+                &first,
+                &format!("{at} gap {NIGHTS_EVERY}"),
+                watch,
+            );
+            eprintln!("DUMP {at} the night in {} s", clock.elapsed().as_secs());
+            let blocks = format!("{at} blocks {NIGHTS_EVERY}");
+            e020_split(start, &image, &blocks, &targets);
+            let (a, couplings) = spread_read(
+                &start.site,
+                &image,
+                &blocks,
+                "as-it-was 0",
+                nights_read_from(0),
+            );
+            let row = nights_row(NIGHTS_ROWS[n][s][f], 0, 0).expect("H-47 pinned the row");
+            assert_eq!(
+                (crc64(&image), a, couplings, Some(gain)),
+                (row.image, row.first[0], row.couplings, row.gain),
+                "{at}: H-47's row at block 6 on path 0"
+            );
+            eprintln!("DUMP {at} holds H-47's row at block 6 on path 0");
+        });
+    });
+}
+
+/// One job of exploration 020: on network `n` from start `s`, H-47's job of the night without
+/// replay and the plain night on A's patterns (`nights_job`), every row held to the row H-47
+/// pinned; with A's patterns' composition, each image's split, the image before each gap with its
+/// kinds and split, and the nights at `WATCH_GAPS` watched.
+fn e020_job(n: usize, s: usize) {
+    let forms = NIGHTS_JOBS[0];
+    with_nights(n, s, "e020", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        e020_patterns(start, &first);
+        let targets = e020_targets(&first);
+        e020_split(
+            start,
+            start.image,
+            &format!("{} start", start.name),
+            &targets,
+        );
+        let heads = Mutex::new(BTreeMap::new());
+        two_at_a_time(&NIGHTS_PATHS, |&j| {
+            let at = format!("{} path {j} head blocks {NIGHTS_EVERY}", start.name);
+            let head = nights_run(start, start.image, NIGHTS_EVERY, &at, path_from(j));
+            heads.lock().expect("a head ended").insert(j, head);
+        });
+        let heads = heads.into_inner().expect("every head ended");
+        let chains: Vec<(usize, u64)> = forms
+            .iter()
+            .flat_map(|&f| NIGHTS_PATHS.iter().map(move |&j| (f, j)))
+            .collect();
+        let kept = Mutex::new(BTreeMap::new());
+        let readings = Mutex::new(BTreeMap::new());
+        two_at_a_time(&chains, |&(f, j)| {
+            let name = format!("{} path {j} {}", start.name, NIGHTS_GAPS[f].name());
+            let (mut at, mut ends) = heads[&j].clone();
+            for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                let label = format!("{name} blocks {block}");
+                if block > NIGHTS_LAST {
+                    let (image, ends) = nights_run(start, &at, NIGHTS_ON, &label, path_from(j));
+                    e020_split(start, &image, &label, &targets);
+                    readings
+                        .lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (nights_highest(&ends), None));
+                    kept.lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (label, image));
+                    continue;
+                }
+                if block != NIGHTS_EVERY {
+                    (at, ends) = nights_run(start, &at, NIGHTS_EVERY, &label, path_from(j));
+                }
+                let before = format!("{name} gap {block} before");
+                shared_sums(start, &at, &before);
+                e020_split(start, &at, &before, &targets);
+                let gap = format!("{name} gap {block}");
+                let watch = WATCH_GAPS.contains(&block);
+                let (image, gain) = e020_gap(start, NIGHTS_GAPS[f], &at, &first, &gap, watch);
+                e020_split(start, &image, &label, &targets);
+                readings
+                    .lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (nights_highest(&ends), Some(gain)));
+                kept.lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (label, image.clone()));
+                at = image;
+            }
+        });
+        let kept = kept.into_inner().expect("every form ended");
+        let readings = readings.into_inner().expect("every form ended");
+        let read = nights_reads(start, &kept);
+        for f in forms {
+            let mut rows = Vec::new();
+            for (p, &j) in NIGHTS_PATHS.iter().enumerate() {
+                for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                    let key = (f, j, c);
+                    let counts = |pair: bool| -> [u8; 16] {
+                        core::array::from_fn(|i| read[&(key, pair, i as u64)].0)
+                    };
+                    let (highest, gain) = readings[&key];
+                    let row = NightsRow {
+                        image: crc64(&kept[&key].1),
+                        first: counts(false),
+                        second: counts(true),
+                        couplings: read[&(key, false, 0)].1,
+                        highest,
+                        gain,
+                    };
+                    eprintln!(
+                        "DUMP {} {} path {j} block {block} PIN row {row:?}",
+                        start.name,
+                        NIGHTS_GAPS[f].name()
+                    );
+                    assert_eq!(nights_row(&rows, p, c), None, "rows in order");
+                    rows.push(row);
+                }
+            }
+            let pinned = NIGHTS_ROWS[n][s][f];
+            assert!(!pinned.is_empty(), "H-47 pinned the form's rows");
+            assert_eq!(rows.as_slice(), pinned, "{}: H-47's rows", start.name);
+            eprintln!(
+                "DUMP {} {}: every row is H-47's",
+                start.name,
+                NIGHTS_GAPS[f].name()
+            );
+        }
+    });
+}
+
+/// Exploration 020's trial, on seed 23 from a first mapping and the mirrored assignment.
+#[test]
+#[ignore]
+fn the_harness_of_what_a_replay_costs_explore() {
+    e020_trial(1, 3);
+}
+
+/// Exploration 020 on seed 23, from a first mapping and the mirrored assignment: H-47's cell whose
+/// plain nights kept 4.9 less of A than nights without replay.
+#[test]
+#[ignore]
+fn what_a_replay_costs_a_first_mapping_on_seed_23_from_the_mirrored_assignment_explore() {
+    e020_job(1, 3);
+}
+
+/// Exploration 020 on seed 24, from the eighth image and the assignment: H-47's cell whose plain
+/// nights kept 1.8 more of A, within 2 SE.
+#[test]
+#[ignore]
+fn what_a_replay_costs_the_eighth_image_on_seed_24_from_the_assignment_explore() {
+    e020_job(2, 0);
+}
+
+/// Exploration 020's control on seed 22, from a first mapping and the mirrored assignment.
+#[test]
+#[ignore]
+fn what_a_replay_costs_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore() {
+    e020_job(0, 3);
+}
+
+/// Exploration 020's control on seed 22, from the eighth image and the assignment.
+#[test]
+#[ignore]
+fn what_a_replay_costs_the_eighth_image_on_seed_22_from_the_assignment_explore() {
+    e020_job(0, 0);
+}
