@@ -47707,7 +47707,79 @@ fn e020_split(start: &NightsStart, image: &[u8], label: &str, targets: &[u32]) {
         "DUMP {label} split {sums:?} parts {:?}",
         parts.iter().map(Vec::len).collect::<Vec<usize>>()
     );
+    e020_classes(start, &exec, label);
     undropped(exec, label);
+}
+
+/// The classes of a unit in exploration 020's matrix: A alone, A's and C's, B alone, B's and D's,
+/// C's own, D's own (exploration 016's six kinds), readout 0's other excitatory units, readout 1's,
+/// every other excitatory unit, then the inhibitory units in readout 0, in readout 1 and elsewhere.
+const E020_CLASSES: [&str; 12] = [
+    "A alone",
+    "A and C",
+    "B alone",
+    "B and D",
+    "C's own",
+    "D's own",
+    "readout 0's other excitatory",
+    "readout 1's other excitatory",
+    "other excitatory",
+    "inhibitory in readout 0",
+    "inhibitory in readout 1",
+    "inhibitory elsewhere",
+];
+
+/// Each class's weights onto each class (exploration 020): the sum of the weights of the synapses
+/// a unit of one class sends to a unit of another, an inhibitory unit's as a magnitude. The
+/// excitatory rows and the inhibitory rows add up to `weights_by_polarity`'s two sums, held here.
+fn e020_classes(start: &NightsStart, exec: &Engine, label: &str) {
+    let sets = start.site.sets;
+    let mut class = vec![u8::MAX; exec.units().len()];
+    for (c, kind) in [(0u8, 0usize), (1, 1), (2, 3), (3, 4), (4, 2), (5, 5)] {
+        for &unit in &start.pair.kinds[kind] {
+            class[unit as usize] = c;
+        }
+    }
+    for unit in exec.units() {
+        let id = unit.id as u32;
+        let inhibitory = unit.flags & FLAG_INHIBITORY != 0;
+        let slot = &mut class[unit.id as usize];
+        if *slot != u8::MAX {
+            assert!(!inhibitory, "{label}: every kind's unit is excitatory");
+            continue;
+        }
+        let at = [sets[2].contains(id), sets[3].contains(id)];
+        *slot = match (inhibitory, at) {
+            (false, [true, _]) => 6,
+            (false, [_, true]) => 7,
+            (false, _) => 8,
+            (true, [true, _]) => 9,
+            (true, [_, true]) => 10,
+            (true, _) => 11,
+        };
+    }
+    let mut m = [[0i64; 12]; 12];
+    for unit in exec.units() {
+        let from = usize::from(class[unit.id as usize]);
+        let inhibitory = unit.flags & FLAG_INHIBITORY != 0;
+        for s in unit.fan_out(exec.blocks()) {
+            let w = i64::from(s.weight_q1_15);
+            let cell = &mut m[from][usize::from(class[s.target as usize])];
+            *cell = cell.saturating_add(if inhibitory { w.saturating_neg() } else { w });
+        }
+    }
+    let total = |rows: core::ops::Range<usize>| {
+        m[rows]
+            .iter()
+            .flatten()
+            .fold(0i64, |t, &v| t.saturating_add(v))
+    };
+    assert_eq!(
+        (total(9..12), total(0..9)),
+        weights_by_polarity(exec),
+        "{label}: the classes add up to the two sums"
+    );
+    eprintln!("DUMP {label} classes {m:?} of {E020_CLASSES:?}");
 }
 
 /// A's patterns (exploration 020): each one's stimulus, its first unit and its kind (exploration
