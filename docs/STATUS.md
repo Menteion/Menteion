@@ -1,7 +1,7 @@
 # Where the work stands
 
 Every round rewrites this page whole, and it holds no history ([ADR-0197](adr/0197-one-place-for-each-kind-of-fact.md)).
-[ADR-0233](adr/0233-a-running-configuration-built.md) wrote it on 2026-11-01, with brief 086.
+[ADR-0234](adr/0234-learning-that-sleep-keeps.md) wrote it on 2026-11-02, after explorations 014 to 019 and before brief 087.
 
 ## The engine
 
@@ -56,5 +56,5 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 ## The next decision
 
 [ADR-0232](adr/0232-a-running-configuration-and-m12-closed.md) closed M12, and [ADR-0233](adr/0233-a-running-configuration-built.md) built its running configuration.
-1. M11, learning that sleep keeps: an exploration reads a night with replay against one without, and M11's decision ADR then settles F-47's replay.
+1. M11, learning that sleep keeps: brief 087 builds [ADR-0234](adr/0234-learning-that-sleep-keeps.md)'s slow-wave baseline, the ledger spent and a trial's own units, and runs [H-47](research/H-47.md) on three networks. Explorations [018](explorations/018-what-nights-keep.md) and [019](explorations/019-a-night-without-replay.md) read the question on seed 22, exploratory. F-47 is open until brief 087 rewrites the replay's documents.
 2. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
