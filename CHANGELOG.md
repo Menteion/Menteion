@@ -8,6 +8,7 @@ This file is a historical record: `spec-graph` treats it as history, so nothing 
 
 ### Added
 
+- **Learning that sleep keeps ([ADR-0234](docs/adr/0234-learning-that-sleep-keeps.md)); H-47; brief 087; whitepaper 5.30.0.** The replay stays plain, its documents to give the value that arrives. A slow-wave baseline, the ledger spent and a trial's own units enter unset. H-47 asks on three networks whether nights with replay keep a mapping, against nights without.
 - **A running configuration, built ([ADR-0233](docs/adr/0233-a-running-configuration-built.md)); brief 086; whitepaper 5.29.0.** `Config::runs_a_settled_image()`, `ConfigError::ExponentBesideRead` and `Executor::coupling_sum`. H-46's arm runs under the name with its kept addresses unset. One dispatch of every test and seed 22's two first halves held every pin they list.
 - **A running configuration, and M12 closed ([ADR-0232](docs/adr/0232-a-running-configuration-and-m12-closed.md)); brief 086; whitepaper 5.28.0.** `Config::runs_a_settled_image()` will carry a quarter's exponent, the host setting the zero sum's groups. The derivation stays H-42's. M12 closes with what is unread named, and M11 opens with an exploration.
 - **The spec tools under their new scope ([ADR-0231](docs/adr/0231-the-spec-tools-under-their-new-scope.md)); whitepaper 5.27.0.** `@spec-family/spec-guard` 0.30.0, `spec-graph` 0.21.0 and `spec-brief` 0.12.0 replace the `@descent-vtt` pins, and `npm run spec` passes as before. Two whitepaper cells moved under their table. spec-harness stays out.
