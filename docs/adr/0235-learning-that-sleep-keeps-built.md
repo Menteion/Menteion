@@ -96,7 +96,10 @@ What was read first (principle 2), on 2026-11-02 at `main` `754c966`:
 
 ### What the dispatches read
 
-Written when the calibration has run.
+- **The calibration ran on `5e5946d`**, the protocol's commit, which carries every line of this ADR's code. Dispatch [41441229981](https://github.com/Menteion/Menteion/actions/runs/41441229981) at `scope=exhaustive`, the twelve short forms of H-47 excluded: 18 of 18 shards green, the 227 tests the listing names each exit 0 with one test reported, 104 599 s summed. Every pin they hold held, with the three parts unset.
+- **The longest shard** took 67 minutes, 28 % of its bound of 240 ([ADR-0179](0179-the-bounds-rule-restated.md)); the shortest 39. No job passed 60 %.
+- **The twin** in dispatch [41441234613](https://github.com/Menteion/Menteion/actions/runs/41441234613) ran these parts as H-47 sets them, on seed 22, and held every line it reads to explorations 018's and 019's logs ([ADR-0236](0236-learning-that-sleep-keeps-its-protocol.md)).
+- **The mutation gate** on `978391f`, run 41436922503, and on `5e5946d`, run 41441219858, made 41 mutants in the changed lines each time and caught all 29 that built; 12 were unviable.
 
 ### The sweep
 

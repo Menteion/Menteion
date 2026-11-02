@@ -8,6 +8,7 @@ This file is a historical record: `spec-graph` treats it as history, so nothing 
 
 ### Added
 
+- **Learning that sleep keeps, built and measured ([ADR-0235](docs/adr/0235-learning-that-sleep-keeps-built.md) to [ADR-0237](docs/adr/0237-learning-that-sleep-keeps-measured.md)); H-47 = no at step 5; F-47 resolved; brief 087; whitepaper 5.31.0.** A slow-wave baseline, the ledger spent and a trial's own units, unset by default. Replay kept more in 10 cells of 12.
 - **Learning that sleep keeps ([ADR-0234](docs/adr/0234-learning-that-sleep-keeps.md)); H-47; brief 087; whitepaper 5.30.0.** The replay stays plain, and its documents will give the value that arrives. A slow-wave baseline, the ledger spent and a trial's own units enter unset. H-47 asks on three networks whether nights with replay keep more of a mapping than nights without.
 - **A running configuration, built ([ADR-0233](docs/adr/0233-a-running-configuration-built.md)); brief 086; whitepaper 5.29.0.** `Config::runs_a_settled_image()`, `ConfigError::ExponentBesideRead` and `Executor::coupling_sum`. H-46's arm runs under the name with its kept addresses unset. One dispatch of every test and seed 22's two first halves held every pin they list.
 - **A running configuration, and M12 closed ([ADR-0232](docs/adr/0232-a-running-configuration-and-m12-closed.md)); brief 086; whitepaper 5.28.0.** `Config::runs_a_settled_image()` will carry a quarter's exponent, the host setting the zero sum's groups. The derivation stays H-42's. M12 closes with what is unread named, and M11 opens with an exploration.
