@@ -16,7 +16,7 @@ M11 asks for a learned mapping held through a sleep with replay, against one wit
 
 When the round is done, the tree holds:
 - the slow-wave baseline as a configuration's, the ledger spent on a call, and a trial that presents the units the host gives, each unset the engine as it is, held by property tests;
-- the documents giving the replay's drive as it arrives, and F-47 resolved;
+- the documents outside the state crates giving the replay's drive as it arrives, and F-47 resolved;
 - H-47's protocol committed before any arm ran, its 24 jobs run, its verdict, and a short form of each of its twelve cells in the weekly job.
 
 It writes a built ADR, a protocol ADR and a measured ADR, adds its readings to [H-47's report](../docs/research/H-47.md) and rewrites `docs/STATUS.md` ([briefs/README.md](README.md#a-rounds-documents)).
@@ -31,7 +31,7 @@ The scope is the front matter's ([ADR-0191](../docs/adr/0191-a-rounds-scope-eigh
 - **H-47 is ADR-0234's**: its clauses, its constants and its five predicted readings are committed in the protocol ADR and pinned in the tests before any arm runs, and nothing among them moves after.
 - **The replay stays plain.** The twin, its drive divided by the gain, is built nowhere: it stays on the explorations' tags.
 - **No `unsafe` beyond ADR-0023's.** No `f32`/`f64`; every loop ends by construction ([ADR-0062](../docs/adr/0062-the-first-complete-sweeps-list.md)); the mutation gate catches every mutant in the lines the change touches ([ADR-0030](../docs/adr/0030-verification-governance.md)); a new rule carries a test over the lattice.
-- **The runs are dispatches** ([briefs/README.md](README.md#evidencing-a-round)): the calibration as `npm run round:additive` reads it, and the 24 jobs at `scope=arms`, dispatched together on the protocol's commit, the calibration and the twin read first. ADR-0234 reproduces the long jobs at `scope=arms` on the reproduction's commit, as ADR-0226 did, since `scope=exhaustive` cannot list them. No whole-domain test runs on the developer machine.
+- **The runs are dispatches** ([briefs/README.md](README.md#evidencing-a-round)): the calibration as `npm run round:additive` reads it, and the 24 jobs and the twin at `scope=arms`, dispatched together on the protocol's commit, the calibration and the twin read first. ADR-0234 reproduces the long jobs at `scope=arms` on the reproduction's commit, as ADR-0226 did, since `scope=exhaustive` cannot list them. No whole-domain test runs on the developer machine.
 - **The pull request opens as a draft with the round's first push** ([ADR-0223](../docs/adr/0223-the-gate-shortened-and-explorations-kept-as-tags.md)), and leaves draft with the commit that asks for the merge, which sets the round's ADRs to `accepted`.
 - **The branch is named `claude/brief-087-…`**, never rebased or force-pushed once a dispatch has run on it.
 - **The documents are ADR-0197's**: the new ADRs in its shape, the tables written by `node scripts/adr-index.mjs`, new text within `npm run spec:shape`'s limits.
@@ -46,7 +46,12 @@ The scope is the front matter's ([ADR-0191](../docs/adr/0191-a-rounds-scope-eigh
 Re-derived on 2026-11-02 against `main` at `8641246`. Line numbers move; the symbols are what to re-derive.
 
 1. **The replay** (`runtime/menteion-runtime/src/executor.rs`): `REPLAY_MESSAGES` messages of `REPLAY_DRIVE_Q16`, 1.25 each, built as `REPLAY_MESSAGE` and delivered on the ripple's cadence by `deliver`. The turn scales the summed batch by the tick's gain in `scaled`, an injected message as a synapse's.
-2. **The documents that give the replay's drive before the gain**: the comment on `REPLAY_DRIVE_Q16` ("about twelve ticks on"), the comment on `CUE_Q16` in `task.rs`'s tests, whitepaper §6.6 step 2, and [F-47](../docs/WHITEPAPER.md#11-risks-and-technical-debt)'s row. An accepted ADR's body is never edited.
+2. **The documents that give the replay's drive before the gain**:
+   - in `executor.rs`, the comment on `REPLAY_DRIVE_Q16` ("about twelve ticks on");
+   - in `task.rs`, the module's comment ("about twelve ticks on, as a replay does") and the comment on `CUE_Q16` in its tests;
+   - in the whitepaper, §6.6 step 2, §8.8's row for the complementary learning systems ("a drive of 2.5"), and [F-47](../docs/WHITEPAPER.md#11-risks-and-technical-debt)'s row;
+   - the comment on `RIPPLE_SHIFT` in `crates/menteion-hippocampus/src/lib.rs` ("one replay is one spike of each unit of the pattern"), which is a state crate's and protected here: the built ADR names it as left.
+   An accepted ADR's body is never edited.
 3. **The modulation**: the tick builds `Modulations::of(&self.modulator, self.modulation_baseline_q16, …)` before the barrier. The sleep stage is `homeostasis.sleep_stage`, `STAGE_SWS` in slow-wave sleep (`menteion-homeostasis`).
 4. **The ledger**: `Executor::tag_episode`, `episodes`, `episode_room`, and `Episode::is_spent` (`menteion-hippocampus`). A ripple replays the episode under the hand that is not spent.
 5. **The task** (`runtime/menteion-runtime/src/task.rs`): `Stimulus::inject` and `cancel_at` send to the set's units through `send(set, …)`, and `Task::trial` presents the trial's stimulus.
@@ -56,7 +61,9 @@ Re-derived on 2026-11-02 against `main` at `8641246`. Line numbers move; the sym
    - their harness on the tag `explore/019-a-night-without-replay`, in `tests/inhibition.rs`: `night_engine`, `night_read` and its `tag` switch, `idle_on`, `NightsGap`, `what_nights_keep`, `NightFrom`, `ReadFrom` and the `nights_without_replay_…` tests.
 7. **The starts**: H-46's eighth images, `tests/h46/zero<seed>-<arm>-image-8.image` with their CRC-64, and a first mapping learned from H-42's image as exploration 016 learned it.
 8. **The running configuration** ([ADR-0233](../docs/adr/0233-a-running-configuration-built.md)): `Config::runs_a_settled_image()`, the groups read once with `Executor::coupling_sum` and set with `Executor::set_zero_sum` at each load.
-9. **The explorations' readings and their logs**: exploration 019's runs 41408442255 and 41413189972, and 018's 41367828454 and 41374137568, hold seed 22's rows for the twin of step 2.
+9. **The explorations' readings and their logs**: exploration 019's runs 41408442255 and 41413189972, and 018's 41367828454 and 41374137568, hold seed 22's rows for the twin of step 2. Their artifacts expire, so the round downloads them first.
+   - The tag's `night_engine` decodes under the harness's `config`, with kept addresses and the decoded exponent, not under `Config::runs_a_settled_image()`.
+   - [ADR-0233](../docs/adr/0233-a-running-configuration-built.md) held H-46's arm to the name with the kept addresses unset. Here the twin is what holds the name to the explorations' logs.
 10. **The process**: eighteen weekly shards, the bound 240 minutes; a `…_paused` test runs only by name at `scope=arms` ([ADR-0127](../docs/adr/0127-the-paused-line-leaves-the-weekly.md)); `spec-brief archive --strict` measured from `origin/main`.
 11. **The sweep**: the schedule runs on 2026-11-04 at 20:17Z. If it has ended when this round's first ADR merges, that ADR records it ([briefs/README.md](README.md#evidencing-a-round)).
 
@@ -67,11 +74,12 @@ Re-derived on 2026-11-02 against `main` at `8641246`. Line numbers move; the sym
   - The ledger spent on a call between ticks.
   - A trial that presents the units the host gives, its messages and its cancel to them.
   - A test over `testkit/prop.rs`'s lattice for each: unset, or given each set's own units, the engine and the trial are what they were bit for bit.
-  - The documents of Context 2 giving the replay's drive as it arrives, 4.375 at a gain of 1.75, and F-47's row resolved.
+  - The documents of Context 2 outside the state crates giving the replay's drive as it arrives, 4.375 at a gain of 1.75, and F-47's row resolved with the `RIPPLE_SHIFT` comment named as left.
 - [ ] **H-47's protocol, in a new ADR at the next free number, kind `protocol`, committed before any arm runs.**
   - The harness, its 24 `…_paused` jobs and 12 `…_exhaustive` short forms, `tests/inhibition/pins/h47.rs` with its placeholder tables, and the verdict's test over them.
+  - Every constant of the harness listed with its value, and each term of [H-47's report](../docs/research/H-47.md#its-terms) tied to the code that reads it.
   - `npm run round:additive`'s reading quoted, and the calibration it names.
-  - The twin of H-47's step 2 named.
+  - The twin of H-47's step 2 as a `…_paused` test of its own. Its lines are pinned by hash in `h47.rs` from the explorations' logs, the label aside: the `PIN` lines, the groups' `kinds`, the head's `run` lines, each night's `start`, `window` and `end` lines, each image's `kinds` and `held`, and the 32 reads of each image.
 - [ ] **The dispatches.**
   - The calibration and the 24 jobs together on the protocol's commit; the calibration and the twin read first.
   - The tables pinned from the jobs' logs, then the reproduction: the short forms at `scope=exhaustive -f only`, and the 24 jobs again at `scope=arms`.
@@ -99,8 +107,8 @@ Re-derived on 2026-11-02 against `main` at `8641246`. Line numbers move; the sym
 
 The executing session may replace any instruction above with a better decision, recorded in its ADR. That covers:
 - the three parts' names, and whether the units a trial presents are a `Task` call's argument or a field of the stimulus;
-- how the harness is built from the tags' code, every reading of exploration 019 on seed 22 kept;
-- each short form's length, the twelve within 3 600 s in the cost table;
+- how the harness is built from the tags' code, the twin of step 2 held;
+- each short form's length, the twelve within 3 600 s together on x86-64 as the reproduction reads them alone;
 - splitting a cell's two jobs further, within the job's bound;
 - a file the round must change and its scope does not hold, within this brief's mission, widened as `briefs/README.md` says.
 
@@ -112,7 +120,7 @@ It may not:
 - run a derivation, a lead-in or an arm beyond the dispatches above, or any whole-domain test on the developer machine;
 - reach the standing directives, the whitepaper's invariants or the constraints in `CLAUDE.md`.
 
-If the twin of step 2 is not exploration 019's log, or a dispatch moves a pinned number, the round stops there: the finding is written, and nothing is merged until it is understood.
+If the twin of step 2 is not the explorations' logs, or a dispatch moves a pinned number, the round stops there: the finding is written, and nothing is merged until it is understood.
 
 ## Verification
 
@@ -142,7 +150,7 @@ node scripts/adr-index.mjs
 npx --no-install @spec-family/spec-brief archive 087 --strict --pr <n> --summary "<one paragraph>"
 ```
 
-- The calibration is green and the twin is exploration 019's log, before any arm's log is read.
+- The calibration is green and the twin holds its pinned hashes, before any arm's log is read.
 - The 24 jobs are green, and their reproduction holds every pinned table.
 - Every commit a dispatch ran on is an ancestor of the pull request's head, and no file under `runtime/`, `crates/` or `benches/` changes after the reproduction's commit.
 - The archive passes `--strict`: nothing outside `affectedFiles` and nothing in `protectedFiles` changed.

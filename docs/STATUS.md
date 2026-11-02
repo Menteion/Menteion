@@ -56,5 +56,5 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 ## The next decision
 
 [ADR-0232](adr/0232-a-running-configuration-and-m12-closed.md) closed M12, and [ADR-0233](adr/0233-a-running-configuration-built.md) built its running configuration.
-1. M11, learning that sleep keeps: brief 087 builds [ADR-0234](adr/0234-learning-that-sleep-keeps.md)'s slow-wave baseline, the ledger spent and a trial's own units, and runs [H-47](research/H-47.md) on three networks. Explorations [018](explorations/018-what-nights-keep.md) and [019](explorations/019-a-night-without-replay.md) read it on seed 22. F-47 is open until brief 087 rewrites the replay's documents.
+1. M11, learning that sleep keeps: brief 087 builds [ADR-0234](adr/0234-learning-that-sleep-keeps.md)'s slow-wave baseline, the ledger spent and a trial's own units, and runs [H-47](research/H-47.md) on three networks. Explorations [018](explorations/018-what-nights-keep.md) and [019](explorations/019-a-night-without-replay.md) read the question on seed 22, exploratory. F-47 is open until brief 087 rewrites the replay's documents.
 2. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
