@@ -56,7 +56,8 @@ const BASELINE_Q16: i32 = 0x8000;
 /// The reward's magnitude, 1.0: the whole width of the modulation, signed by the outcome.
 const REWARD_Q16: i32 = ONE;
 /// The stimulus: two messages of 1.25 into every unit of the set, the replay drive's
-/// (ADR-0038), which fires a unit at its base threshold exactly once.
+/// (ADR-0038), which fires a unit at its base threshold exactly once at a gain of 1.0. The
+/// executor scales them by the gain (F-47), so at this file's 2.0 they arrive as 5.0.
 const STIMULUS_Q16: i32 = 0x0001_4000;
 const STIMULUS_MESSAGES: u32 = 2;
 /// The synaptic gain, held: 2.0, where the reference network fires at 7 to 10 Hz under the

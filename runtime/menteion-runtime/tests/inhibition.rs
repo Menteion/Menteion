@@ -218,6 +218,20 @@
 
 #![deny(clippy::arithmetic_side_effects)]
 
+// Every dump line as `std::eprintln!` prints it, and kept beside while a twin listens (brief
+// 087): H-47's twin reads its own lines back, the derivation's among them, to hold them to the
+// explorations' logs. With no twin listening it prints what `eprintln!` prints, and nothing else.
+macro_rules! eprintln {
+    () => {
+        std::eprintln!()
+    };
+    ($($arg:tt)*) => {{
+        let line = format!($($arg)*);
+        std::eprintln!("{line}");
+        $crate::listened(&line);
+    }};
+}
+
 // The harness — the network, the task, the readings, the oracle, every rule and every pinned
 // table of ADR-0065 to ADR-0083 — is `tests/instrument.rs`'s module, compiled into this binary
 // as well. What this binary does not call is that binary's, so the module's unused items and
@@ -43746,6 +43760,9 @@ struct ZeroGroups {
     sources: [Vec<u32>; 2],
     values: [i64; 2],
     targets: Vec<u32>,
+    /// H-47's further groups (ADR-0236), each its source units and its value, held beside these;
+    /// empty everywhere else.
+    further: Vec<(Vec<u32>, i64)>,
 }
 
 /// The groups on network `made`: each value read from H-42's image through `coupling_sum`, as a
@@ -43783,6 +43800,7 @@ fn zero_groups(made: &Made, name: &str) -> ZeroGroups {
         sources,
         values,
         targets,
+        further: Vec::new(),
     }
 }
 
@@ -44669,4 +44687,2299 @@ fn zero_tables() {
         readings, ZERO_READINGS_READ_1024,
         "ADR-0226's four predicted readings, as read"
     );
+}
+
+// ------------------------------------------- written before the run (ADR-0234, ADR-0236)
+
+use menteion_hippocampus::{PATTERN_MAX, RIPPLE_SHIFT};
+use menteion_homeostasis::{PRESSURE_MAX_Q16, STAGE_AWAKE, STAGE_SWS};
+use std::collections::BTreeMap;
+use std::sync::Mutex;
+
+/// H-47's networks (ADR-0234): H-46's three, at 1 024 units, whose eighth images it starts from.
+const NIGHTS_SEEDS: [u64; 3] = ZERO_SEEDS;
+
+/// Where a start's image comes from (ADR-0234): H-46's eighth image of an arm, whose mapping in
+/// force is its eighth schedule's last; or a first mapping, learned from H-42's image in the arm
+/// over its first `FLIP` trials, 24 blocks, under the zero sum, as H-46's first schedule begins.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum NightFrom {
+    Eighth,
+    FirstMapping,
+}
+
+/// H-47's four starts on a network, in its tables' order.
+const NIGHTS_STARTS: [(NightFrom, Reversal); 4] = [
+    (NightFrom::Eighth, Reversal::AssignmentFirst),
+    (NightFrom::Eighth, Reversal::MirroredFirst),
+    (NightFrom::FirstMapping, Reversal::AssignmentFirst),
+    (NightFrom::FirstMapping, Reversal::MirroredFirst),
+];
+
+/// The four forms of a gap (ADR-0234), in its tables' order: a night without replay, a plain
+/// night on A's patterns, a plain night on both mappings' patterns, and the awake gap.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum NightsGap {
+    NoReplay,
+    PlainFirst,
+    PlainBoth,
+    Awake,
+}
+
+impl NightsGap {
+    /// Its name in a label, the explorations'.
+    const fn name(self) -> &'static str {
+        match self {
+            Self::NoReplay => "no-replay",
+            Self::PlainFirst => "plain-first",
+            Self::PlainBoth => "plain-both",
+            Self::Awake => "awake",
+        }
+    }
+}
+
+const NIGHTS_GAPS: [NightsGap; 4] = [
+    NightsGap::NoReplay,
+    NightsGap::PlainFirst,
+    NightsGap::PlainBoth,
+    NightsGap::Awake,
+];
+
+/// A cell's two jobs, by the forms' indices: the night without replay with the plain night on
+/// A's patterns, then plain on both with the awake gap.
+const NIGHTS_JOBS: [[usize; 2]; 2] = [[0, 1], [2, 3]];
+
+/// The pair's blocks before each gap, the block of the last gap, and the blocks after it with
+/// none (exploration 018).
+const NIGHTS_EVERY: usize = 6;
+const NIGHTS_LAST: usize = 24;
+const NIGHTS_ON: usize = 12;
+
+/// The checkpoints at which every image is read: right after each gap, and block 36's end.
+const NIGHTS_CHECKPOINTS: [usize; 5] = [6, 12, 18, 24, 36];
+
+const _: () = assert!(NIGHTS_LAST + NIGHTS_ON == 36 && NIGHTS_LAST == 4 * NIGHTS_EVERY);
+
+/// Exploration 017's paths 0, 5 and 6: path `j` runs the pair from the trial of index
+/// `PATH_TRIALS × j`, and past `PATHS_ON_ONE_DRIVE` on the drive's seed plus `j`.
+const NIGHTS_PATHS: [u64; 3] = [0, 5, 6];
+const PATH_TRIALS: u64 = 4_096;
+const PATHS_ON_ONE_DRIVE: u64 = 4;
+
+/// An image's reads of a mapping (exploration 017's): the read as it was, and fifteen by `Both`,
+/// the `i`-th from the trial of index `64 i` on the drive's seed plus `i`.
+const NIGHTS_READS: u64 = 16;
+
+/// The night (explorations 014 and 018): its sleep shift, its slow-wave baseline, and the
+/// priority its episodes are tagged at, more REM ripples than a night gives any of them.
+const NIGHT_SHIFT: u8 = 7;
+const NIGHT_SLOW_WAVE_Q16: i32 = ONE / 2;
+const NIGHT_PRIORITY: u8 = 200;
+
+/// The awake gap: a night's ticks at shift 7 from H-46's eighth image (exploration 014).
+const NIGHT_AWAKE_TICKS: u64 = 4_037_214;
+
+/// A ripple, in ticks (ADR-0038), and the most a night may take, 512 windows: its stages end it
+/// well before (ADR-0037).
+const NIGHT_RIPPLE: u64 = 1 << RIPPLE_SHIFT;
+const NIGHT_RIPPLES_MAX: u64 = 512 * (WINDOW_TICKS / NIGHT_RIPPLE);
+
+/// The span from a ripple a night's window reads as its replay's (exploration 014's
+/// `RippleRead`): a basal time constant.
+const NIGHT_CAPTURE_TICKS: u32 = 512;
+
+/// The pair's places (exploration 015). No place lies outside the four sets, so each stimulus is
+/// taken from a readout, one from each: the odd place and the even place farthest from stimuli A
+/// and B, nine apart, so that neither drives the other through a local synapse.
+const SECOND_C_OFFSET: u32 = 5;
+const SECOND_D_OFFSET: u32 = 16;
+
+const _: () = assert!(
+    R0_MASK & (1 << SECOND_C_OFFSET) != 0
+        && R1_MASK & (1 << SECOND_D_OFFSET) != 0
+        && SECOND_D_OFFSET - SECOND_C_OFFSET > PRIOR_WINDOW
+        && PERIOD + SECOND_C_OFFSET - SECOND_D_OFFSET > PRIOR_WINDOW
+);
+
+/// The share (exploration 016): the periods `j` of A's and B's units whose bit `j & 3` is set,
+/// 26 of the 51, spread round the ring.
+const NIGHTS_SHARE: u32 = 0b0101;
+
+/// ADR-0234's prediction, and each of its five predicted readings.
+const NIGHTS_PREDICTED: bool = true;
+const NIGHTS_READINGS_PREDICTED: [bool; 5] = [true; 5];
+
+/// Clause 2's floor: the pair's mean count at least 56 of 64.
+const NIGHTS_PAIR_FLOOR: i64 = 56;
+
+/// Readings 1 and 5: in at least 10 of the 12 cells.
+const NIGHTS_READING_CELLS: usize = 10;
+
+/// Reading 3: A's margin at least 2 M over.
+const NIGHTS_MARGIN_OVER: i64 = 2_000_000;
+
+// ---------------------------------------------------------------- the rules (ADR-0236)
+
+/// One image of H-47 (ADR-0236): a form's image on a path at a checkpoint. `image` its CRC-64;
+/// `first` and `second` A's and the pair's `correct` by stream, the read as it was then `Both` 1
+/// to 15; `couplings` A's four in the image, `c0` to `c3`; `highest` each of them at its highest
+/// over the block ends of the pair's stretch before the checkpoint; `gain` the gap's at its start
+/// and its end, none at block 36.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct NightsRow {
+    image: u64,
+    first: [u8; 16],
+    second: [u8; 16],
+    couplings: [i64; 4],
+    highest: [i64; 4],
+    gain: Option<(u32, u32)>,
+}
+
+/// A form's row on path `p` at checkpoint `c`: the rows go path by path in `NIGHTS_PATHS`' order,
+/// checkpoint by checkpoint.
+fn nights_row(rows: &[NightsRow], p: usize, c: usize) -> Option<&NightsRow> {
+    rows.get(p.saturating_mul(NIGHTS_CHECKPOINTS.len()).saturating_add(c))
+}
+
+/// One mapping's 48 counts at checkpoint `c`, `[path][stream]`: A's, or the pair's. A row a form
+/// lacks counts nothing.
+fn nights_counts(rows: &[NightsRow], c: usize, pair: bool) -> [[i64; 16]; 3] {
+    core::array::from_fn(|p| match nights_row(rows, p, c) {
+        Some(row) => (if pair { row.second } else { row.first }).map(i64::from),
+        None => [0; 16],
+    })
+}
+
+/// The 48 differences of A's counts at checkpoint `c`, form `a`'s less form `b`'s, each on its
+/// path and its stream.
+fn nights_differences(a: &[NightsRow], b: &[NightsRow], c: usize) -> [[i64; 16]; 3] {
+    let (x, y) = (nights_counts(a, c, false), nights_counts(b, c, false));
+    core::array::from_fn(|p| core::array::from_fn(|r| x[p][r].saturating_sub(y[p][r])))
+}
+
+/// The sum of 48 values.
+fn nights_sum(x: &[[i64; 16]; 3]) -> i64 {
+    x.iter().flatten().fold(0i64, |s, &v| s.saturating_add(v))
+}
+
+/// The split of 48 differences `x[path][stream]` (explorations 017 and 019) in integers: `(A,
+/// B, S)`, `S` the sum, $A = 6 \sum_r (16 S_r - S)^2 - \sum_{p,r} (48 x - 3 S_p - 16 S_r + S)^2$
+/// and $B = 45 \sum_p (3 S_p - S)^2$, $S_p$ a path's sum and $S_r$ a stream's. $A$ is
+/// $90 \cdot 48^2$ times the stream's variance, the streams' means' less the rest's over three,
+/// and $B$ the same multiple of the variance of the three paths' means.
+fn nights_split(x: &[[i64; 16]; 3]) -> (i64, i64, i64) {
+    let mut paths = [0i64; 3];
+    let mut streams = [0i64; 16];
+    for (p, row) in x.iter().enumerate() {
+        for (r, &v) in row.iter().enumerate() {
+            paths[p] = paths[p].saturating_add(v);
+            streams[r] = streams[r].saturating_add(v);
+        }
+    }
+    let s = nights_sum(x);
+    let squared = |e: i64| e.saturating_mul(e);
+    let by_stream = streams.iter().fold(0i64, |t, &v| {
+        t.saturating_add(squared(v.saturating_mul(16).saturating_sub(s)))
+    });
+    let mut rest = 0i64;
+    for (p, row) in x.iter().enumerate() {
+        for (r, &v) in row.iter().enumerate() {
+            let e = v
+                .saturating_mul(48)
+                .saturating_sub(paths[p].saturating_mul(3))
+                .saturating_sub(streams[r].saturating_mul(16))
+                .saturating_add(s);
+            rest = rest.saturating_add(squared(e));
+        }
+    }
+    let by_path = paths.iter().fold(0i64, |t, &v| {
+        t.saturating_add(squared(v.saturating_mul(3).saturating_sub(s)))
+    });
+    (
+        by_stream.saturating_mul(6).saturating_sub(rest),
+        by_path.saturating_mul(45),
+        s,
+    )
+}
+
+/// Clause 1's rule (ADR-0234): the mean of the 48 differences above twice its paired SE,
+/// $\sqrt{s^2/16 + d^2/3}$, $s$ the stream's SD in their split, a negative variance as zero, and
+/// $d$ the SD of the three paths' means. With `nights_split`'s terms it is $S > 0$ and
+/// $1080 S^2 > 3 \max(A, 0) + 16 B$, exactly.
+fn nights_above(x: &[[i64; 16]; 3]) -> bool {
+    let (a, b, s) = nights_split(x);
+    s > 0
+        && s.saturating_mul(s).saturating_mul(1_080)
+            > a.max(0)
+                .saturating_mul(3)
+                .saturating_add(b.saturating_mul(16))
+}
+
+/// The four couplings of H-42's image in a row's order.
+const fn nights_bound(image: &[[i64; 2]; 2]) -> [i64; 4] {
+    [image[0][0], image[0][1], image[1][0], image[1][1]]
+}
+
+/// Clause 3's rule on a row: none of A's four couplings past 1.30 of the same coupling in H-42's
+/// image, in the image the row reads and at its stretch's highest block end.
+fn nights_bounded(row: &NightsRow, image: &[[i64; 2]; 2]) -> bool {
+    let bound = nights_bound(image);
+    (0..4).all(|i| !over_bound(row.couplings[i], bound[i]) && !over_bound(row.highest[i], bound[i]))
+}
+
+/// H-47's three clauses on a cell (ADR-0234): its four forms' rows in `NIGHTS_GAPS`' order, and
+/// A's four couplings in H-42's image on its network.
+fn nights_clauses(rows: [&[NightsRow]; 4], image: &[[i64; 2]; 2]) -> [bool; 3] {
+    let end = NIGHTS_CHECKPOINTS.len().saturating_sub(1);
+    let one = nights_above(&nights_differences(rows[1], rows[0], end));
+    let pair = nights_sum(&nights_counts(rows[1], end, true));
+    let two = pair >= NIGHTS_PAIR_FLOOR.saturating_mul(48);
+    let three = rows
+        .iter()
+        .all(|form| form.iter().all(|row| nights_bounded(row, image)));
+    [one, two, three]
+}
+
+/// H-47's verdict (ADR-0234): the three clauses per network and start, `[network][start]` in
+/// `NIGHTS_STARTS`' order; `yes` when all three hold in all twelve cells.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct NightsVerdict {
+    clauses: [[[bool; 3]; 4]; 3],
+    yes: bool,
+}
+
+fn nights_verdict(clauses: [[[bool; 3]; 4]; 3]) -> NightsVerdict {
+    NightsVerdict {
+        clauses,
+        yes: clauses.iter().flatten().flatten().all(|&c| c),
+    }
+}
+
+/// The step of H-47's stopping rule a verdict reaches, the first in its order that applies: 3,
+/// yes; 4, a no on clause 3; 5, a no on clause 1; 6, a no on clause 2.
+fn nights_stop(verdict: &NightsVerdict) -> u8 {
+    let failed = |clause: usize| verdict.clauses.iter().flatten().any(|c| !c[clause]);
+    if verdict.yes {
+        3
+    } else if failed(2) {
+        4
+    } else if failed(0) {
+        5
+    } else {
+        6
+    }
+}
+
+/// Whether a start's mapping in force is the mirrored assignment: an arm's eighth schedule ends
+/// on the other mapping than its first, and a first mapping is its arm's first.
+fn nights_mirrored(from: NightFrom, arm: Reversal) -> bool {
+    match from {
+        NightFrom::Eighth => !first_mapping(arm),
+        NightFrom::FirstMapping => first_mapping(arm),
+    }
+}
+
+/// A's margin on a row: $c_0 + c_3 - c_1 - c_2$, negated where the mapping in force is mirrored.
+fn nights_margin(row: &NightsRow, mirrored: bool) -> i64 {
+    let [c0, c1, c2, c3] = row.couplings;
+    let margin = c0.saturating_add(c3).saturating_sub(c1).saturating_sub(c2);
+    if mirrored {
+        margin.saturating_neg()
+    } else {
+        margin
+    }
+}
+
+/// Reading 4 on a cell: from its start to its end, every night without replay raises the gain
+/// and every plain night lowers it, on every path and at every gap.
+fn nights_gains(cell: [&[NightsRow]; 4]) -> bool {
+    let gaps = NIGHTS_CHECKPOINTS.len().saturating_sub(1);
+    (0..NIGHTS_PATHS.len()).all(|p| {
+        (0..gaps).all(|c| {
+            [(0usize, true), (1, false), (2, false)]
+                .iter()
+                .all(|&(form, raises)| {
+                    match nights_row(cell[form], p, c).and_then(|row| row.gain) {
+                        Some((start, end)) if raises => end > start,
+                        Some((start, end)) => end < start,
+                        None => false,
+                    }
+                })
+        })
+    })
+}
+
+/// ADR-0234's five predicted readings over the twelve cells' rows, `[network][start][form]`.
+fn nights_predicted(rows: &[[[&[NightsRow]; 4]; 4]; 3]) -> [bool; 5] {
+    let end = NIGHTS_CHECKPOINTS.len().saturating_sub(1);
+    let last_gap = end.saturating_sub(1);
+    let (mut over_awake, mut right_after) = (0usize, 0usize);
+    let (mut both, mut margins, mut gains) = (true, true, true);
+    for network in rows {
+        for (s, &cell) in network.iter().enumerate() {
+            let (from, arm) = NIGHTS_STARTS[s];
+            let mirrored = nights_mirrored(from, arm);
+            if nights_sum(&nights_differences(cell[1], cell[3], end)) > 0 {
+                over_awake = over_awake.saturating_add(1);
+            }
+            both &= nights_sum(&nights_differences(cell[2], cell[0], end)) > 0;
+            let margin = (0..NIGHTS_PATHS.len()).fold(0i64, |t, p| {
+                let at = |form: usize| {
+                    nights_row(cell[form], p, end).map_or(0, |row| nights_margin(row, mirrored))
+                };
+                t.saturating_add(at(1)).saturating_sub(at(0))
+            });
+            margins &= margin >= NIGHTS_MARGIN_OVER.saturating_mul(3);
+            gains &= nights_gains(cell);
+            if nights_above(&nights_differences(cell[1], cell[0], last_gap)) {
+                right_after = right_after.saturating_add(1);
+            }
+        }
+    }
+    [
+        over_awake >= NIGHTS_READING_CELLS,
+        both,
+        margins,
+        gains,
+        right_after >= NIGHTS_READING_CELLS,
+    ]
+}
+
+/// FNV-1a over a text's bytes: the twin's lines, as `NIGHTS_TWIN` holds them.
+fn fnv_text(text: &str) -> u64 {
+    text.bytes().fold(0xcbf2_9ce4_8422_2325u64, |hash, byte| {
+        (hash ^ u64::from(byte)).wrapping_mul(0x0000_0100_0000_01b3)
+    })
+}
+
+/// Where a dump line's label ends and what it reads begins: the first of these in the line.
+const TWIN_MARKERS: [&str; 10] = [
+    " PIN ",
+    " the groups: ",
+    " groups Apart ",
+    " run mirrored ",
+    " start NightState ",
+    " window NightState ",
+    " end NightState ",
+    " kinds [",
+    " held [",
+    " read mirrored ",
+];
+
+/// A dump line of the twin's as `(group, what it reads)`: its label less `name`, and what it
+/// reads from its marker on; none for a line of another label or of no marker. The groups are
+/// the ones `NIGHTS_TWIN` lists, from the explorations' logs: the derivation's `PIN` lines, the
+/// groups' two lines, each run, each night's lines, and each image's two lines and its reads of
+/// either mapping.
+fn twin_line(line: &str, name: &str) -> Option<(String, String)> {
+    let label_and_rest = line.strip_prefix("DUMP ")?.strip_prefix(name)?;
+    let at = TWIN_MARKERS
+        .iter()
+        .filter_map(|m| label_and_rest.find(m))
+        .min()?;
+    let (tail, rest) = label_and_rest.split_at(at);
+    let rest = rest.get(1..)?;
+    let tail = tail.trim().strip_prefix("path 0 ").unwrap_or(tail.trim());
+    let kind = rest.split(' ').next()?;
+    let group = match (kind, tail) {
+        ("PIN", "") => "pins".to_string(),
+        ("the", "") => "the groups".to_string(),
+        ("groups", "") => "groups".to_string(),
+        (_, "") | ("PIN" | "the" | "groups", _) => return None,
+        ("run", "head blocks 6") => "head".to_string(),
+        ("run", _) => format!("{tail} run"),
+        _ => tail.to_string(),
+    };
+    Some((group, rest.to_string()))
+}
+
+/// The twin's groups from its lines: each group's lines, sorted, their count and the FNV-1a of
+/// their text joined by line feeds.
+fn twin_groups(lines: &[String], name: &str) -> BTreeMap<String, (u32, u64)> {
+    let mut groups: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for line in lines {
+        if let Some((group, rest)) = twin_line(line, name) {
+            groups.entry(group).or_default().push(rest);
+        }
+    }
+    groups
+        .into_iter()
+        .map(|(group, mut rests)| {
+            rests.sort();
+            let count = u32::try_from(rests.len()).unwrap_or(u32::MAX);
+            (group, (count, fnv_text(&rests.join("\n"))))
+        })
+        .collect()
+}
+
+// ------------------------------------------------------------------ the run (brief 087)
+
+/// What every gap and read of a start shares (explorations 014 to 018): the network, the zero
+/// sum's groups, a mapping's four sets, whether its mapping in force is mirrored, and the units its
+/// stimuli present in place of their sets, where they are given.
+struct NightSite<'a> {
+    made: &'a Made,
+    groups: &'a ZeroGroups,
+    sets: [Set; 4],
+    mirrored: bool,
+    presenting: Option<&'a [Vec<u32>; 2]>,
+}
+
+impl NightSite<'_> {
+    /// Whether stimulus `s` presents unit `id`.
+    fn presents(&self, s: u8, id: u32) -> bool {
+        match self.presenting {
+            Some(units) => units[usize::from(s)].contains(&id),
+            None => self.sets[usize::from(s)].contains(id),
+        }
+    }
+
+    /// A run from the trial of index `first`, each stimulus presented as the site presents it.
+    fn presented(&self, first: u64) -> Presented<'_> {
+        Presented {
+            first,
+            units: self
+                .presenting
+                .map(|units| [units[0].as_slice(), units[1].as_slice()]),
+        }
+    }
+}
+
+/// The engine of an H-47 run from `image` (ADR-0236): decoded through `zero_from`, the running
+/// configuration at H-46's sizing, then again under `Config::runs_a_settled_image()` at that
+/// sizing with room for `room` episodes, the slow-wave baseline at a half and the homeostasis
+/// record patched; and, where they are given, the zero sum's groups set, since no image holds
+/// them. A decode keeps the configuration's exponent, room, baseline in slow-wave sleep and kept
+/// addresses, none, and takes everything else from the image (ADR-0233).
+fn night_engine(
+    image: &[u8],
+    room: usize,
+    groups: Option<&ZeroGroups>,
+    patch: impl Fn(&mut HomeostaticDrivePool),
+) -> Engine {
+    let mut exec = zero_from(image, SCAN_UNITS, ZERO_ARM);
+    quiet(&mut exec);
+    let sized = config(SCAN_UNITS, 2, 0);
+    let under = Config {
+        workers: sized.workers,
+        nodes_per_worker: sized.nodes_per_worker,
+        injector_capacity: sized.injector_capacity,
+        train_capacity: sized.train_capacity,
+        episodes: room,
+        slow_wave_baseline_q16: Some(NIGHT_SLOW_WAVE_Q16),
+        ..Config::runs_a_settled_image()
+    };
+    let mut exec = reload_with(&exec, under, patch);
+    assert_eq!(
+        (
+            exec.slow_wave_baseline_q16(),
+            exec.depression_exponent(),
+            exec.kept_addresses()
+        ),
+        (Some(NIGHT_SLOW_WAVE_Q16), ZERO_EXPONENT, 0),
+        "the running configuration with the slow-wave baseline"
+    );
+    if let Some(groups) = groups {
+        let mut held = vec![
+            (groups.sources[0].as_slice(), groups.values[0]),
+            (groups.sources[1].as_slice(), groups.values[1]),
+        ];
+        held.extend(groups.further.iter().map(|g| (g.0.as_slice(), g.1)));
+        assert!(
+            exec.set_zero_sum(&held, &groups.targets),
+            "every source excitatory and in the arena, once, and every target in the arena"
+        );
+    }
+    exec
+}
+
+/// `ticks` ticks, under the drive where one is given.
+fn night_ticks(exec: &mut Engine, driven: Option<&Drive>, ticks: u64) {
+    let inject = exec.injector();
+    for _ in 0..ticks {
+        if let Some(drive) = driven {
+            drive.step(&inject, exec.ticks()).expect("the drive runs");
+        }
+        exec.tick();
+    }
+}
+
+/// What a gap's reading takes of the engine between ticks, read in the dumps.
+#[allow(dead_code)]
+#[derive(Clone, Copy, Debug)]
+struct NightState {
+    tick: u64,
+    stage: u8,
+    pressure: u32,
+    gain: u32,
+    couplings: [i64; 4],
+    inhibitory: i64,
+    excitatory: i64,
+}
+
+fn night_state(exec: &Engine, sets: &[Set; 4]) -> NightState {
+    let h = exec.homeostasis();
+    let (inhibitory, excitatory) = weights_by_polarity(exec);
+    NightState {
+        tick: exec.ticks(),
+        stage: h.sleep_stage,
+        pressure: h.sleep_pressure_q16,
+        gain: h.synaptic_gain_q16,
+        couplings: couplings(exec, sets),
+        inhibitory,
+        excitatory,
+    }
+}
+
+/// What a stretch of a night's replays fired (exploration 014): the ripples read; the pattern's
+/// units by their spikes in the ripple's ticks, none, one, two, three, more; the first spikes,
+/// their count, summed latency, least and most; the second spikes, their count and summed
+/// latency; and the spikes of the ripple's ticks, the pattern's, those of other units in its first
+/// basal time constant, and those of other units in its last.
+#[derive(Clone, Copy, Debug, Default)]
+struct RippleRead {
+    ripples: u32,
+    fired: [u32; 5],
+    first: (u32, u64, u32, u32),
+    second: (u32, u64),
+    pattern: u64,
+    others_after: u64,
+    others_before: u64,
+}
+
+fn ripple_read(read: &mut RippleRead, spikes: &[(u32, u32)], at: u32, pattern: &[u32]) {
+    read.ripples = read.ripples.saturating_add(1);
+    for &unit in pattern {
+        let mine: Vec<u32> = spikes
+            .iter()
+            .filter(|s| s.1 == unit)
+            .map(|s| s.0.wrapping_sub(at))
+            .collect();
+        let slot = mine.len().min(read.fired.len().saturating_sub(1));
+        read.fired[slot] = read.fired[slot].saturating_add(1);
+        if let Some(&first) = mine.first() {
+            let (n, sum, least, most) = read.first;
+            read.first = (
+                n.saturating_add(1),
+                sum.saturating_add(u64::from(first)),
+                if n == 0 { first } else { least.min(first) },
+                most.max(first),
+            );
+        }
+        if let Some(&second) = mine.get(1) {
+            read.second = (
+                read.second.0.saturating_add(1),
+                read.second.1.saturating_add(u64::from(second)),
+            );
+        }
+    }
+    for &(t, unit) in spikes {
+        if pattern.contains(&unit) {
+            read.pattern = read.pattern.saturating_add(1);
+            continue;
+        }
+        let age = u64::from(t.wrapping_sub(at));
+        if age < u64::from(NIGHT_CAPTURE_TICKS) {
+            read.others_after = read.others_after.saturating_add(1);
+        } else if age >= NIGHT_RIPPLE.saturating_sub(u64::from(NIGHT_CAPTURE_TICKS)) {
+            read.others_before = read.others_before.saturating_add(1);
+        }
+    }
+}
+
+/// The weights among `patterns`, each pattern's first unit its source: the synapses from the
+/// source to the rest, from the rest to the source, and among the rest, each a count and a sum.
+fn pattern_sums(exec: &Engine, patterns: &[Vec<u32>]) -> [(u32, i64); 3] {
+    let mut out = [(0u32, 0i64); 3];
+    for pattern in patterns {
+        for (i, &from) in pattern.iter().enumerate() {
+            let Some(unit) = exec.units().get(from as usize) else {
+                continue;
+            };
+            for s in unit.fan_out(exec.blocks()) {
+                let Some(j) = pattern.iter().position(|&u| u == s.target) else {
+                    continue;
+                };
+                let kind = match (i, j) {
+                    (0, _) => 0,
+                    (_, 0) => 1,
+                    _ => 2,
+                };
+                out[kind] = (
+                    out[kind].0.saturating_add(1),
+                    out[kind].1.saturating_add(i64::from(s.weight_q1_15)),
+                );
+            }
+        }
+    }
+    out
+}
+
+/// A night from `image` (explorations 014, 018 and 019): an engine with room for `patterns`, in
+/// slow-wave sleep at `NIGHT_SHIFT` and a pressure of 1.0 as ADR-0044's night starts, the zero
+/// sum's groups held, every older episode spent (`Executor::spend_episodes`), `patterns` tagged
+/// where `tag` says, its stages run under the drive to the wake, then quiet. The start, every
+/// window and the end are dumped. Returns the image an engine of no room writes from it, its shift
+/// back at zero so that it does not sleep again, and the gain at the start and at the end.
+fn night_on(
+    site: &NightSite,
+    image: &[u8],
+    label: &str,
+    patterns: &[Vec<u32>],
+    tag: bool,
+) -> (Vec<u8>, (u32, u32)) {
+    let sets = site.sets;
+    let mut exec = night_engine(image, patterns.len(), Some(site.groups), |h| {
+        h.sleep_shift = NIGHT_SHIFT;
+        h.sleep_stage = STAGE_SWS;
+        h.sleep_pressure_q16 = PRESSURE_MAX_Q16;
+    });
+    exec.spend_episodes();
+    if tag {
+        for pattern in patterns {
+            exec.tag_episode(pattern, NIGHT_PRIORITY)
+                .expect("the ledger has room and the pattern is one");
+        }
+    }
+    let start = night_state(&exec, &sets);
+    eprintln!(
+        "DUMP {label} start {start:?} target {:?} step {} period {} pattern sums {:?}",
+        exec.rate_target_per_window(),
+        exec.homeostasis().control_step_q0_16,
+        exec.istdp_target_period_ticks(),
+        pattern_sums(&exec, patterns)
+    );
+    let source = drive(SCAN_UNITS);
+    let driven = Some(&source);
+    let began = exec.ticks();
+    let lead = NIGHT_RIPPLE.wrapping_sub(began) & NIGHT_RIPPLE.wrapping_sub(1);
+    night_ticks(&mut exec, driven, lead);
+    let mut read = RippleRead::default();
+    let mut spikes = 0u64;
+    for _ in 0..NIGHT_RIPPLES_MAX {
+        let at = exec.ticks();
+        let hand = exec.hippocampus().replay_hand as usize;
+        let pattern = (exec.sleep_stage() == STAGE_SWS)
+            .then(|| exec.episodes().get(hand))
+            .flatten()
+            .filter(|e| !e.is_spent())
+            .map(|e| e.pattern().to_vec());
+        night_ticks(&mut exec, driven, NIGHT_RIPPLE);
+        let train = exec.train();
+        let from = train.partition_point(|s| s.0 < at as u32);
+        let mine = &train[from..];
+        spikes = spikes.saturating_add(mine.len() as u64);
+        if let Some(pattern) = &pattern {
+            ripple_read(&mut read, mine, at as u32, pattern);
+        }
+        if exec.ticks() & WINDOW_TICKS.wrapping_sub(1) == 0 {
+            eprintln!(
+                "DUMP {label} window {:?} spikes {spikes} replays {} depotentiations {} {read:?}",
+                night_state(&exec, &sets),
+                exec.replays(),
+                exec.depotentiations()
+            );
+            spikes = 0;
+            read = RippleRead::default();
+        }
+        if exec.sleep_stage() == STAGE_AWAKE {
+            break;
+        }
+    }
+    assert_eq!(exec.sleep_stage(), STAGE_AWAKE, "{label}: the night ended");
+    let ticks = exec.ticks().wrapping_sub(began);
+    let quiet_ticks = quiet(&mut exec);
+    let end = night_state(&exec, &sets);
+    eprintln!(
+        "DUMP {label} end {end:?} quiet in {quiet_ticks} ticks, ticks {ticks}, replays {} depotentiations {} pattern sums {:?}",
+        exec.replays(),
+        exec.depotentiations(),
+        pattern_sums(&exec, patterns)
+    );
+    let awake = night_engine(&Image::encode(&exec).expect("quiescent"), 0, None, |h| {
+        h.sleep_shift = 0
+    });
+    undropped(exec, label);
+    let written = Image::encode(&awake).expect("quiescent");
+    undropped(awake, label);
+    (written, (start.gain, end.gain))
+}
+
+/// The awake gap from `image` (exploration 014): `NIGHT_AWAKE_TICKS` awake under the drive with no
+/// stimulus, the zero sum's groups held, then quiet. Returns the image and the gain at the start
+/// and at the end.
+fn idle_on(site: &NightSite, image: &[u8], label: &str) -> (Vec<u8>, (u32, u32)) {
+    let mut exec = night_engine(image, 0, Some(site.groups), |_| {});
+    let start = night_state(&exec, &site.sets);
+    let source = drive(SCAN_UNITS);
+    night_ticks(&mut exec, Some(&source), NIGHT_AWAKE_TICKS);
+    let end = night_state(&exec, &site.sets);
+    let quiet_ticks = quiet(&mut exec);
+    eprintln!("DUMP {label} idle start {start:?} end {end:?} quiet in {quiet_ticks} ticks");
+    let written = Image::encode(&exec).expect("quiescent");
+    undropped(exec, label);
+    (written, (start.gain, end.gain))
+}
+
+/// A mapping's episodes (exploration 014): one for every excitatory unit a stimulus presents,
+/// that unit first, then the excitatory units of its answer's readout set it reaches, the
+/// strongest summed weight first, as many as `PATTERN_MAX` leaves room for.
+fn mapping_patterns(site: &NightSite, image: &[u8]) -> Vec<Vec<u32>> {
+    let exec = zero_from(image, SCAN_UNITS, ZERO_ARM);
+    let excitatory = |id: u32| {
+        exec.units()
+            .get(id as usize)
+            .is_some_and(|u| u.flags & FLAG_INHIBITORY == 0)
+    };
+    let mut patterns = Vec::new();
+    for s in [0u8, 1] {
+        let into = site.sets[answer_of(s, site.mirrored).saturating_add(2)];
+        for unit in exec.units() {
+            let id = unit.id as u32;
+            if unit.flags & FLAG_INHIBITORY != 0 || !site.presents(s, id) {
+                continue;
+            }
+            let mut targets: Vec<(u32, i64)> = Vec::new();
+            for syn in unit.fan_out(exec.blocks()) {
+                if !into.contains(syn.target) || !excitatory(syn.target) {
+                    continue;
+                }
+                let weight = i64::from(syn.weight_q1_15);
+                match targets.iter_mut().find(|t| t.0 == syn.target) {
+                    Some(t) => t.1 = t.1.saturating_add(weight),
+                    None => targets.push((syn.target, weight)),
+                }
+            }
+            targets.sort_by_key(|&(target, weight)| (core::cmp::Reverse(weight), target));
+            let rest = targets.iter().take(PATTERN_MAX.saturating_sub(1));
+            let mut pattern = vec![id];
+            pattern.extend(rest.map(|t| t.0));
+            patterns.push(pattern);
+        }
+    }
+    undropped(exec, "the patterns");
+    patterns
+}
+
+/// The image a start reads from and whether its mapping in force is mirrored: H-46's eighth image,
+/// held to its CRC-64, or a first mapping, run here and held to its CRC-64 where it is pinned.
+fn nights_image(
+    made: &Made,
+    groups: &ZeroGroups,
+    n: usize,
+    from: NightFrom,
+    arm: Reversal,
+    name: &str,
+) -> Vec<u8> {
+    let k = ZERO_ARMS
+        .iter()
+        .position(|&a| a == arm)
+        .expect("an arm of H-25's two");
+    match from {
+        NightFrom::Eighth => {
+            let path = zero_image_path(n, ZERO_ARM, k);
+            let image = std::fs::read(&path).unwrap_or_else(|e| panic!("{name}: {path}: {e}"));
+            assert_eq!(
+                Some(crc64(&image)),
+                ZERO_IMAGES_CRC[n][ZERO_ARM][k],
+                "{name}: the carried image"
+            );
+            image
+        }
+        NightFrom::FirstMapping => {
+            let (mut exec, run) =
+                zero_schedule(made, &made.windowed, arm, ZERO_ARM, groups, FLIP, &[]);
+            quiet(&mut exec);
+            let image = Image::encode(&exec).expect("quiescent");
+            eprintln!(
+                "DUMP {name} first mapping {:?} PIN image {:#018x}",
+                curve(&run.blocks),
+                crc64(&image)
+            );
+            if let Some(pin) = NIGHTS_FIRST_CRC[n][k] {
+                assert_eq!(crc64(&image), pin, "{name}: the first mapping's image");
+            }
+            undropped(exec, name);
+            image
+        }
+    }
+}
+
+/// The pair's four sets (exploration 015): its stimuli, and each readout less the place taken
+/// from it, since a task refuses a stimulus inside its readout.
+fn second_sets(sets: &[Set; 4]) -> [Set; 4] {
+    let [a, _, r0, r1] = *sets;
+    let (c, d) = (1u32 << SECOND_C_OFFSET, 1u32 << SECOND_D_OFFSET);
+    [
+        Set { mask: c, ..a },
+        Set { mask: d, ..a },
+        Set {
+            mask: r0.mask & !c,
+            ..r0
+        },
+        Set {
+            mask: r1.mask & !d,
+            ..r1
+        },
+    ]
+}
+
+/// The pair sharing the periods of A's and B's units `mask` names (exploration 016): the units C
+/// and D present, one a period, and the six kinds of unit: A alone, A's and C's, C alone, B
+/// alone, B's and D's, D alone.
+struct SharedPair {
+    presenting: [Vec<u32>; 2],
+    kinds: [Vec<u32>; 6],
+}
+
+/// The pair of `mask`: C takes stimulus A's unit in a period the mask names and the place
+/// `SECOND_C_OFFSET` in any other, and D takes B's or `SECOND_D_OFFSET`. The pair's task keeps
+/// `second_sets`' sets, so its readouts do not change with the share.
+fn shared_pair(sets: &[Set; 4], second: &[Set; 4], mask: u32) -> SharedPair {
+    let side = |s: usize| {
+        let (mut alone, mut shared, mut own, mut units) = (vec![], vec![], vec![], vec![]);
+        for (j, (first, theirs)) in (0u32..).zip(sets[s].units().zip(second[s].units())) {
+            if mask.wrapping_shr(j & 3) & 1 != 0 {
+                shared.push(first);
+                units.push(first);
+            } else {
+                alone.push(first);
+                own.push(theirs);
+                units.push(theirs);
+            }
+        }
+        (alone, shared, own, units)
+    };
+    let (a, ac, c, presents_c) = side(0);
+    let (b, bd, d, presents_d) = side(1);
+    let presenting = [presents_c, presents_d];
+    assert!(
+        presenting
+            .iter()
+            .flatten()
+            .all(|&u| !second[2].contains(u) && !second[3].contains(u))
+            && !presenting[0].iter().any(|u| presenting[1].contains(u)),
+        "the units presented lie in neither readout and in one stimulus"
+    );
+    SharedPair {
+        presenting,
+        kinds: [a, ac, c, b, bd, d],
+    }
+}
+
+/// The zero sum's six groups (exploration 016's cut `Apart`): each kind of unit a group of its
+/// own at its sum in `image` over `groups`' targets. Each kind's sum is dumped.
+fn shared_groups(groups: &ZeroGroups, pair: &SharedPair, image: &[u8], name: &str) -> ZeroGroups {
+    let exec = zero_from(image, SCAN_UNITS, ZERO_ARM);
+    let sum = |units: &Vec<u32>| {
+        exec.coupling_sum(units, &groups.targets)
+            .expect("excitatory units once each, and every unit in the arena")
+    };
+    let [a, ac, c, b, bd, d] = &pair.kinds;
+    let held = ZeroGroups {
+        sources: [a.clone(), b.clone()],
+        values: [sum(a), sum(b)],
+        targets: groups.targets.clone(),
+        further: vec![
+            (ac.clone(), sum(ac)),
+            (bd.clone(), sum(bd)),
+            (c.clone(), sum(c)),
+            (d.clone(), sum(d)),
+        ],
+    };
+    let near = pair.presenting[0].iter().fold(0u32, |n, &c| {
+        let within = pair.presenting[1].iter().filter(|&&d| {
+            let apart = c.abs_diff(d);
+            apart.min(SCAN_UNITS.saturating_sub(apart)) <= PRIOR_WINDOW
+        });
+        n.saturating_add(within.count() as u32)
+    });
+    eprintln!(
+        "DUMP {name} groups Apart values {:?} further {:?} kinds {:?} pairs of C and D within a local synapse {near}",
+        held.values,
+        held.further.iter().map(|g| g.1).collect::<Vec<i64>>(),
+        pair.kinds.each_ref().map(|k| k.len())
+    );
+    undropped(exec, name);
+    held
+}
+
+/// Each kind's sum onto the two readouts and the pair's two, from `image` (exploration 016):
+/// their rows add up to A's and B's four couplings, held here.
+fn shared_sums(start: &NightsStart, image: &[u8], label: &str) {
+    let exec = zero_from(image, SCAN_UNITS, ZERO_ARM);
+    let (sets, second) = (start.site.sets, start.theirs.sets);
+    let into =
+        [sets[2], sets[3], second[2], second[3]].map(|set| set.units().collect::<Vec<u32>>());
+    let sums = start.pair.kinds.each_ref().map(|kind| {
+        into.each_ref().map(|targets| {
+            exec.coupling_sum(kind, targets)
+                .expect("excitatory units once each, and every unit in the arena")
+        })
+    });
+    let whole = couplings(&exec, &sets);
+    let added = [
+        sums[0][0].saturating_add(sums[1][0]),
+        sums[0][1].saturating_add(sums[1][1]),
+        sums[3][0].saturating_add(sums[4][0]),
+        sums[3][1].saturating_add(sums[4][1]),
+    ];
+    assert_eq!(added, whole, "{label}: the kinds add up to the couplings");
+    eprintln!("DUMP {label} kinds {sums:?}");
+    undropped(exec, label);
+}
+
+/// What an image holds at a read (exploration 018): each kind's sum on the readouts, and each
+/// group's sum on its targets beside the value it is held at.
+fn nights_state(start: &NightsStart, image: &[u8], label: &str) {
+    let groups = start.site.groups;
+    shared_sums(start, image, label);
+    let exec = zero_from(image, SCAN_UNITS, ZERO_ARM);
+    let sum = |units: &Vec<u32>| {
+        exec.coupling_sum(units, &groups.targets)
+            .expect("excitatory units once each, and every unit in the arena")
+    };
+    let sums: Vec<i64> = groups
+        .sources
+        .iter()
+        .chain(groups.further.iter().map(|g| &g.0))
+        .map(sum)
+        .collect();
+    let held: Vec<i64> = groups
+        .values
+        .iter()
+        .copied()
+        .chain(groups.further.iter().map(|g| g.1))
+        .collect();
+    eprintln!("DUMP {label} held {sums:?} at {held:?}");
+    undropped(exec, label);
+}
+
+/// Where a stretch of trials starts on its fork (exploration 017): the index of its first trial,
+/// and what is added to the drive's seed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ReadFrom {
+    trial: u64,
+    drive: u64,
+}
+
+/// The `i`-th read of an image: the read as it was at 0, `Both` from 1, a block's trials on in
+/// the index and one on in the drive's seed.
+const fn nights_read_from(i: u64) -> ReadFrom {
+    ReadFrom {
+        trial: i.saturating_mul(BLOCK as u64),
+        drive: i,
+    }
+}
+
+/// Path `j` of exploration 017: the first index of each of its stretches, and its drive.
+const fn path_from(j: u64) -> ReadFrom {
+    ReadFrom {
+        trial: j.saturating_mul(PATH_TRIALS),
+        drive: if j > PATHS_ON_ONE_DRIVE { j } else { 0 },
+    }
+}
+
+/// `each` over `items`, two at a time: an engine is two threads and a runner has four cores. The
+/// items share nothing, so their order changes no reading, only the order of the dumps.
+fn two_at_a_time<T: Sync>(items: &[T], each: impl Fn(&T) + Sync) {
+    let next = std::sync::atomic::AtomicUsize::new(0);
+    let runner = || {
+        for _ in 0..items.len() {
+            let at = next.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+            let Some(item) = items.get(at) else {
+                break;
+            };
+            each(item);
+        }
+    };
+    std::thread::scope(|scope| {
+        scope.spawn(runner);
+        runner();
+    });
+}
+
+/// A read of `site`'s mapping from `image` (exploration 017): a block with the reward withheld on
+/// a fork, from `from`, its line with each trial's stimulus, whether it was correct and whether it
+/// tied, a bit a trial. Returns the block's correct count and the couplings of `site`'s sets in
+/// the image.
+fn spread_read(
+    site: &NightSite,
+    image: &[u8],
+    label: &str,
+    what: &str,
+    from: ReadFrom,
+) -> (u8, [i64; 4]) {
+    let mut exec = night_engine(image, 0, Some(site.groups), |_| {});
+    let state = night_state(&exec, &site.sets);
+    let mut task = task_over(
+        site.sets,
+        SHAPE_F46,
+        Some(site.made.derived.cancel),
+        SCAN_UNITS,
+        Feedback::Withheld,
+        site.mirrored,
+        DRAWN_DELIVERY,
+    );
+    task.drive.seed = task.drive.seed.wrapping_add(from.drive);
+    let mut words = [0u64; 3];
+    let (read, trace) = run_on_presenting_from(
+        site.presented(from.trial),
+        site.sets,
+        &mut exec,
+        task,
+        SCAN_UNITS,
+        BLOCK,
+        &[],
+        &mut |_, trial, _, outcome| {
+            let bit = 1u64.wrapping_shl(trial as u32);
+            for (word, set) in words.iter_mut().zip([
+                outcome.stimulus == 1,
+                outcome.correct,
+                outcome.selection.is_none(),
+            ]) {
+                if set {
+                    *word |= bit;
+                }
+            }
+        },
+    );
+    eprintln!(
+        "DUMP {label} read mirrored {} correct {:?} ties {:?} trace {trace:#018x} state {state:?} blocks {read:?} spread {what} {from:?} stimuli {:#018x} right {:#018x} tied {:#018x} gain {}",
+        site.mirrored,
+        curve(&read),
+        read.iter().map(|b| b.11).collect::<Vec<u32>>(),
+        words[0],
+        words[1],
+        words[2],
+        exec.homeostasis().synaptic_gain_q16
+    );
+    undropped(exec, label);
+    let correct = read.first().map_or(0, |b| b.0);
+    (u8::try_from(correct).unwrap_or(u8::MAX), state.couplings)
+}
+
+/// What a start's runs share (explorations 016 to 018): the network, the start image, the pair,
+/// A's site and the pair's, and the label every line of the start begins with.
+struct NightsStart<'a> {
+    made: &'a Made,
+    image: &'a [u8],
+    pair: &'a SharedPair,
+    site: NightSite<'a>,
+    theirs: NightSite<'a>,
+    name: String,
+}
+
+/// Network `n`'s start `s` laid out for `body` (exploration 017's `with_spread`), its lines
+/// labelled `{prefix} {network} {arm} {from}`: the derivation run again and held to H-42's
+/// pinned tables (`probe_made`), H-46's groups, the start image, the pair at the share,
+/// conflicting, each kind of unit held apart at its sum in the start image.
+fn with_nights(n: usize, s: usize, prefix: &str, body: impl FnOnce(&NightsStart)) {
+    let (from, arm) = NIGHTS_STARTS[s];
+    let name = format!("{prefix} {} {arm:?} {from:?}", ZERO_NAMES[n][ZERO_ARM]);
+    let made = probe_made(n, &name);
+    let groups = zero_groups(&made, &name);
+    let image = nights_image(&made, &groups, n, from, arm, &name);
+    let mirrored = nights_mirrored(from, arm);
+    let sets = geometry(SCAN_UNITS, made.derived.rotation);
+    let second = second_sets(&sets);
+    let pair = shared_pair(&sets, &second, NIGHTS_SHARE);
+    let held = shared_groups(&groups, &pair, &image, &name);
+    let start = NightsStart {
+        made: &made,
+        image: &image,
+        pair: &pair,
+        site: NightSite {
+            made: &made,
+            groups: &held,
+            sets,
+            mirrored,
+            presenting: None,
+        },
+        theirs: NightSite {
+            made: &made,
+            groups: &held,
+            sets: second,
+            mirrored: !mirrored,
+            presenting: Some(&pair.presenting),
+        },
+        name,
+    };
+    body(&start);
+}
+
+/// A stretch of the pair's blocks from `image` (exploration 018), run as its rewarded mapping
+/// from `from`, with A's four couplings and the gain read at each block's end. Returns the image
+/// it writes and those ends.
+fn nights_run(
+    start: &NightsStart,
+    image: &[u8],
+    blocks: usize,
+    label: &str,
+    from: ReadFrom,
+) -> (Vec<u8>, Vec<([i64; 4], u32)>) {
+    let site = &start.theirs;
+    let first = start.site.sets;
+    let mut exec = night_engine(image, 0, Some(site.groups), |_| {});
+    let mut task = task_over(
+        site.sets,
+        SHAPE_F46,
+        Some(start.made.derived.cancel),
+        SCAN_UNITS,
+        Feedback::Answer,
+        site.mirrored,
+        DRAWN_DELIVERY,
+    );
+    task.drive.seed = task.drive.seed.wrapping_add(from.drive);
+    let mut ends: Vec<([i64; 4], u32)> = Vec::with_capacity(blocks);
+    let (read, trace) = run_on_presenting_from(
+        site.presented(from.trial),
+        site.sets,
+        &mut exec,
+        task,
+        SCAN_UNITS,
+        blocks.saturating_mul(BLOCK),
+        &[],
+        &mut |exec, trial, _, _| {
+            if trial.wrapping_add(1) % BLOCK == 0 {
+                ends.push((
+                    couplings(exec, &first),
+                    exec.homeostasis().synaptic_gain_q16,
+                ));
+            }
+        },
+    );
+    eprintln!(
+        "DUMP {label} run mirrored {} correct {:?} ties {:?} trace {trace:#018x} gain {} inhibitory {:?} ends {ends:?} pair {:?} polarity {:?}",
+        site.mirrored,
+        curve(&read),
+        read.iter().map(|b| b.11).collect::<Vec<u32>>(),
+        exec.homeostasis().synaptic_gain_q16,
+        read.last().map(|b| b.7),
+        read.iter().map(|b| b.10).collect::<Vec<_>>(),
+        read.iter().map(|b| (b.7, b.8)).collect::<Vec<_>>()
+    );
+    quiet(&mut exec);
+    let written = Image::encode(&exec).expect("quiescent");
+    undropped(exec, label);
+    (written, ends)
+}
+
+/// Each of A's four couplings at its highest over a stretch's block ends.
+fn nights_highest(ends: &[([i64; 4], u32)]) -> [i64; 4] {
+    core::array::from_fn(|i| ends.iter().map(|e| e.0[i]).max().unwrap_or(i64::MIN))
+}
+
+/// A form's gap from `image` (exploration 018): the awake gap, or a night at `NIGHT_SHIFT`, A's
+/// patterns those of the start image and the pair's those of `image`, which the pair's blocks
+/// wrote. Returns the image and the gain at the gap's start and end.
+fn nights_gap(
+    start: &NightsStart,
+    gap: NightsGap,
+    image: &[u8],
+    first: &[Vec<u32>],
+    label: &str,
+) -> (Vec<u8>, (u32, u32)) {
+    let site = &start.site;
+    match gap {
+        NightsGap::Awake => idle_on(site, image, label),
+        NightsGap::PlainFirst => night_on(site, image, label, first, true),
+        NightsGap::NoReplay => night_on(site, image, label, first, false),
+        NightsGap::PlainBoth => {
+            let own = mapping_patterns(&start.theirs, image);
+            let both = [first, own.as_slice()].concat();
+            night_on(site, image, label, &both, true)
+        }
+    }
+}
+
+/// A read to make: of a site's mapping, from an image, under a key.
+struct NightsRead<'a, K> {
+    key: K,
+    site: &'a NightSite<'a>,
+    image: &'a [u8],
+    label: String,
+    i: u64,
+}
+
+/// What a read prints as its `spread`: the read as it was, or `Both` and its index.
+fn nights_what(i: u64) -> String {
+    if i == 0 {
+        "as-it-was 0".to_string()
+    } else {
+        format!("Both {i}")
+    }
+}
+
+/// The reads of each image in `kept`, by its key and its label: its state, then `NIGHTS_READS`
+/// reads of A and as many of the pair, two at a time. Returns each read's correct count and the
+/// couplings it read, by the image's key, the mapping (the pair's when true) and the read's index.
+fn nights_reads<K: Copy + Ord + Send + Sync>(
+    start: &NightsStart,
+    kept: &BTreeMap<K, (String, Vec<u8>)>,
+) -> BTreeMap<(K, bool, u64), (u8, [i64; 4])> {
+    let mut reads = Vec::new();
+    for (&key, (label, image)) in kept {
+        nights_state(start, image, label);
+        for (pair, site, which) in [
+            (false, &start.site, "first"),
+            (true, &start.theirs, "second"),
+        ] {
+            for i in 0..NIGHTS_READS {
+                reads.push(NightsRead {
+                    key: (key, pair, i),
+                    site,
+                    image,
+                    label: format!("{label} {which}"),
+                    i,
+                });
+            }
+        }
+    }
+    let read = Mutex::new(BTreeMap::new());
+    two_at_a_time(&reads, |r| {
+        let got = spread_read(
+            r.site,
+            r.image,
+            &r.label,
+            &nights_what(r.i),
+            nights_read_from(r.i),
+        );
+        read.lock().expect("a read ended").insert(r.key, got);
+    });
+    read.into_inner().expect("every read ended")
+}
+
+/// One job of H-47 (ADR-0236): on network `n` from start `s`, the forms of `forms`, by their
+/// indices in `NIGHTS_GAPS`, each on the three paths. On a path the pair's 6 blocks from the start
+/// image, the form's gap, and so on to the gap at block 24, then 12 blocks with none; every
+/// stretch from the path's first index again, as exploration 017's second stretch began. The head
+/// before the first gap is run once a path. Each form's image at each checkpoint is read
+/// `NIGHTS_READS` times, A and the pair. Every row is dumped, then held where it is pinned.
+fn nights_job(n: usize, s: usize, forms: [usize; 2]) {
+    with_nights(n, s, "h47", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        let heads = Mutex::new(BTreeMap::new());
+        two_at_a_time(&NIGHTS_PATHS, |&j| {
+            let at = format!("{} path {j} head blocks {NIGHTS_EVERY}", start.name);
+            let head = nights_run(start, start.image, NIGHTS_EVERY, &at, path_from(j));
+            heads.lock().expect("a head ended").insert(j, head);
+        });
+        let heads = heads.into_inner().expect("every head ended");
+        let chains: Vec<(usize, u64)> = forms
+            .iter()
+            .flat_map(|&f| NIGHTS_PATHS.iter().map(move |&j| (f, j)))
+            .collect();
+        let kept = Mutex::new(BTreeMap::new());
+        let readings = Mutex::new(BTreeMap::new());
+        two_at_a_time(&chains, |&(f, j)| {
+            let name = format!("{} path {j} {}", start.name, NIGHTS_GAPS[f].name());
+            let (mut at, mut ends) = heads[&j].clone();
+            for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                let label = format!("{name} blocks {block}");
+                if block > NIGHTS_LAST {
+                    let (image, ends) = nights_run(start, &at, NIGHTS_ON, &label, path_from(j));
+                    readings
+                        .lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (nights_highest(&ends), None));
+                    kept.lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (label, image));
+                    continue;
+                }
+                if block != NIGHTS_EVERY {
+                    (at, ends) = nights_run(start, &at, NIGHTS_EVERY, &label, path_from(j));
+                }
+                let gap = format!("{name} gap {block}");
+                let (image, gain) = nights_gap(start, NIGHTS_GAPS[f], &at, &first, &gap);
+                readings
+                    .lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (nights_highest(&ends), Some(gain)));
+                kept.lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (label, image.clone()));
+                at = image;
+            }
+        });
+        let kept = kept.into_inner().expect("every form ended");
+        let readings = readings.into_inner().expect("every form ended");
+        let read = nights_reads(start, &kept);
+        for f in forms {
+            let mut rows = Vec::new();
+            for (p, &j) in NIGHTS_PATHS.iter().enumerate() {
+                for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                    let key = (f, j, c);
+                    let counts = |pair: bool| -> [u8; 16] {
+                        core::array::from_fn(|i| read[&(key, pair, i as u64)].0)
+                    };
+                    let (highest, gain) = readings[&key];
+                    let row = NightsRow {
+                        image: crc64(&kept[&key].1),
+                        first: counts(false),
+                        second: counts(true),
+                        couplings: read[&(key, false, 0)].1,
+                        highest,
+                        gain,
+                    };
+                    eprintln!(
+                        "DUMP {} {} path {j} block {block} PIN row {row:?}",
+                        start.name,
+                        NIGHTS_GAPS[f].name()
+                    );
+                    assert_eq!(nights_row(&rows, p, c), None, "rows in order");
+                    rows.push(row);
+                }
+            }
+            let pinned = NIGHTS_ROWS[n][s][f];
+            if pinned.is_empty() {
+                eprintln!(
+                    "DUMP {} {} not pinned: its rows are written from this log",
+                    start.name,
+                    NIGHTS_GAPS[f].name()
+                );
+            } else {
+                assert_eq!(rows.as_slice(), pinned, "{}: its pinned rows", start.name);
+            }
+        }
+    });
+}
+
+/// The short form of a cell of H-47 (ADR-0236), on the weekly job: on path 0, the pair's head and
+/// the plain night on A's patterns after it, then the read as it was of A and of the pair, held
+/// to what the long run pinned of that image.
+fn nights_short(n: usize, s: usize) {
+    with_nights(n, s, "h47 short", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        let label = format!("{} path 0 head blocks {NIGHTS_EVERY}", start.name);
+        let (head, ends) = nights_run(start, start.image, NIGHTS_EVERY, &label, path_from(0));
+        let label = format!("{} path 0 plain-first gap {NIGHTS_EVERY}", start.name);
+        let (image, gain) = nights_gap(start, NightsGap::PlainFirst, &head, &first, &label);
+        let label = format!("{} path 0 plain-first blocks {NIGHTS_EVERY}", start.name);
+        let (a, couplings) = spread_read(
+            &start.site,
+            &image,
+            &label,
+            "as-it-was 0",
+            nights_read_from(0),
+        );
+        let (pair, _) = spread_read(
+            &start.theirs,
+            &image,
+            &label,
+            "as-it-was 0",
+            nights_read_from(0),
+        );
+        let read = (
+            crc64(&image),
+            a,
+            pair,
+            couplings,
+            nights_highest(&ends),
+            Some(gain),
+        );
+        eprintln!("DUMP {} PIN short {read:?}", start.name);
+        match nights_row(NIGHTS_ROWS[n][s][1], 0, 0) {
+            Some(row) => assert_eq!(
+                read,
+                (
+                    row.image,
+                    row.first[0],
+                    row.second[0],
+                    row.couplings,
+                    row.highest,
+                    row.gain
+                ),
+                "{}: its long run's first plain night on path 0",
+                start.name
+            ),
+            None => eprintln!(
+                "DUMP {} not pinned: its long run's rows are written from the logs",
+                start.name
+            ),
+        }
+    });
+}
+
+/// The lines a twin listens for, while one does (the `eprintln!` at the top of this file).
+static LISTENING: Mutex<Option<Vec<String>>> = Mutex::new(None);
+
+/// A dump line, kept while a twin listens.
+fn listened(line: &str) {
+    if let Ok(mut listening) = LISTENING.lock() {
+        if let Some(lines) = listening.as_mut() {
+            lines.push(line.to_string());
+        }
+    }
+}
+
+/// The twin of H-47's step 2 (ADR-0234, ADR-0236): on seed 22 from the eighth image and the
+/// assignment, on path 0, the head, the plain nights on A's patterns at blocks 6 and 12 with the
+/// blocks between, and the first night without replay, with each image's state and its reads,
+/// under H-47's harness: the running configuration with the slow-wave baseline on every engine.
+/// Its lines, label aside, must be explorations 018's and 019's from their logs (`NIGHTS_TWIN`),
+/// each group's count and hash, or the round stops there as a finding.
+fn nights_twin() {
+    if let Ok(mut listening) = LISTENING.lock() {
+        *listening = Some(Vec::new());
+    }
+    let mut name = String::new();
+    with_nights(0, 0, "h47 twin", |start| {
+        name.clone_from(&start.name);
+        let first = mapping_patterns(&start.site, start.image);
+        let label = format!("{} path 0 head blocks {NIGHTS_EVERY}", start.name);
+        let (head, _) = nights_run(start, start.image, NIGHTS_EVERY, &label, path_from(0));
+        let kept = Mutex::new(BTreeMap::new());
+        two_at_a_time(&[NightsGap::PlainFirst, NightsGap::NoReplay], |&gap| {
+            let at = format!("{} path 0 {}", start.name, gap.name());
+            let six = format!("{at} gap {NIGHTS_EVERY}");
+            let (image, _) = nights_gap(start, gap, &head, &first, &six);
+            let blocks = format!("{at} blocks {NIGHTS_EVERY}");
+            kept.lock()
+                .expect("a night ended")
+                .insert((gap.name(), NIGHTS_EVERY), (blocks, image.clone()));
+            if gap == NightsGap::PlainFirst {
+                let twelve = NIGHTS_EVERY.saturating_mul(2);
+                let blocks = format!("{at} blocks {twelve}");
+                let (run, _) = nights_run(start, &image, NIGHTS_EVERY, &blocks, path_from(0));
+                let (image, _) =
+                    nights_gap(start, gap, &run, &first, &format!("{at} gap {twelve}"));
+                kept.lock()
+                    .expect("a night ended")
+                    .insert((gap.name(), twelve), (blocks, image));
+            }
+        });
+        let kept = kept.into_inner().expect("every night ended");
+        nights_reads(start, &kept);
+    });
+    let lines = LISTENING
+        .lock()
+        .ok()
+        .and_then(|mut listening| listening.take())
+        .unwrap_or_default();
+    let groups = twin_groups(&lines, &name);
+    for (group, (count, hash)) in &groups {
+        eprintln!("DUMP twin PIN group {group:?} {count} lines, hash {hash:#018x}");
+    }
+    let pinned: BTreeMap<String, (u32, u64)> = NIGHTS_TWIN
+        .iter()
+        .map(|&(group, count, hash)| (group.to_string(), (count, hash)))
+        .collect();
+    assert_eq!(
+        groups, pinned,
+        "the twin's lines, label aside, are explorations 018's and 019's"
+    );
+    eprintln!("DUMP twin: every group is the explorations' logs, line for line");
+}
+
+/// The trial of H-47's twin (ADR-0234's step 2), by name beside the 24 jobs.
+#[test]
+#[ignore]
+fn the_twin_of_explorations_018_and_019_on_seed_22_from_the_eighth_image_and_the_assignment_paused()
+{
+    nights_twin();
+}
+
+/// A form's rows by hand: on every path and at every checkpoint A's count `a` and the pair's `b`
+/// in every stream, A's couplings `c` in the image and at the highest, and the gain from `g.0` to
+/// `g.1` at every gap.
+fn nights_hand(a: u8, b: u8, c: [i64; 4], g: (u32, u32)) -> Vec<NightsRow> {
+    let mut rows = Vec::new();
+    for _ in NIGHTS_PATHS {
+        for &block in &NIGHTS_CHECKPOINTS {
+            rows.push(NightsRow {
+                image: 1,
+                first: [a; 16],
+                second: [b; 16],
+                couplings: c,
+                highest: c,
+                gain: (block <= NIGHTS_LAST).then_some(g),
+            });
+        }
+    }
+    rows
+}
+
+/// 48 differences by path: `v[p]` on every stream of path `p`.
+fn by_path(v: [i64; 3]) -> [[i64; 16]; 3] {
+    v.map(|x| [x; 16])
+}
+
+/// 48 differences by stream: `w[r]` on every path at stream `r`.
+fn by_stream(w: [i64; 16]) -> [[i64; 16]; 3] {
+    [w; 3]
+}
+
+/// The gate's test (ADR-0061's class; brief 087): H-47's networks, starts, forms, checkpoints,
+/// paths, reads, night and pair, its prediction and its readings' constants; clause 1's rule
+/// against the explorations' paired SE and at its edges by path, by stream and with a negative
+/// stream variance; the three clauses, the verdict's steps and the five readings at their edges
+/// over tables written by hand; the twin's reader over lines written by hand; and, over H-47's
+/// pinned tables, the verdict, its step and the five readings as written (`nights_tables`). It
+/// runs no trial. Nothing else added to the gate.
+#[test]
+fn the_nights_of_h_47_their_clauses_and_their_predicted_readings_rules() {
+    assert_eq!(NIGHTS_SEEDS, [22, 23, 24]);
+    assert_eq!(
+        NIGHTS_STARTS,
+        [
+            (NightFrom::Eighth, Reversal::AssignmentFirst),
+            (NightFrom::Eighth, Reversal::MirroredFirst),
+            (NightFrom::FirstMapping, Reversal::AssignmentFirst),
+            (NightFrom::FirstMapping, Reversal::MirroredFirst),
+        ]
+    );
+    assert_eq!(
+        NIGHTS_GAPS.map(NightsGap::name),
+        ["no-replay", "plain-first", "plain-both", "awake"]
+    );
+    assert_eq!(NIGHTS_JOBS, [[0, 1], [2, 3]]);
+    assert_eq!(
+        (NIGHTS_EVERY, NIGHTS_LAST, NIGHTS_ON, NIGHTS_CHECKPOINTS),
+        (6, 24, 12, [6, 12, 18, 24, 36])
+    );
+    assert_eq!(
+        (NIGHTS_PATHS, PATH_TRIALS, PATHS_ON_ONE_DRIVE, NIGHTS_READS),
+        ([0, 5, 6], 4_096, 4, 16)
+    );
+    assert_eq!(
+        (
+            NIGHT_SHIFT,
+            NIGHT_SLOW_WAVE_Q16,
+            NIGHT_PRIORITY,
+            NIGHT_AWAKE_TICKS
+        ),
+        (7, 0x8000, 200, 4_037_214)
+    );
+    assert_eq!(
+        (NIGHT_RIPPLE, NIGHT_RIPPLES_MAX, NIGHT_CAPTURE_TICKS),
+        (2_048, 32_768, 512)
+    );
+    assert_eq!(
+        (SECOND_C_OFFSET, SECOND_D_OFFSET, NIGHTS_SHARE),
+        (5, 16, 0b0101)
+    );
+    assert_eq!(
+        (NIGHTS_PREDICTED, NIGHTS_READINGS_PREDICTED),
+        (true, [true; 5]),
+        "ADR-0234 predicts yes, and each of its five readings"
+    );
+    assert_eq!(
+        (NIGHTS_PAIR_FLOOR, NIGHTS_READING_CELLS, NIGHTS_MARGIN_OVER),
+        (56, 10, 2_000_000)
+    );
+    assert_eq!(
+        NIGHTS_PATHS.map(path_from),
+        [
+            ReadFrom { trial: 0, drive: 0 },
+            ReadFrom {
+                trial: 20_480,
+                drive: 5
+            },
+            ReadFrom {
+                trial: 24_576,
+                drive: 6
+            },
+        ]
+    );
+    assert_eq!(nights_read_from(0), ReadFrom { trial: 0, drive: 0 });
+    assert_eq!(
+        nights_read_from(15),
+        ReadFrom {
+            trial: 960,
+            drive: 15
+        }
+    );
+    assert_eq!(
+        (nights_what(0), nights_what(15)),
+        ("as-it-was 0".to_string(), "Both 15".to_string())
+    );
+    assert_eq!(
+        NIGHTS_STARTS.map(|(from, arm)| nights_mirrored(from, arm)),
+        [true, false, false, true],
+        "an eighth schedule ends on its arm's other mapping"
+    );
+    // Clause 1's rule. A difference of 2 on every read stands above any SE of zero; none, or
+    // below zero, does not.
+    assert!(nights_above(&by_path([2; 3])));
+    assert!(!nights_above(&by_path([0; 3])));
+    assert!(!nights_above(&by_path([-2; 3])));
+    assert_eq!(nights_split(&by_path([2; 3])), (0, 0, 96));
+    // By path alone: paths 1, 1 and 4 have a mean of 2 and an SE of exactly 1, at the edge; a
+    // path 1 higher is past it, and one 1 lower is not.
+    assert_eq!(nights_split(&by_path([1, 1, 4])), (0, 622_080, 96));
+    assert!(!nights_above(&by_path([1, 1, 4])), "at twice the SE");
+    assert!(nights_above(&by_path([1, 2, 4])), "past it");
+    assert!(!nights_above(&by_path([1, 1, 5])));
+    // By stream alone: fifteen streams at 1 and one at k stand above twice the SE below 17.
+    let streams = |k: i64| {
+        let mut w = [1i64; 16];
+        w[7] = k;
+        by_stream(w)
+    };
+    assert!(nights_above(&streams(16)));
+    assert!(!nights_above(&streams(17)), "at twice the SE");
+    assert_eq!(nights_split(&streams(17)).1, 0, "no path's spread");
+    // A negative stream variance counts as zero: the rest larger than the streams' spread.
+    let mut crossed = by_path([1; 3]);
+    crossed[0][0] = 17;
+    crossed[1][0] = -15;
+    let (a, b, s) = nights_split(&crossed);
+    assert!(a < 0, "{a}");
+    assert_eq!((b, s), (207_360, 48));
+    assert!(
+        !nights_above(&crossed)
+            && s.saturating_mul(s).saturating_mul(1_080)
+                > a.saturating_mul(3).saturating_add(b.saturating_mul(16)),
+        "below twice the SE at a variance of zero, and above it at the negative one"
+    );
+    // The explorations' paired SE (exploration 019): its first mapping from the mirrored
+    // assignment at block 24, +4.7 ± 2.24, the plain night less the night without replay. The
+    // terms are a script's of the same 48 differences, independently of this rule.
+    let read = [
+        [9, 5, 2, 17, 10, 5, 3, 7, -1, 6, 2, 4, 7, 11, -4, 4],
+        [-2, 6, 1, 9, 8, -2, 1, 4, -3, -4, 0, -1, -2, 5, -5, 0],
+        [7, 11, 4, 19, 10, 10, 10, 12, 4, 3, 4, 6, 10, 10, 0, 4],
+    ];
+    assert_eq!(nights_split(&read), (3_372_768, 2_488_590, 226));
+    assert!(nights_above(&read));
+    // The clauses. A's image at 10 M a coupling; a plain night 2 over a night without replay on
+    // every read, the pair at 60, every coupling at the image's.
+    let image = [[10_000_000i64; 2]; 2];
+    let at = [10_000_000i64; 4];
+    let none = nights_hand(40, 60, at, (100, 110));
+    let plain = nights_hand(42, 60, at, (110, 100));
+    let both = nights_hand(41, 60, at, (110, 100));
+    let awake = nights_hand(41, 60, at, (100, 100));
+    let cell = [
+        none.as_slice(),
+        plain.as_slice(),
+        both.as_slice(),
+        awake.as_slice(),
+    ];
+    assert_eq!(nights_clauses(cell, &image), [true; 3]);
+    let level = nights_hand(40, 60, at, (110, 100));
+    assert_eq!(
+        nights_clauses(
+            [
+                none.as_slice(),
+                level.as_slice(),
+                both.as_slice(),
+                awake.as_slice()
+            ],
+            &image
+        ),
+        [false, true, true],
+        "clause 1: no difference"
+    );
+    let mut early = plain.clone();
+    early[4].first = [40; 16];
+    early[9].first = [40; 16];
+    early[14].first = [40; 16];
+    assert!(
+        !nights_clauses(
+            [
+                none.as_slice(),
+                early.as_slice(),
+                both.as_slice(),
+                awake.as_slice()
+            ],
+            &image
+        )[0],
+        "clause 1 reads block 36 alone"
+    );
+    let mut floor = plain.clone();
+    for p in 0..3usize {
+        floor[p.saturating_mul(5).saturating_add(4)].second = [56; 16];
+    }
+    assert_eq!(
+        nights_clauses(
+            [
+                none.as_slice(),
+                floor.as_slice(),
+                both.as_slice(),
+                awake.as_slice()
+            ],
+            &image
+        ),
+        [true; 3],
+        "clause 2 at 56"
+    );
+    floor[14].second[15] = 55;
+    assert_eq!(
+        nights_clauses(
+            [
+                none.as_slice(),
+                floor.as_slice(),
+                both.as_slice(),
+                awake.as_slice()
+            ],
+            &image
+        ),
+        [true, false, true],
+        "clause 2 one read below"
+    );
+    let bounded = |form: usize, row: usize, c: [i64; 4], highest: bool| {
+        let mut rows = [none.clone(), plain.clone(), both.clone(), awake.clone()];
+        if highest {
+            rows[form][row].highest = c;
+        } else {
+            rows[form][row].couplings = c;
+        }
+        nights_clauses(
+            [
+                rows[0].as_slice(),
+                rows[1].as_slice(),
+                rows[2].as_slice(),
+                rows[3].as_slice(),
+            ],
+            &image,
+        )[2]
+    };
+    assert!(bounded(3, 7, [13_000_000, 0, 0, 0], false), "at 1.30");
+    assert!(
+        !bounded(3, 7, [13_000_001, 0, 0, 0], false),
+        "past it, under the awake gap"
+    );
+    assert!(
+        !bounded(0, 14, [0, 0, 0, 13_000_001], true),
+        "past it at a block's end"
+    );
+    assert!(!bounded(2, 0, [0, 0, 13_000_001, 0], true), "in the head");
+    // The verdict and the stopping rule's steps, the first that applies.
+    let all = nights_verdict([[[true; 3]; 4]; 3]);
+    assert!(all.yes);
+    assert_eq!(nights_stop(&all), 3);
+    let with = |misses: &[(usize, usize, usize)]| {
+        let mut clauses = [[[true; 3]; 4]; 3];
+        for &(n, s, c) in misses {
+            clauses[n][s][c] = false;
+        }
+        let verdict = nights_verdict(clauses);
+        assert!(!verdict.yes);
+        nights_stop(&verdict)
+    };
+    assert_eq!(with(&[(2, 3, 2)]), 4, "a coupling");
+    assert_eq!(
+        with(&[(0, 0, 0)]),
+        5,
+        "a night without replay keeping as much"
+    );
+    assert_eq!(with(&[(1, 2, 1)]), 6, "the pair");
+    assert_eq!(with(&[(1, 2, 1), (0, 0, 0)]), 5, "the first that applies");
+    assert_eq!(with(&[(1, 2, 1), (0, 0, 0), (2, 1, 2)]), 4);
+    // The five readings over twelve cells. A's margin 4 M under plain nights and 2 M under none,
+    // mirrored in the starts whose mapping in force is mirrored.
+    let margin = |m: i64, mirrored: bool| {
+        let (high, low) = (
+            10_000_000i64.saturating_add(m.saturating_div(2)),
+            10_000_000i64,
+        );
+        if mirrored {
+            [low, high, high, low]
+        } else {
+            [high, low, low, high]
+        }
+    };
+    let cells: Vec<[Vec<NightsRow>; 4]> = NIGHTS_STARTS
+        .iter()
+        .map(|&(from, arm)| {
+            let mirrored = nights_mirrored(from, arm);
+            [
+                nights_hand(40, 60, margin(2_000_000, mirrored), (100, 110)),
+                nights_hand(42, 60, margin(4_000_000, mirrored), (110, 100)),
+                nights_hand(41, 60, margin(4_000_000, mirrored), (110, 100)),
+                nights_hand(41, 60, margin(4_000_000, mirrored), (100, 100)),
+            ]
+        })
+        .collect();
+    let table = |cells: &[[Vec<NightsRow>; 4]]| -> Vec<[[Vec<NightsRow>; 4]; 4]> {
+        (0..3)
+            .map(|_| core::array::from_fn(|s| cells[s].clone()))
+            .collect()
+    };
+    let read = |t: &[[[Vec<NightsRow>; 4]; 4]]| {
+        let rows: [[[&[NightsRow]; 4]; 4]; 3] = core::array::from_fn(|n| {
+            core::array::from_fn(|s| core::array::from_fn(|f| t[n][s][f].as_slice()))
+        });
+        nights_predicted(&rows)
+    };
+    let held = table(&cells);
+    assert_eq!(read(&held), [true; 5]);
+    let changed = |n: usize, s: usize, f: usize, change: &dyn Fn(&mut Vec<NightsRow>)| {
+        let mut t = held.clone();
+        change(&mut t[n][s][f]);
+        read(&t)
+    };
+    // Reading 1: the plain night on A's patterns over the awake gap in 10 of 12.
+    let mut t = held.clone();
+    for (n, s) in [(0, 0), (1, 1)] {
+        t[n][s][3] = nights_hand(
+            42,
+            60,
+            margin(
+                4_000_000,
+                nights_mirrored(NIGHTS_STARTS[s].0, NIGHTS_STARTS[s].1),
+            ),
+            (100, 100),
+        );
+    }
+    assert!(read(&t)[0], "ten of twelve");
+    t[2][3][3] = nights_hand(43, 60, margin(4_000_000, true), (100, 100));
+    assert!(!read(&t)[0], "nine of twelve");
+    // Reading 2: plain on both over none, every cell.
+    assert!(
+        !changed(2, 1, 2, &|r| *r =
+            nights_hand(40, 60, margin(4_000_000, false), (110, 100)))[1]
+    );
+    // Reading 3: the margin 2 M over, in every cell, the mean of three paths.
+    assert!(
+        !changed(1, 2, 1, &|r| r[9].couplings = margin(3_999_998, false))[2],
+        "one path two short"
+    );
+    assert!(
+        changed(1, 2, 1, &|r| r[4].couplings = margin(4_000_002, false))[2],
+        "another two over"
+    );
+    assert!(
+        !changed(0, 0, 1, &|r| r[14].couplings = margin(4_000_000, false))[2],
+        "not mirrored where the start is"
+    );
+    // Reading 4: every night without replay raises the gain, every plain night lowers it.
+    assert!(
+        !changed(0, 0, 0, &|r| r[3].gain = Some((100, 100)))[3],
+        "held"
+    );
+    assert!(
+        !changed(0, 0, 2, &|r| r[13].gain = Some((100, 101)))[3],
+        "raised"
+    );
+    assert!(!changed(0, 0, 1, &|r| r[0].gain = None)[3], "none at a gap");
+    assert!(
+        changed(0, 0, 3, &|r| r[0].gain = Some((100, 90)))[3],
+        "the awake gap is not read"
+    );
+    // Reading 5: clause 1 at block 24, in 10 of 12.
+    let mut t = held.clone();
+    for cell in t[0].iter_mut().take(3) {
+        for p in 0..3usize {
+            cell[1][p.saturating_mul(5).saturating_add(3)].first = [40; 16];
+        }
+    }
+    assert!(!read(&t)[4], "nine of twelve");
+    t[0][2][1] = held[0][2][1].clone();
+    assert!(read(&t)[4], "ten of twelve");
+    // The twin's reader.
+    let name = "h47 twin zero22 AssignmentFirst Eighth";
+    let lines = [
+        format!("DUMP {name} PIN rules Rules {{ x }}"),
+        format!("DUMP {name} the groups: [51, 51] excitatory units"),
+        format!("DUMP {name} groups Apart values [1] further [2] kinds [3]"),
+        format!("DUMP {name} path 0 head blocks 6 run mirrored false correct [1]"),
+        format!("DUMP {name} path 0 plain-first blocks 12 run mirrored false correct [2]"),
+        format!("DUMP {name} path 0 plain-first gap 6 window NightState {{ tick: 1 }} spikes 2"),
+        format!("DUMP {name} path 0 plain-first gap 6 start NightState {{ tick: 0 }} target"),
+        format!("DUMP {name} path 0 plain-first blocks 6 kinds [[1]]"),
+        format!("DUMP {name} path 0 plain-first blocks 6 held [1] at [1]"),
+        format!("DUMP {name} path 0 no-replay blocks 6 second read mirrored true correct [3]"),
+        format!("DUMP {name} first mapping [1] PIN image 0x1"),
+        format!("DUMP {name} path 0 plain-first gap 6 took 5 ms"),
+        "DUMP h47 zero22 AssignmentFirst Eighth PIN rules Rules { x }".to_string(),
+    ];
+    let groups: Vec<Option<(String, String)>> = lines.iter().map(|l| twin_line(l, name)).collect();
+    let group = |i: usize| groups[i].as_ref().map(|g| (g.0.as_str(), g.1.as_str()));
+    assert_eq!(group(0), Some(("pins", "PIN rules Rules { x }")));
+    assert_eq!(
+        group(1),
+        Some(("the groups", "the groups: [51, 51] excitatory units"))
+    );
+    assert_eq!(
+        group(2),
+        Some(("groups", "groups Apart values [1] further [2] kinds [3]"))
+    );
+    assert_eq!(group(3), Some(("head", "run mirrored false correct [1]")));
+    assert_eq!(
+        group(4),
+        Some((
+            "plain-first blocks 12 run",
+            "run mirrored false correct [2]"
+        ))
+    );
+    assert_eq!(group(5).map(|g| g.0), Some("plain-first gap 6"));
+    assert_eq!(group(6).map(|g| g.0), Some("plain-first gap 6"));
+    assert_eq!(group(7), Some(("plain-first blocks 6", "kinds [[1]]")));
+    assert_eq!(group(8), Some(("plain-first blocks 6", "held [1] at [1]")));
+    assert_eq!(group(9).map(|g| g.0), Some("no-replay blocks 6 second"));
+    assert_eq!(
+        group(10),
+        None,
+        "a line at the name with no group's marker first"
+    );
+    assert_eq!(group(11), None, "a timing");
+    assert_eq!(group(12), None, "another label");
+    let one = twin_groups(&lines, name);
+    let mut reversed = lines.to_vec();
+    reversed.reverse();
+    assert_eq!(
+        twin_groups(&reversed, name),
+        one,
+        "the order of the lines is not read"
+    );
+    assert_eq!(one.len(), 8);
+    assert_eq!(one["plain-first gap 6"].0, 2);
+    assert_eq!(fnv_text(""), 0xcbf2_9ce4_8422_2325);
+    assert_eq!(fnv_text("a"), 0xaf63_dc4c_8601_ec8c);
+    assert_eq!(one["head"], (1, fnv_text("run mirrored false correct [1]")));
+    assert_eq!(
+        one["plain-first blocks 6"],
+        (2, fnv_text("held [1] at [1]\nkinds [[1]]")),
+        "sorted, joined by line feeds"
+    );
+    nights_tables();
+}
+
+/// The gate's checks over H-47's pinned tables (ADR-0236), by the rules committed before any of
+/// them was run. A form's rows are pinned whole or not at all, fifteen, a gain at each gap and
+/// none at block 36; the head is one run, its highest the same in every form on a path; a first
+/// mapping's image is pinned with its rows. Then, where all 48 forms are pinned, the verdict by the
+/// three clauses, its step and the five readings, each as written; before that, none is.
+fn nights_tables() {
+    let mut clauses = [[[false; 3]; 4]; 3];
+    let mut complete = true;
+    for (n, network) in NIGHTS_ROWS.iter().enumerate() {
+        let image = probe_rate_pins(n)
+            .couplings
+            .expect("H-42's derivation, pinned");
+        for (s, &cell) in network.iter().enumerate() {
+            let (from, arm) = NIGHTS_STARTS[s];
+            let name = format!("{} {arm:?} {from:?}", ZERO_NAMES[n][ZERO_ARM]);
+            for rows in cell {
+                if rows.is_empty() {
+                    complete = false;
+                    continue;
+                }
+                assert_eq!(rows.len(), 15, "{name}: a form's rows whole");
+                for (i, row) in rows.iter().enumerate() {
+                    assert_eq!(
+                        row.gain.is_some(),
+                        i % 5 != 4,
+                        "{name}: a gain at each gap and none at block 36"
+                    );
+                }
+            }
+            for p in 0..NIGHTS_PATHS.len() {
+                let heads: Vec<[i64; 4]> = cell
+                    .iter()
+                    .filter_map(|rows| nights_row(rows, p, 0))
+                    .map(|row| row.highest)
+                    .collect();
+                assert!(
+                    heads.windows(2).all(|w| w[0] == w[1]),
+                    "{name}: the head is one run on path {p}"
+                );
+            }
+            let k = usize::from(first_mapping(arm));
+            if from == NightFrom::FirstMapping && cell.iter().any(|rows| !rows.is_empty()) {
+                assert!(
+                    NIGHTS_FIRST_CRC[n][k].is_some(),
+                    "{name}: its first mapping's image"
+                );
+            }
+            clauses[n][s] = nights_clauses(cell, &image);
+        }
+    }
+    let verdict = complete.then(|| nights_verdict(clauses));
+    let readings = verdict.map(|_| nights_predicted(&NIGHTS_ROWS));
+    eprintln!(
+        "DUMP nights PIN verdict {verdict:?} step {:?} predicted readings {readings:?}",
+        verdict.map(|verdict| nights_stop(&verdict))
+    );
+    assert_eq!(verdict, NIGHTS_1024, "H-47's verdict as written");
+    assert_eq!(
+        verdict.map(|verdict| nights_stop(&verdict)),
+        NIGHTS_STOP_1024,
+        "the step of the stopping rule reached"
+    );
+    assert_eq!(
+        readings, NIGHTS_READINGS_READ_1024,
+        "ADR-0234's five predicted readings, as read"
+    );
+    assert_eq!(NIGHTS_TWIN.len(), 17, "the twin's groups");
+}
+
+/// H-47's nights without replay and plain nights on A's patterns, the eighth image on seed 22, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_with_and_without_replay_of_the_eighth_image_on_seed_22_from_the_assignment_paused() {
+    nights_job(0, 0, [0, 1]);
+}
+
+/// H-47's plain nights on both mappings' patterns and the awake gap, the eighth image on seed 22, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_on_both_mappings_and_awake_of_the_eighth_image_on_seed_22_from_the_assignment_paused() {
+    nights_job(0, 0, [2, 3]);
+}
+
+/// H-47's nights without replay and plain nights on A's patterns, the eighth image on seed 22, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_with_and_without_replay_of_the_eighth_image_on_seed_22_from_the_mirrored_assignment_paused()
+ {
+    nights_job(0, 1, [0, 1]);
+}
+
+/// H-47's plain nights on both mappings' patterns and the awake gap, the eighth image on seed 22, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_on_both_mappings_and_awake_of_the_eighth_image_on_seed_22_from_the_mirrored_assignment_paused()
+ {
+    nights_job(0, 1, [2, 3]);
+}
+
+/// H-47's nights without replay and plain nights on A's patterns, a first mapping on seed 22, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_with_and_without_replay_of_a_first_mapping_on_seed_22_from_the_assignment_paused() {
+    nights_job(0, 2, [0, 1]);
+}
+
+/// H-47's plain nights on both mappings' patterns and the awake gap, a first mapping on seed 22, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_on_both_mappings_and_awake_of_a_first_mapping_on_seed_22_from_the_assignment_paused() {
+    nights_job(0, 2, [2, 3]);
+}
+
+/// H-47's nights without replay and plain nights on A's patterns, a first mapping on seed 22, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_with_and_without_replay_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_paused()
+ {
+    nights_job(0, 3, [0, 1]);
+}
+
+/// H-47's plain nights on both mappings' patterns and the awake gap, a first mapping on seed 22, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_on_both_mappings_and_awake_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_paused()
+ {
+    nights_job(0, 3, [2, 3]);
+}
+
+/// H-47's nights without replay and plain nights on A's patterns, the eighth image on seed 23, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_with_and_without_replay_of_the_eighth_image_on_seed_23_from_the_assignment_paused() {
+    nights_job(1, 0, [0, 1]);
+}
+
+/// H-47's plain nights on both mappings' patterns and the awake gap, the eighth image on seed 23, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_on_both_mappings_and_awake_of_the_eighth_image_on_seed_23_from_the_assignment_paused() {
+    nights_job(1, 0, [2, 3]);
+}
+
+/// H-47's nights without replay and plain nights on A's patterns, the eighth image on seed 23, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_with_and_without_replay_of_the_eighth_image_on_seed_23_from_the_mirrored_assignment_paused()
+ {
+    nights_job(1, 1, [0, 1]);
+}
+
+/// H-47's plain nights on both mappings' patterns and the awake gap, the eighth image on seed 23, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_on_both_mappings_and_awake_of_the_eighth_image_on_seed_23_from_the_mirrored_assignment_paused()
+ {
+    nights_job(1, 1, [2, 3]);
+}
+
+/// H-47's nights without replay and plain nights on A's patterns, a first mapping on seed 23, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_with_and_without_replay_of_a_first_mapping_on_seed_23_from_the_assignment_paused() {
+    nights_job(1, 2, [0, 1]);
+}
+
+/// H-47's plain nights on both mappings' patterns and the awake gap, a first mapping on seed 23, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_on_both_mappings_and_awake_of_a_first_mapping_on_seed_23_from_the_assignment_paused() {
+    nights_job(1, 2, [2, 3]);
+}
+
+/// H-47's nights without replay and plain nights on A's patterns, a first mapping on seed 23, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_with_and_without_replay_of_a_first_mapping_on_seed_23_from_the_mirrored_assignment_paused()
+ {
+    nights_job(1, 3, [0, 1]);
+}
+
+/// H-47's plain nights on both mappings' patterns and the awake gap, a first mapping on seed 23, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_on_both_mappings_and_awake_of_a_first_mapping_on_seed_23_from_the_mirrored_assignment_paused()
+ {
+    nights_job(1, 3, [2, 3]);
+}
+
+/// H-47's nights without replay and plain nights on A's patterns, the eighth image on seed 24, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_with_and_without_replay_of_the_eighth_image_on_seed_24_from_the_assignment_paused() {
+    nights_job(2, 0, [0, 1]);
+}
+
+/// H-47's plain nights on both mappings' patterns and the awake gap, the eighth image on seed 24, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_on_both_mappings_and_awake_of_the_eighth_image_on_seed_24_from_the_assignment_paused() {
+    nights_job(2, 0, [2, 3]);
+}
+
+/// H-47's nights without replay and plain nights on A's patterns, the eighth image on seed 24, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_with_and_without_replay_of_the_eighth_image_on_seed_24_from_the_mirrored_assignment_paused()
+ {
+    nights_job(2, 1, [0, 1]);
+}
+
+/// H-47's plain nights on both mappings' patterns and the awake gap, the eighth image on seed 24, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_on_both_mappings_and_awake_of_the_eighth_image_on_seed_24_from_the_mirrored_assignment_paused()
+ {
+    nights_job(2, 1, [2, 3]);
+}
+
+/// H-47's nights without replay and plain nights on A's patterns, a first mapping on seed 24, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_with_and_without_replay_of_a_first_mapping_on_seed_24_from_the_assignment_paused() {
+    nights_job(2, 2, [0, 1]);
+}
+
+/// H-47's plain nights on both mappings' patterns and the awake gap, a first mapping on seed 24, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_on_both_mappings_and_awake_of_a_first_mapping_on_seed_24_from_the_assignment_paused() {
+    nights_job(2, 2, [2, 3]);
+}
+
+/// H-47's nights without replay and plain nights on A's patterns, a first mapping on seed 24, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_with_and_without_replay_of_a_first_mapping_on_seed_24_from_the_mirrored_assignment_paused()
+ {
+    nights_job(2, 3, [0, 1]);
+}
+
+/// H-47's plain nights on both mappings' patterns and the awake gap, a first mapping on seed 24, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn nights_on_both_mappings_and_awake_of_a_first_mapping_on_seed_24_from_the_mirrored_assignment_paused()
+ {
+    nights_job(2, 3, [2, 3]);
+}
+
+/// The short form of H-47's cell the eighth image on seed 22, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn a_plain_night_after_the_pair_s_head_of_the_eighth_image_on_seed_22_from_the_assignment_at_1024_units_exhaustive()
+ {
+    nights_short(0, 0);
+}
+
+/// The short form of H-47's cell the eighth image on seed 22, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn a_plain_night_after_the_pair_s_head_of_the_eighth_image_on_seed_22_from_the_mirrored_assignment_at_1024_units_exhaustive()
+ {
+    nights_short(0, 1);
+}
+
+/// The short form of H-47's cell a first mapping on seed 22, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn a_plain_night_after_the_pair_s_head_of_a_first_mapping_on_seed_22_from_the_assignment_at_1024_units_exhaustive()
+ {
+    nights_short(0, 2);
+}
+
+/// The short form of H-47's cell a first mapping on seed 22, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn a_plain_night_after_the_pair_s_head_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_at_1024_units_exhaustive()
+ {
+    nights_short(0, 3);
+}
+
+/// The short form of H-47's cell the eighth image on seed 23, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn a_plain_night_after_the_pair_s_head_of_the_eighth_image_on_seed_23_from_the_assignment_at_1024_units_exhaustive()
+ {
+    nights_short(1, 0);
+}
+
+/// The short form of H-47's cell the eighth image on seed 23, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn a_plain_night_after_the_pair_s_head_of_the_eighth_image_on_seed_23_from_the_mirrored_assignment_at_1024_units_exhaustive()
+ {
+    nights_short(1, 1);
+}
+
+/// The short form of H-47's cell a first mapping on seed 23, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn a_plain_night_after_the_pair_s_head_of_a_first_mapping_on_seed_23_from_the_assignment_at_1024_units_exhaustive()
+ {
+    nights_short(1, 2);
+}
+
+/// The short form of H-47's cell a first mapping on seed 23, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn a_plain_night_after_the_pair_s_head_of_a_first_mapping_on_seed_23_from_the_mirrored_assignment_at_1024_units_exhaustive()
+ {
+    nights_short(1, 3);
+}
+
+/// The short form of H-47's cell the eighth image on seed 24, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn a_plain_night_after_the_pair_s_head_of_the_eighth_image_on_seed_24_from_the_assignment_at_1024_units_exhaustive()
+ {
+    nights_short(2, 0);
+}
+
+/// The short form of H-47's cell the eighth image on seed 24, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn a_plain_night_after_the_pair_s_head_of_the_eighth_image_on_seed_24_from_the_mirrored_assignment_at_1024_units_exhaustive()
+ {
+    nights_short(2, 1);
+}
+
+/// The short form of H-47's cell a first mapping on seed 24, from the assignment (ADR-0236).
+#[test]
+#[ignore]
+fn a_plain_night_after_the_pair_s_head_of_a_first_mapping_on_seed_24_from_the_assignment_at_1024_units_exhaustive()
+ {
+    nights_short(2, 2);
+}
+
+/// The short form of H-47's cell a first mapping on seed 24, from the mirrored assignment (ADR-0236).
+#[test]
+#[ignore]
+fn a_plain_night_after_the_pair_s_head_of_a_first_mapping_on_seed_24_from_the_mirrored_assignment_at_1024_units_exhaustive()
+ {
+    nights_short(2, 3);
 }

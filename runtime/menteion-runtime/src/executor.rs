@@ -303,6 +303,14 @@ pub struct Config {
     /// image with a read or a probe under way: the derivation stays H-42's (ADR-0232). Not in the
     /// image: for an engine built from an image, the configuration's.
     pub depression_exponent: DepressionExponent,
+    /// The baseline in slow-wave sleep (ADR-0234, ADR-0235): while set, a tick in that stage
+    /// builds its modulations under it in `modulation_baseline_q16`'s place, so that it reaches
+    /// what the baseline reaches, every excitatory synapse and, while the inhibitory baseline is
+    /// unset, every inhibitory one; every other stage keeps the engine's baseline. Unset (the
+    /// default), every run is the run it was, bit for bit. Q16.16 in $[0, 1]$ when set; refused
+    /// outside it. In no named configuration and not in the image: for an engine built from an
+    /// image, the configuration's.
+    pub slow_wave_baseline_q16: Option<i32>,
 }
 
 /// The oldest age a reward may name (ADR-0207): four trials, the eligibility trace's τ of
@@ -362,6 +370,7 @@ impl Default for Config {
             kept_addresses: 0,
             reads_its_delay: false,
             depression_exponent: DepressionExponent::One,
+            slow_wave_baseline_q16: None,
         }
     }
 }
@@ -576,6 +585,8 @@ pub enum ConfigError {
     /// carries a read or a probe under way under such an exponent: the derivation stays H-42's,
     /// and no run has read one at another exponent (ADR-0232).
     ExponentBesideRead,
+    /// `slow_wave_baseline_q16` is set outside $[0, 1]$ (ADR-0235).
+    SlowWaveBaselineOutOfRange,
 }
 
 /// The read of the rate's target (ADR-0188, ADR-0189), between ticks: `Executor::target_read`.
@@ -843,6 +854,16 @@ impl Modulations {
     }
 }
 
+/// The baseline a tick builds its modulations under (ADR-0235): the slow-wave baseline in
+/// slow-wave sleep while it is set, and the engine's baseline in every other stage and while it
+/// is unset. A pattern, not a comparison, on the stage.
+const fn tick_baseline(baseline_q16: i32, slow_wave_baseline_q16: Option<i32>, stage: u8) -> i32 {
+    match (slow_wave_baseline_q16, stage) {
+        (Some(slow_wave), STAGE_SWS) => slow_wave,
+        _ => baseline_q16,
+    }
+}
+
 /// The word the coordinator publishes for the inhibitory modulation (ADR-0086): the
 /// modulation itself while the inhibitory baseline is set — within $[0, 1]$, as
 /// `Modulations::of` clamps it — and `INHIBITORY_UNSET`, below zero, while it is unset. One
@@ -997,10 +1018,14 @@ const _: () = assert!(RIPPLE_CADENCE.period() >= 4 << BASAL_LEAK_SHIFT);
 const RIPPLE_SCAN: usize = 16;
 /// The replay drive (ADR-0038): `REPLAY_MESSAGES` messages of `REPLAY_DRIVE_Q16` each into
 /// the basal compartment of every unit of the episode, two and a half times the threshold's
-/// base in all: the middle of the band that fires a unit at its base threshold exactly once,
-/// about twelve ticks on (below about 2.1 the soma, which settles near half the basal
-/// potential, never reaches the threshold; from 3.0 what the drive leaves in the dendrite
-/// after the refractory window fires the unit a second time; ADR-0018).
+/// base in all before the gain. The turn scales them by the tick's gain as it scales every
+/// injected message and every synapse's (`scaled`, F-47, ADR-0234), so what arrives is 2.5
+/// times the gain: at 1.0 the middle of the band ADR-0038 read, which fires a unit at its base
+/// threshold exactly once, about twelve ticks on (below about 2.1 the soma, which settles near
+/// half the basal potential, never reaches the threshold; from 3.0 what the drive leaves in the
+/// dendrite after the refractory window fires the unit a second time; ADR-0018); at the
+/// reference network's 1.75, 4.375, which fires a unit at rest twice, at 5 and 206 ticks
+/// (ADR-0074's probe).
 const REPLAY_DRIVE_Q16: i32 = 0x0001_4000;
 const REPLAY_MESSAGES: usize = 2;
 const REPLAY_MESSAGE: u32 = spike_message(REPLAY_DRIVE_Q16, false);
@@ -1600,6 +1625,9 @@ pub struct Executor<const CAP: usize> {
     /// The engine's modulator record (ADR-0032): one for the engine until macro-columns exist.
     modulator: NeuromodulatorState,
     modulation_baseline_q16: i32,
+    /// The baseline in slow-wave sleep (ADR-0235): the configuration's, never the image's; none
+    /// while unset.
+    slow_wave_baseline_q16: Option<i32>,
     /// The inhibitory baseline (ADR-0086): the configuration's, or the image's; none while
     /// unset.
     inhibitory_baseline_q16: Option<i32>,
@@ -1778,6 +1806,12 @@ impl<const CAP: usize> Executor<CAP> {
         {
             return Err(ConfigError::InhibitoryBaselineOutOfRange);
         }
+        if config
+            .slow_wave_baseline_q16
+            .is_some_and(|b| !(0..=MODULATION_ONE_Q16).contains(&b))
+        {
+            return Err(ConfigError::SlowWaveBaselineOutOfRange);
+        }
         if config.stp_class.is_some_and(|c| !c.is_valid()) {
             return Err(ConfigError::StpClassOutOfRange);
         }
@@ -1946,6 +1980,7 @@ impl<const CAP: usize> Executor<CAP> {
             amendment_capacity: config.amendments,
             modulator: NeuromodulatorState::new(),
             modulation_baseline_q16: config.modulation_baseline_q16,
+            slow_wave_baseline_q16: config.slow_wave_baseline_q16,
             inhibitory_baseline_q16: config.inhibitory_baseline_q16,
             signed_gate: config.signed_gate,
             stp_class: config.stp_class,
@@ -2203,6 +2238,12 @@ impl<const CAP: usize> Executor<CAP> {
     /// The modulation with the dopamine signal at rest, from the configuration (ADR-0032).
     pub fn modulation_baseline_q16(&self) -> i32 {
         self.modulation_baseline_q16
+    }
+
+    /// The baseline in slow-wave sleep (ADR-0235), from the configuration; none while unset,
+    /// where every stage consolidates under the engine's baseline as before.
+    pub fn slow_wave_baseline_q16(&self) -> Option<i32> {
+        self.slow_wave_baseline_q16
     }
 
     /// The inhibitory baseline (ADR-0086), from the configuration or the image; none while
@@ -2942,6 +2983,20 @@ impl<const CAP: usize> Executor<CAP> {
         // reader is worker 0, which is this thread.
         let all = unsafe { self.shared.episodes.as_slice() };
         &all[..(self.hippocampus.episodes as usize).min(all.len())]
+    }
+
+    /// An input between ticks (ADR-0234, ADR-0235): every episode of the ledger spent, its tag
+    /// at zero, as the REM ripples leave one they have lowered to the end, so that a night
+    /// replays what is tagged after the call and nothing tagged before it. The patterns, the
+    /// ticks, the counts and the length stay; an episode spent already is unchanged, and an
+    /// empty ledger is.
+    pub fn spend_episodes(&mut self) {
+        let length = self.hippocampus.episodes as usize;
+        // SAFETY: `&mut self` between ticks; every worker is parked at the barrier.
+        let all = unsafe { self.shared.episodes.as_mut_slice() };
+        for episode in all.iter_mut().take(length) {
+            episode.tag = 0;
+        }
     }
 
     /// Room left in the ledger for tagged episodes.
@@ -3988,12 +4043,17 @@ impl<const CAP: usize> Executor<CAP> {
         // The modulations this tick's fan-out consolidates with, from the signal as it
         // stands (the addressed units' with the signal, every other's at rest; ADR-0032,
         // ADR-0068; the inhibitory blocks' under their own baseline while it is set,
-        // ADR-0086; the addressed one signed while the signed gate is set, ADR-0094); then the
+        // ADR-0086; the addressed one signed while the signed gate is set, ADR-0094; in
+        // slow-wave sleep under the slow-wave baseline while it is set, ADR-0235); then the
         // signal decays by one tick. All before the barrier that starts the tick, so every
         // worker reads the same values.
         let modulations = Modulations::of(
             &self.modulator,
-            self.modulation_baseline_q16,
+            tick_baseline(
+                self.modulation_baseline_q16,
+                self.slow_wave_baseline_q16,
+                self.homeostasis.sleep_stage,
+            ),
             self.inhibitory_baseline_q16,
             self.signed_gate,
         );
@@ -10096,5 +10156,221 @@ mod running_prop {
                 "{period}: every value but the exponent the image's"
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod sleep_prop {
+    use super::*;
+    use crate::image::{Image, ImageError};
+    include!(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../../testkit/prop.rs"
+    ));
+
+    /// The slow-wave baseline over the lattice (ADR-0235): while set, the baseline a tick builds
+    /// its modulations under is it in slow-wave sleep and the engine's in every other stage,
+    /// any byte of the stage among them; while unset, the engine's in every stage.
+    #[test]
+    fn a_tick_s_baseline_is_the_slow_wave_baseline_in_slow_wave_sleep_alone() {
+        let mut lcg = Lcg::new(0x0235);
+        let mut cases: Vec<(i32, i32, u8)> = Vec::new();
+        for &baseline in &I32_LATTICE {
+            for &slow_wave in &I32_LATTICE {
+                for &stage in U8_LATTICE
+                    .iter()
+                    .chain(&[STAGE_AWAKE, STAGE_SWS, STAGE_REM])
+                {
+                    cases.push((baseline, slow_wave, stage));
+                }
+            }
+        }
+        for _ in 0..4_000 {
+            let stage = if lcg.below(2) == 0 {
+                STAGE_SWS
+            } else {
+                lcg.next_u8()
+            };
+            cases.push((lcg.i32_edge_biased(), lcg.i32_edge_biased(), stage));
+        }
+        let mut sws = 0u32;
+        for (baseline, slow_wave, stage) in cases {
+            assert_eq!(
+                tick_baseline(baseline, None, stage),
+                baseline,
+                "{baseline} {stage}: unset"
+            );
+            let expected = if stage == STAGE_SWS {
+                sws = sws.saturating_add(1);
+                slow_wave
+            } else {
+                baseline
+            };
+            assert_eq!(
+                tick_baseline(baseline, Some(slow_wave), stage),
+                expected,
+                "{baseline} {slow_wave} {stage}"
+            );
+        }
+        assert!(sws > 1_000, "slow-wave sleep among the cases: {sws}");
+        assert_ne!(STAGE_SWS, STAGE_AWAKE);
+        assert_ne!(STAGE_SWS, STAGE_REM);
+    }
+
+    /// The slow-wave baseline (ADR-0235): unset by default and in every named configuration;
+    /// refused when set outside $[0, 1]$, at both edges, by `new` and by the loader, which takes
+    /// it from the configuration; accepted at the edges and inside; and in no image, whose bytes
+    /// are the same whether it is set or not.
+    #[test]
+    fn the_slow_wave_baseline_is_unset_by_default_and_in_no_named_configuration_and_refused_outside_the_unit_interval()
+     {
+        for named in [
+            Config::default(),
+            Config::reads_its_targets(),
+            Config::runs_a_settled_image(),
+        ] {
+            assert_eq!(named.slow_wave_baseline_q16, None);
+        }
+        let ok = Config {
+            units: 4,
+            ..Config::default()
+        };
+        let unset = Executor::<8>::new(ok.clone()).unwrap();
+        assert_eq!(unset.slow_wave_baseline_q16(), None);
+        let image = Image::encode(&unset).unwrap();
+        let mut outside: Vec<i32> = vec![-1, MODULATION_ONE_Q16 + 1, i32::MIN, i32::MAX];
+        outside.extend(
+            I32_LATTICE
+                .iter()
+                .filter(|b| !(0..=MODULATION_ONE_Q16).contains(*b)),
+        );
+        for b in outside {
+            let config = Config {
+                slow_wave_baseline_q16: Some(b),
+                ..ok.clone()
+            };
+            assert_eq!(
+                Executor::<8>::new(config.clone()).err(),
+                Some(ConfigError::SlowWaveBaselineOutOfRange),
+                "{b}"
+            );
+            assert!(
+                matches!(
+                    Image::decode::<8>(&image, config),
+                    Err(ImageError::Config(ConfigError::SlowWaveBaselineOutOfRange))
+                ),
+                "{b}: the loader"
+            );
+        }
+        let mut inside: Vec<i32> = vec![0, 1, 0x8000, MODULATION_ONE_Q16 - 1, MODULATION_ONE_Q16];
+        inside.extend(
+            I32_LATTICE
+                .iter()
+                .filter(|b| (0..=MODULATION_ONE_Q16).contains(*b)),
+        );
+        for b in inside {
+            let config = Config {
+                slow_wave_baseline_q16: Some(b),
+                ..ok.clone()
+            };
+            let set = Executor::<8>::new(config.clone()).unwrap();
+            assert_eq!(set.slow_wave_baseline_q16(), Some(b), "{b}");
+            assert_eq!(Image::encode(&set).unwrap(), image, "{b}: not in the image");
+            let loaded = Image::decode::<8>(&image, config).unwrap();
+            assert_eq!(
+                loaded.slow_wave_baseline_q16(),
+                Some(b),
+                "{b}: the configuration's"
+            );
+            let loaded = Image::decode::<8>(&image, ok.clone()).unwrap();
+            assert_eq!(
+                loaded.slow_wave_baseline_q16(),
+                None,
+                "{b}: never the image's"
+            );
+        }
+    }
+
+    /// The ledger spent over seeded ledgers (ADR-0235): every episode's tag at zero after the
+    /// call and every other byte of it as it was, the ledger's length, its record and its room
+    /// unchanged; a ledger spent already, and an empty one, unchanged; and an episode tagged
+    /// after the call is the episode a tag makes.
+    #[test]
+    fn spending_the_ledger_leaves_every_episode_spent_and_nothing_else_moved() {
+        let mut lcg = Lcg::new(0x0234);
+        let config = Config {
+            units: 32,
+            episodes: 12,
+            nodes_per_worker: 64,
+            ..Config::default()
+        };
+        let mut empty = Executor::<8>::new(config.clone()).unwrap();
+        let before = Image::encode(&empty).unwrap();
+        empty.spend_episodes();
+        assert_eq!(Image::encode(&empty).unwrap(), before, "an empty ledger");
+        let mut spent_some = 0u32;
+        for round in 0..200u32 {
+            let mut exec = Executor::<8>::new(config.clone()).unwrap();
+            let tagged = lcg.below(13);
+            for _ in 0..tagged {
+                let len = lcg.below(PATTERN_MAX as u32).saturating_add(1);
+                let mut units: Vec<u32> = Vec::new();
+                for _ in 0..len {
+                    let u = lcg.below(32);
+                    if !units.contains(&u) {
+                        units.push(u);
+                    }
+                }
+                let priority = match lcg.below(3) {
+                    0 => lcg.pick(&U8_LATTICE).max(1),
+                    _ => lcg.next_u8().max(1),
+                };
+                exec.tag_episode(&units, priority).unwrap();
+            }
+            // Some of them spent already, as REM leaves one.
+            let length = exec.hippocampus.episodes as usize;
+            // SAFETY: `&mut` between ticks; no worker runs in a test that never ticks.
+            let all = unsafe { exec.shared.episodes.as_mut_slice() };
+            for episode in all.iter_mut().take(length) {
+                if lcg.below(4) == 0 {
+                    episode.tag = 0;
+                    spent_some = spent_some.saturating_add(1);
+                }
+            }
+            let ledger = exec.episodes().to_vec();
+            let (record, room) = (exec.hippocampus, exec.episode_room());
+            exec.spend_episodes();
+            assert_eq!(exec.episodes().len(), ledger.len(), "round {round}");
+            for (now, was) in exec.episodes().iter().zip(&ledger) {
+                assert!(now.is_spent(), "round {round}");
+                assert_eq!(
+                    Episode { tag: 0, ..*was },
+                    *now,
+                    "round {round}: the tag alone"
+                );
+            }
+            assert_eq!((exec.hippocampus, exec.episode_room()), (record, room));
+            let image = Image::encode(&exec).unwrap();
+            exec.spend_episodes();
+            assert_eq!(
+                Image::encode(&exec).unwrap(),
+                image,
+                "round {round}: spent already"
+            );
+            if room > 0 {
+                let index = exec.tag_episode(&[0, 1], 200).unwrap();
+                let fresh = exec.episodes()[index as usize];
+                assert_eq!(
+                    fresh,
+                    Episode::tag(exec.ticks() as u32, &[0, 1], 200).unwrap(),
+                    "round {round}: a tag after the call"
+                );
+                assert!(!fresh.is_spent());
+            }
+        }
+        assert!(
+            spent_some > 50,
+            "rounds with episodes spent before: {spent_some}"
+        );
     }
 }
