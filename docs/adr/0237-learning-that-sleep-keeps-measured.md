@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-02
 depends-on: ADR-0236
 title: Learning that sleep keeps, measured
@@ -68,7 +68,8 @@ Under step 8 no constant moves, and there is no second attempt.
 **The evidence.**
 - The 24 jobs ran at `scope=arms` on AArch64, dispatch 41441234613 on `5e5946d`, in 3 670 to 4 049 s, 25.5 % to 28.1 % of the bound.
 - The tables are pinned in `6b31a80`, pull request #271. From `5e5946d` to it only `tests/inhibition/pins/h47.rs` changed: no file under `src/`, and no test or helper the calibration ran.
-- The reproduction ran on `6b31a80`. Written when it ends.
+- The reproduction ran on `6b31a80`. Dispatch [41468250551](https://github.com/Menteion/Menteion/actions/runs/41468250551) at `scope=exhaustive`, `only` the twelve short forms, was green on x86-64, each holding its cell's first plain night on path 0, in 130 to 374 s, 2 936 s together. Dispatch [41468257319](https://github.com/Menteion/Menteion/actions/runs/41468257319) at `scope=arms` ran the 24 jobs again on AArch64, each green in 3 719 to 4 118 s, at most 28.6 % of the bound, every pinned row held by its own job.
+- The cost table is written from the calibration: 227 tests. The twelve short forms ran alone, so they have no line and keep the default of 2 400 s until a full deal measures them ([ADR-0220](0220-the-cost-of-a-test-run-alone.md)).
 - No commit under `runtime/`, `crates/` or `benches/` follows `6b31a80`.
 
 **The sweep.** The schedule's run of 2026-11-04 at 20:17Z had not begun when this was written, on 2026-11-02. The first ADR that merges after it ends records it.

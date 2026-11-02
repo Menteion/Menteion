@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-02
 depends-on: ADR-0234
 title: Learning that sleep keeps, built

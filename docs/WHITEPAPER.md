@@ -2645,9 +2645,9 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0232](adr/0232-a-running-configuration-and-m12-closed.md) | A running configuration for a settled image, and M12 closed | accepted |
 | [ADR-0233](adr/0233-a-running-configuration-built.md) | A running configuration for a settled image, built | accepted |
 | [ADR-0234](adr/0234-learning-that-sleep-keeps.md) | Learning that sleep keeps, a night with replay against one without | accepted |
-| [ADR-0235](adr/0235-learning-that-sleep-keeps-built.md) | Learning that sleep keeps, built | proposed |
-| [ADR-0236](adr/0236-learning-that-sleep-keeps-its-protocol.md) | Learning that sleep keeps, its protocol | proposed |
-| [ADR-0237](adr/0237-learning-that-sleep-keeps-measured.md) | Learning that sleep keeps, measured | proposed |
+| [ADR-0235](adr/0235-learning-that-sleep-keeps-built.md) | Learning that sleep keeps, built | accepted |
+| [ADR-0236](adr/0236-learning-that-sleep-keeps-its-protocol.md) | Learning that sleep keeps, its protocol | accepted |
+| [ADR-0237](adr/0237-learning-that-sleep-keeps-measured.md) | Learning that sleep keeps, measured | accepted |
 <!-- adr-index: end decisions -->
 
 ---
