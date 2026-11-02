@@ -71,7 +71,7 @@ decision-makers: Menteion maintainers
 On each of seeds 22, 23 and 24 at 1 024 units, under `Config::runs_a_settled_image()` and the slow-wave baseline at 1/2, in H-25's learning configuration. Every term is defined in [H-47's report](../research/H-47.md#its-terms):
 - **Four starts a network**: H-46's eighth image in each of H-25's two arms, and a first mapping learned from H-42's image in each arm. A is the mapping in force there.
 - **The pair**: a second mapping whose stimuli share 26 of A's 51 source units and conflict with A. The zero sum holds six groups, each kind of unit apart at its sum in the start image, as exploration 016 held them.
-- **Four forms of the gap**: a night without replay, a plain night on A's patterns, a plain night on both mappings' patterns, and 4 037 214 idle ticks awake. Each night is exploration 018's.
+- **Four forms of the gap**: a night without replay, a plain night on A's patterns, a plain night on both mappings' patterns, and 4 037 214 idle ticks awake. Each night is exploration 018's, the zero sum's groups held through it.
 - **The checkpoints**: right after the gaps at blocks 6, 12, 18 and 24, then 12 blocks with none to block 36's end.
 - **Three paths**, 0, 5 and 6, and sixteen reads of A and of the pair at each checkpoint, on forks: the read as it was and fifteen by `Both`.
 - **Two jobs a cell**, a network and a start: the night without replay with the plain night on A's patterns, then plain on both with the awake gap. That is 24 `…_paused` jobs of about 65 minutes on AArch64.
@@ -84,18 +84,18 @@ On each of seeds 22, 23 and 24 at 1 024 units, under `Config::runs_a_settled_ima
 The text, with its clauses, readings, terms and stopping rule, is [H-47's report](../research/H-47.md).
 - **Clause 1**: in each of the twelve cells, A's mean count at block 36 under plain nights on A's patterns exceeds that under nights without replay by more than twice its paired SE.
 - **Clause 2**: in each cell, the pair's mean count at block 36 under plain nights on A's patterns is at least 56 of 64.
-- **Clause 3**: in each cell and under every form, none of A's four couplings passes 1.30 of H-42's image's on its network, at any block's end of the pair's 36 or at any image read.
+- **Clause 3**: in each cell and under every form, none of A's four couplings passes 1.30 of H-42's image's on its network. It is read at each block's end of the pair's 36 and at each image read.
 - **Yes** when all three hold; otherwise **no**, with the network, the start and the clause.
 
-**A mean count** is of `correct` over a cell's 48 reads of one form at one checkpoint, sixteen on each path's image. **The paired SE** is $\sqrt{s^2/16 + d^2/3}$, $s$ the stream's SD in the split of the 48 differences and $d$ the SD of the three paths' differences.
+**A mean count** is of `correct` over a cell's 48 reads of one form at one checkpoint, sixteen on each path's image. **The paired SE** is $\sqrt{s^2/16 + d^2/3}$, $s$ the stream's SD in the split of the 48 differences, a negative variance as zero, and $d$ the SD of the three paths' differences.
 
 **Predicted: yes.** On seed 22 the plain night stood over the night without replay by +2.2 ± 0.6 to +19.6 ± 1.1 at block 36. The pair read 62.5 to 63.1 under it, and A's highest coupling 1.198. Seed 22's four cells are expected to reproduce the explorations, so the prediction rests on the eight cells of seeds 23 and 24.
 
 **Five readings are predicted:**
 1. A's mean count at block 36 under plain nights on A's patterns over that under the awake gap, positive in at least 10 of the 12 cells;
-2. under plain nights on both over nights without replay at block 36, positive in every cell;
+2. A's mean count at block 36 under plain nights on both over that under nights without replay, positive in every cell;
 3. A's margin at block 36 under plain nights on A's patterns at least 2 M over that under nights without replay, in every cell;
-4. from a night's `start` line to its `end` line, every night without replay raises the gain, and every plain night lowers it;
+4. from a night's `start` line to its `end` line, every night without replay raises the gain, and every plain night, on A's patterns or on both, lowers it;
 5. clause 1's difference at block 24 above twice its paired SE in at least 10 of the 12 cells.
 
 **What would refute it:**
@@ -106,9 +106,9 @@ The text, with its clauses, readings, terms and stopping rule, is [H-47's report
 ### H-47's stopping rule
 
 1. **One round**: brief 087 builds the three parts with their tests and ADR, then runs H-47 once. Its clauses, constants and readings are committed before any arm runs.
-2. **A calibration stops the round**, and is a finding, if a pinned number moves with the three parts unset. So does a twin of explorations 018 and 019 on seed 22 that is not their logs, the label aside. Its lines run from the eighth image and the assignment, on path 0: the head, the plain nights on A's patterns at blocks 6 and 12, and the first night without replay, with their reads.
+2. **A calibration stops the round**, and is a finding, if a pinned number moves with the three parts unset. So does a twin of explorations 018 and 019 on seed 22 that is not their logs, the label aside. Its lines run from the eighth image and the assignment, on path 0. They are the head, the plain nights on A's patterns at blocks 6 and 12 with the blocks between, and the first night without replay, with their reads.
 3. **Yes**: M11's exit test reads yes. The next decision is whether the slow-wave baseline enters the running configuration, and whether M11 closes.
-4. **No on clause 3**: M12 reopens ([ADR-0232](0232-a-running-configuration-and-m12-closed.md)), and an ADR on the zero sum through a night.
+4. **No on clause 3**: M12 reopens ([ADR-0232](0232-a-running-configuration-and-m12-closed.md)), and an ADR on the zero sum through the form that crossed.
 5. **No on clause 1**: an ADR on what keeps A on that network, the replay or the rest of the night.
 6. **No on clause 2**: an ADR on what a replay of A costs the pair.
 7. **Where several steps apply**, the first in this order is taken.

@@ -49,7 +49,7 @@ Re-derived on 2026-11-02 against `main` at `8641246`. Line numbers move; the sym
 2. **The documents that give the replay's drive before the gain**:
    - in `executor.rs`, the comment on `REPLAY_DRIVE_Q16` ("about twelve ticks on");
    - in `task.rs`, the module's comment ("about twelve ticks on, as a replay does") and the comment on `CUE_Q16` in its tests;
-   - in the whitepaper, §6.6 step 2, §8.8's row for the complementary learning systems ("a drive of 2.5"), and [F-47](../docs/WHITEPAPER.md#11-risks-and-technical-debt)'s row;
+   - in the whitepaper, §5.2.15 ("one replay is one spike of each unit"), §6.6 step 2, §8.8's row for the complementary learning systems ("a drive of 2.5"), and [F-47](../docs/WHITEPAPER.md#11-risks-and-technical-debt)'s row;
    - the comment on `RIPPLE_SHIFT` in `crates/menteion-hippocampus/src/lib.rs` ("one replay is one spike of each unit of the pattern"), which is a state crate's and protected here: the built ADR names it as left.
    An accepted ADR's body is never edited.
 3. **The modulation**: the tick builds `Modulations::of(&self.modulator, self.modulation_baseline_q16, …)` before the barrier. The sleep stage is `homeostasis.sleep_stage`, `STAGE_SWS` in slow-wave sleep (`menteion-homeostasis`).
@@ -79,7 +79,8 @@ Re-derived on 2026-11-02 against `main` at `8641246`. Line numbers move; the sym
   - The harness, its 24 `…_paused` jobs and 12 `…_exhaustive` short forms, `tests/inhibition/pins/h47.rs` with its placeholder tables, and the verdict's test over them.
   - Every constant of the harness listed with its value, and each term of [H-47's report](../docs/research/H-47.md#its-terms) tied to the code that reads it.
   - `npm run round:additive`'s reading quoted, and the calibration it names.
-  - The twin of H-47's step 2 as a `…_paused` test of its own. Its lines are pinned by hash in `h47.rs` from the explorations' logs, the label aside: the `PIN` lines, the groups' `kinds`, the head's `run` lines, each night's `start`, `window` and `end` lines, each image's `kinds` and `held`, and the 32 reads of each image.
+  - The twin of H-47's step 2 as a `…_paused` test of its own. Its lines are pinned by hash in `h47.rs` from the explorations' logs, the label aside, as a reference and not as evidence ([ADR-0193](../docs/adr/0193-an-exploration-lane.md)).
+  - Those lines are the `PIN` lines and the groups' `kinds`, the `run` lines of the head and of blocks 7 to 12, and each night's `start`, `window` and `end` lines. With them go each image's `kinds` and `held` lines and its 32 reads.
 - [ ] **The dispatches.**
   - The calibration and the 24 jobs together on the protocol's commit; the calibration and the twin read first.
   - The tables pinned from the jobs' logs, then the reproduction: the short forms at `scope=exhaustive -f only`, and the 24 jobs again at `scope=arms`.
