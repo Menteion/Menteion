@@ -44935,17 +44935,31 @@ struct NightGiven<'a> {
 /// state, the spikes and what the replays fired. Returns the image the night wrote, its shift back
 /// at zero so that the engine does not sleep again, and the night's ticks.
 fn night_on(site: &NightSite, image: &[u8], label: &str, given: NightGiven) -> (Vec<u8>, u64) {
-    night_read(site, image, label, given, false)
+    night_read(site, image, label, given, false, true)
+}
+
+/// `night_on` with no episode tagged (exploration 019): the same engine, its ledger's room for
+/// `given`'s patterns left empty after the older episodes are spent, so that the night replays
+/// nothing. The patterns' sums are still dumped, beside those of a night that tags them.
+fn night_untagged(
+    site: &NightSite,
+    image: &[u8],
+    label: &str,
+    given: NightGiven,
+) -> (Vec<u8>, u64) {
+    night_read(site, image, label, given, false, false)
 }
 
 /// `night_on`, with every pairing of the watched units read tick by tick where `paired` says
-/// (exploration 015, `PairWatch`). Reading changes nothing of the run.
+/// (exploration 015, `PairWatch`), and `given`'s episodes tagged where `tag` says. Reading
+/// changes nothing of the run.
 fn night_read(
     site: &NightSite,
     image: &[u8],
     label: &str,
     given: NightGiven,
     paired: bool,
+    tag: bool,
 ) -> (Vec<u8>, u64) {
     let sets = site.sets;
     let shift = given.shift;
@@ -44965,9 +44979,11 @@ fn night_read(
     if given.spend {
         exec.spend_episodes();
     }
-    for pattern in given.patterns {
-        exec.tag_episode(pattern, NIGHT_PRIORITY)
-            .expect("the ledger has room and the pattern is one");
+    if tag {
+        for pattern in given.patterns {
+            exec.tag_episode(pattern, NIGHT_PRIORITY)
+                .expect("the ledger has room and the pattern is one");
+        }
     }
     eprintln!(
         "DUMP {label} start {:?} target {:?} step {} period {} pattern sums {:?}",
@@ -46781,7 +46797,7 @@ fn what_a_replay_pairs(arm: Reversal, whole: bool) {
                 spend: false,
                 patterns: &patterns,
             };
-            let (after, _) = night_read(&site, &image, &label, given, true);
+            let (after, _) = night_read(&site, &image, &label, given, true, true);
             mapping_read(&site, &after, &label);
         }
     }
@@ -48143,13 +48159,15 @@ fn what_a_path_spreads_of_a_first_mapping_on_seed_22_from_the_mirrored_assignmen
 
 /// What fills every gap of a form: a night's length awake under the drive, or a night at shift 7 as
 /// exploration 016's halfway. A's patterns are the start image's, the pair's the image the night
-/// follows, each night spending the older episodes.
+/// follows, each night spending the older episodes. Exploration 019's `NoReplay` is `PlainFirst`'s
+/// night with nothing tagged after the spending.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum NightsGap {
     Awake,
     PlainFirst,
     TwinSecond,
     PlainBoth,
+    NoReplay,
 }
 
 impl NightsGap {
@@ -48160,6 +48178,7 @@ impl NightsGap {
             Self::PlainFirst => "plain-first",
             Self::TwinSecond => "twin-second",
             Self::PlainBoth => "plain-both",
+            Self::NoReplay => "no-replay",
         }
     }
 }
@@ -48360,6 +48379,7 @@ fn nights_gap(
             let both = [first, own().as_slice()].concat();
             night_on(site, image, label, given(&both, false)).0
         }
+        NightsGap::NoReplay => night_untagged(site, image, label, given(first, false)).0,
     };
     eprintln!("DUMP {label} took {} ms", timed.elapsed().as_millis());
     written
@@ -48670,5 +48690,117 @@ fn what_nights_keep_by_density_of_a_first_mapping_on_seed_22_from_the_mirrored_a
 {
     with_spread(NightFrom::FirstMapping, Reversal::MirroredFirst, |spread| {
         what_nights_keep(spread, &NIGHTS_DENSITY, NIGHTS_WHOLE);
+    });
+}
+
+// ---------------------------------------------- a night without replay (exploration 019)
+
+/// Exploration 019's one form: `PlainFirst`'s night with nothing tagged, a gap every 6 blocks.
+const NIGHTS_NO_REPLAY: [NightsForm; 1] = [every_six(NightsGap::NoReplay)];
+
+/// The trial of exploration 019's harness, on seed 22 from the assignment on the eighth image: the
+/// heads of paths 0 and 5, a plain night on A's patterns and a night with nothing tagged from each,
+/// those four images read twice, A and the pair, beside exploration 018's; then the night with
+/// nothing tagged on path 0 to its second gap, read twice, and the timings of each.
+#[test]
+#[ignore]
+fn the_harness_of_a_night_without_replay_explore() {
+    with_spread(NightFrom::Eighth, Reversal::AssignmentFirst, |spread| {
+        let (site, theirs, image) = (&spread.site, &spread.theirs, spread.start.image);
+        let half = &spread.half;
+        let first = mapping_patterns(site, image);
+        let timed = std::time::Instant::now();
+        let heads = std::sync::Mutex::new(BTreeMap::new());
+        two_at_a_time(&[0u64, 5], |&j| {
+            let at = format!("{half} nights path {j} every 6 none blocks 6");
+            let head = nights_run(spread, image, 6, &at, path_from(j));
+            heads.lock().expect("a run ended").insert(j, head);
+        });
+        let heads = heads.into_inner().expect("every run ended");
+        let heads_ms = timed.elapsed().as_millis();
+        let gaps: Vec<(u64, NightsGap)> = [0u64, 5]
+            .iter()
+            .flat_map(|&j| [(j, NightsGap::PlainFirst), (j, NightsGap::NoReplay)])
+            .collect();
+        let timed = std::time::Instant::now();
+        let gapped = std::sync::Mutex::new(BTreeMap::new());
+        two_at_a_time(&gaps, |&(j, gap)| {
+            let name = format!("{half} nights path {j} every 6 {}", gap.name());
+            let at = nights_gap(spread, gap, &heads[&j], &first, &format!("{name} gap 6"));
+            gapped
+                .lock()
+                .expect("a gap ended")
+                .insert(format!("{name} blocks 6"), at);
+        });
+        let gapped = gapped.into_inner().expect("every gap ended");
+        let gaps_ms = timed.elapsed().as_millis();
+        let by = [ReadBy::Both];
+        let mut reads = Vec::new();
+        for (label, image) in &gapped {
+            nights_state(spread, image, label);
+            let at = format!("{label} first");
+            reads.extend(spread_reads(site, image, &at, &by, 2));
+            let at = format!("{label} second");
+            reads.extend(spread_reads(theirs, image, &at, &by, 2));
+        }
+        let timed = std::time::Instant::now();
+        read_all(&reads);
+        eprintln!(
+            "DUMP timing trial heads {heads_ms} ms for 2 gaps {gaps_ms} ms for {} reads {} ms for {}",
+            gaps.len(),
+            timed.elapsed().as_millis(),
+            reads.len()
+        );
+        let forms = NIGHTS_NO_REPLAY.map(|form| NightsForm {
+            read_at: &[6, 12],
+            ..form
+        });
+        let run = NightsRun {
+            last: 12,
+            on: 6,
+            paths: &[0],
+            reads: 2,
+        };
+        what_nights_keep(spread, &forms, run);
+    });
+}
+
+/// The night with nothing tagged from the eighth image, from the assignment.
+#[test]
+#[ignore]
+fn nights_without_replay_of_the_eighth_image_on_seed_22_from_the_assignment_explore() {
+    with_spread(NightFrom::Eighth, Reversal::AssignmentFirst, |spread| {
+        what_nights_keep(spread, &NIGHTS_NO_REPLAY, NIGHTS_WHOLE);
+    });
+}
+
+/// The night with nothing tagged from the eighth image, from the mirrored assignment.
+#[test]
+#[ignore]
+fn nights_without_replay_of_the_eighth_image_on_seed_22_from_the_mirrored_assignment_explore() {
+    with_spread(NightFrom::Eighth, Reversal::MirroredFirst, |spread| {
+        what_nights_keep(spread, &NIGHTS_NO_REPLAY, NIGHTS_WHOLE);
+    });
+}
+
+/// The night with nothing tagged from a first mapping, from the assignment.
+#[test]
+#[ignore]
+fn nights_without_replay_of_a_first_mapping_on_seed_22_from_the_assignment_explore() {
+    with_spread(
+        NightFrom::FirstMapping,
+        Reversal::AssignmentFirst,
+        |spread| {
+            what_nights_keep(spread, &NIGHTS_NO_REPLAY, NIGHTS_WHOLE);
+        },
+    );
+}
+
+/// The night with nothing tagged from a first mapping, from the mirrored assignment.
+#[test]
+#[ignore]
+fn nights_without_replay_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore() {
+    with_spread(NightFrom::FirstMapping, Reversal::MirroredFirst, |spread| {
+        what_nights_keep(spread, &NIGHTS_NO_REPLAY, NIGHTS_WHOLE);
     });
 }
