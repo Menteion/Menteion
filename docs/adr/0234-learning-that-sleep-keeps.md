@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-02
 title: Learning that sleep keeps, a night with replay against one without
 kind: decision
