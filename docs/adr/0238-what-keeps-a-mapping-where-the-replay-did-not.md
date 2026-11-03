@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-03
 depends-on: ADR-0237
 title: What keeps a mapping where the replay did not, and M11's next exploration
