@@ -34,9 +34,9 @@ host, in H-47's terms. A count is a mean over a cell's 48 reads, sixteen on each
 unless another is named.
 
 **In brief**
-- **The runs are laid out as written.** In H-47's layout the trial held H-47's row at block 6 on path 0 for both forms. In layouts 1 and 2 it held the zero sum's groups,
-  A's patterns, the pair's kinds and its readouts to H-47's, each in the order its layout reads them. Every split of the eight jobs held the
-  pair's own units where its layout puts them, and every read's stimulus mask is H-47's.
+- **The runs are laid out as written.** In H-47's layout the trial held H-47's row at block 6 on path 0 for both forms. In layouts 1 and 2 it
+  held the zero sum's groups, A's patterns, the pair's kinds and its readouts to H-47's, each in the order its layout reads them. Every split
+  of the eight jobs held the pair's own units where its layout puts them, and every read's stimulus mask is H-47's.
 - **From block 18 the side lies on the same readout in all four layouts, in all four cells**: readout 0 in three cells, readout 1 on seed
   24's eighth image from the mirrored assignment. A's less B's stands beyond twice its SE in all four layouts in 3, 2 and 3 of the cells at
   blocks 18, 24 and 36.
@@ -44,15 +44,16 @@ unless another is named.
   the side's readout holds D's own units in three cells and C's in one; in H-47 and 021 it held C's in three and D's in one.
 - **At blocks 6 and 12 it goes with the readout in 2 and 1 cells**, and in 2 and 2 with the arrangement of the units. There H-47 and layout
   2, which lay every unit alike, put it on one readout, and 021 and layout 1, which also lay every unit alike, on the other. None of those
-  four readings stands beyond twice its SE in all four layouts. It goes with C's own units alone, or the role alone, in no cell.
+  four readings stands beyond twice its SE in all four layouts. At block 12 one layout lies apart in one cell. It goes with C's own units
+  alone, or the role alone, in no cell.
 - **Layout 2 put the side on H-47's readout at every checkpoint in all four cells**, and layout 1 on 021's in 4, 3, 4, 4 and 4.
-- **A's count without replay lies by arrangement from block 18**: at block 36 at 53.1, 19.7, 12.5 and 44.2 in H-47 and 52.5, 21.3, 12.8
-  and 42.1 in layout 2, against 43.0, 34.3, 23.6 and 32.6 in 021 and 46.7, 34.3, 24.1 and 35.5 in layout 1.
-- **Plain nights move the pair's own units' weight toward the readout they lie in** in 7 of each layout's 8 readings, two kinds in four
-  cells. The exception, in each layout, is the units at place 5 on seed 22's eighth image from the assignment.
+- **A's count without replay lies by arrangement from block 12**, narrowly there: at block 36 at 53.1, 19.7, 12.5 and 44.2 in H-47 and 52.5,
+  21.3, 12.8 and 42.1 in layout 2, against 43.0, 34.3, 23.6 and 32.6 in 021 and 46.7, 34.3, 24.1 and 35.5 in layout 1.
+- **Plain nights move the pair's own units' weight toward the readout they lie in** in 7 of 8 readings, two kinds in four cells, in
+  each of H-47's layout, layout 1 and layout 2. The exception, in each, is the units at place 5 on seed 22's eighth image from the assignment.
 - **Plain nights add more inhibition onto stimulus A's readout's excitatory units in all four cells in H-47's layout and in layout 1.** In
-  layout 2 they add more onto readout 0's in all four, A's readout in two. No figure of section 4's table moves by more than 0.82 M from
-  H-47's.
+  layout 2 they add more onto readout 0's in three cells, A's readout in one, and about as much onto each readout in the fourth. Every figure
+  of section 4's table lies within 0.83 M of H-47's.
 
 ## What ran
 
@@ -87,12 +88,14 @@ both of the pair's readouts. Against H-47:
     its own; D presents B's 26 shared units and the 25 at place 5 that were H-47's C's own.
   - **The zero sum's six groups** are H-47's six sets of units at H-47's values, C alone's and D alone's exchanged. A's patterns are H-47's,
     in H-47's order. Those among the patterns' targets that are the pair's own units are the same units, now of the other kind.
-  - **The pairs of a unit C presents and one D presents within a local synapse's reach** (`PRIOR_WINDOW`) fall from H-47's 25 to none, as in 021's exchange.
+  - **The pairs of a unit C presents and one D presents within a local synapse's reach** (`PRIOR_WINDOW`) fall from H-47's 25 to none, as in
+    021's exchange.
 - **What moves in layout 2**: every set of units plays H-47's part under the other name. Stimulus A presents H-47's B's units and B H-47's
   A's; C presents what H-47's D presented, shared and own, and D what H-47's C presented. The zero sum's six groups are H-47's at H-47's
   values in the exchanged order; A's patterns are H-47's, the new A's first; the pairs of C and D within a local synapse are H-47's 25. What
-  moves is which units each trial presents, in A's blocks, A's reads and the pair's blocks: a trial that presented H-47's A's units presents
-  its B's, and one that presented H-47's C's units presents what H-47's D presented.
+  moves is which units each trial presents, in A's reads and the pair's blocks: a trial that presented H-47's A's units presents its B's,
+  and one that presented H-47's C's units presents what H-47's D presented. Every read's stimulus mask is H-47's (below); the pair's blocks
+  draw their trials by the same index and seeds, by the code, and print no mask.
 - **Layout 1 against 021's exchange** is the same: every set of units plays 021's part under the other name, the pairs of C and D within a
   local synapse none in both. So the four layouts are two arrangements of the units, H-47's and 021's, each run under both namings.
 
@@ -117,8 +120,8 @@ within or beyond twice an SE are taken on the unrounded figures.
 ## The runs are laid out as written
 
 - **The trial** ran seed 23's first mapping from the mirrored assignment on path 0. It ran the pair's head, the first night without
-  replay and the first plain night on A's patterns, both watched, and each image's split and read as it was of A and of the pair. It ran
-  them in H-47's layout, then layout 1, then layout 2.
+  replay and the first plain night on A's patterns, both watched. It split the start image and each night's image, and read each night's
+  image as it was of A and of the pair. It ran them in H-47's layout, then layout 1, then layout 2.
   - **In H-47's layout** each image's CRC-64, the two reads, A's couplings and the gain held H-47's row at block 6 for both forms, inside
     the test. Of its 545 lines, the 110 that H-47's job also prints are all lines of H-47's job, label aside. The other 435 are the watch's
     426, the split's three, the class matrix's three, the layout's line and the two notices that it held H-47's rows.
@@ -130,9 +133,9 @@ within or beyond twice an SE are taken on the unrounded figures.
   in both layouts. These are the derivation and its calibration, the zero sum's two groups of 51 units and their values, and a first
   mapping's line. They share the same lines, and only those, with 021's exchanged job of the same cell. From the pair's groups on, every
   line differs.
-- **Every read's `stimuli` mask is H-47's** read of the same cell, form, path, checkpoint, mapping and stream: all 3 840 reads of each
-  layout, 1 920 of A and 1 920 of the pair. Each trial presents, by name, the stimulus H-47's trial of the same index presented. In layout 2 that
-  is the other set of units on every trial.
+- **Every read's `stimuli` mask is H-47's** read of the same cell, form, path, checkpoint, mapping and stream: all 3 840 reads of each layout,
+  1 920 of A and 1 920 of the pair. Each trial presents, by name, the stimulus H-47's trial of the same index presented. In layout 2 that is
+  the other set of units on every trial.
 - **Every split of the jobs** held the pair's own units where the layout puts them, 55 a job. The watch read `wrong 0` in all 192 nights.
   Every night without replay read `replays 0` and `depotentiations 0`, and each plain night 1 129 to 1 340 replays and 545 to 640
   depotentiations.
@@ -335,9 +338,9 @@ A's count, both stimuli, under each of the two forms and plain less without repl
 | Seed 22, eighth, assignment | 24 | 47.3, 50.2; +2.8 ± 0.89 | 36.3, 39.2; +3.0 ± 1.69 | 38.2, 46.1; +7.9 ± 1.57 | 44.6, 44.8; +0.2 ± 1.45 |
 | Seed 22, eighth, assignment | 36 | 44.2, 46.4; +2.2 ± 0.65 | 32.6, 38.8; +6.2 ± 0.23 | 35.5, 42.5; +7.0 ± 0.88 | 42.1, 41.9; −0.2 ± 1.71 |
 
-- **A's count without replay lies by arrangement from block 18.** In every cell H-47 and layout 2 lie within 2.7, 2.8 and 3.7 of each
-  other at blocks 18, 24 and 36, and so do 021 and layout 1; each lies at least 5.2, 5.3 and 5.8 from the other arrangement's two. At block
-  12 the two figures are 3.6 and 3.7, and at block 6 2.3 and 0.4. Under plain nights on A's patterns they are 3.2 and 4.0 at block 18 and
+- **A's count without replay lies by arrangement from block 12.** In every cell H-47 and layout 2 lie within 3.6, 2.7, 2.8 and 3.7 of
+  each other at blocks 12, 18, 24 and 36, and so do 021 and layout 1; each lies at least 3.7, 5.2, 5.3 and 5.8 from the other
+  arrangement's two. At block 6 the two figures are 2.3 and 0.4. Under plain nights on A's patterns they are 3.2 and 4.0 at block 18 and
   overlap at the other four checkpoints.
 - **Plain less without replay of A's count at block 36 keeps its sign in all four layouts on three cells of four.** On seed 22's eighth
   image from the assignment it reads +2.2 ± 0.65, +6.2 ± 0.23 and +7.0 ± 0.88 in H-47, 021 and layout 1, and −0.2 ± 1.71 in layout 2.
@@ -345,7 +348,8 @@ A's count, both stimuli, under each of the two forms and plain less without repl
 ## 3. Where the pair's own units lie
 
 Each cell's start split, the readout A answers in the layout, where each of the pair's own kinds lies, the side at block 36, and what four
-plain nights on A's patterns moved of each own kind's weight onto each readout's excitatory units, the mean over the three paths. H-47's
+plain nights on A's patterns moved of each own kind's weight onto each readout's excitatory units, from the class matrix as section 4
+reads it, the mean over the three paths. H-47's
 rows are exploration 020's job on the same cells:
 
 | Cell | Layout | A answers | C's own lie in | D's own lie in | Splits asserted | Side at block 36 | Plain nights: C's own onto readout 0's excitatory, M | onto readout 1's | D's own onto readout 0's | onto readout 1's |
@@ -407,15 +411,16 @@ inhibition. H-47's rows are exploration 020's job on the same cells; 021's excha
 | Seed 22, eighth, assignment | Layout 2 | plain-first | A, readout 0 | −11.07 | −12.20 | −2.78 | −2.60 | +12.46 | +13.20 | +11.08 | +10.83 |
 
 - **Plain nights add more inhibition onto stimulus A's readout's excitatory units in all four cells in H-47's layout and in layout 1**,
-  by 0.37 to 3.55 M in layout 1, the same readouts as H-47's. **In layout 2 they add more onto readout 0's in all four cells**, by 0.01 to
-  2.45 M. That is stimulus A's readout in two cells, by 0.01 M on seed 23's first mapping from the mirrored assignment and by 0.25 M on seed
-  22's eighth image from the assignment. In the other two it is the readout of H-47's A's units, by 1.13 and 2.45 M.
-- **Against the side at block 36**, the readout that gains more inhibition onto its excitatory units is the side's in 1, 1 and 3 cells of 4
-  in H-47's layout, layout 1 and layout 2.
-- **Each readout's excitatory units onto its own** lost, the two readouts together, 0.44 to 5.27 M in H-47's layout, 0.35 to 5.15 M in
-  layout 1 and 0.80 to 5.38 M in layout 2, in the same order of cells.
-- **No figure of the table moves by more than 0.82 M from H-47's** on the same cell and form: at most 0.34 and 0.40 M in layout 1, under
-  nights without replay and plain nights, and 0.09 and 0.82 M in layout 2.
+  by 0.37 to 3.55 M in layout 1, the same readouts as H-47's. **In layout 2 they add more onto readout 0's in three cells**, by 0.25 to
+  2.45 M: stimulus A's readout on seed 22's eighth image from the assignment, by 0.25 M, and in the other two B's, the readout of H-47's A's
+  units, by 1.13 and 2.45 M. On seed 23's first mapping from the mirrored assignment they add about as much onto each, 8.53 and 8.52 M.
+- **Against the side at block 36**, the readout that gains more inhibition onto its excitatory units is the side's in 1 cell of 4
+  in H-47's layout and in layout 1, and in 2 of the 3 in layout 2 where one readout gains more.
+- **The two readouts' excitatory units onto their own** lost together 0.44 to 5.27 M in H-47's layout, 0.35 to 5.15 M in layout 1 and
+  0.80 to 5.38 M in layout 2, in the same order of cells. Readout 0's alone gained on seed 23's first mapping from the assignment, +0.18 M
+  in H-47's layout and +0.30 M in layout 1.
+- **Every figure of the table lies within 0.83 M of H-47's** on the same cell and form, the largest 0.824 M: at most 0.34 and 0.40 M in
+  layout 1, under nights without replay and plain nights, and 0.09 and 0.82 M in layout 2.
 
 ## What it costs
 
@@ -430,12 +435,14 @@ units move (layout 1 against H-47, layout 2 against 021), the roles are exchange
 (layout 2 against H-47, layout 1 against 021). In layouts 1 and 2 that readout holds D's own units in three cells of four. No layout here
 parts a set of units from the readout it answers, so these runs cannot tell the units from their readout.
 
-**At blocks 6 and 12, where the side moved, it moved with the arrangement.** In two cells at each it lay on one readout in H-47 and layout 2
-and on the other in 021 and layout 1, within twice the SE in at least one layout. Layout 2 differs from H-47, and layout 1 from 021, in
+**At blocks 6 and 12 the side moved between layouts in 2 and 3 cells, in two at each with the arrangement.** In those it lay on one
+readout in H-47 and layout 2 and on the other in 021 and layout 1, within twice the SE in at least one layout. The third at block 12 is
+seed 24's eighth image from the mirrored assignment, where 021 alone lay apart. Layout 2 differs from H-47, and layout 1 from 021, in
 which units each trial presents, the zero sum's groups' order and A's patterns' order.
 
-**A's count without replay lies by arrangement from block 18.** In every cell each arrangement's two layouts lie nearer each other than
-either lies to the other arrangement's, at blocks 18, 24 and 36. Under plain nights that holds at block 18 alone.
+**A's count without replay lies by arrangement from block 12.** In every cell each arrangement's two layouts lie nearer each other than
+either lies to the other arrangement's, at blocks 12, 18, 24 and 36, by 0.1 at block 12 and by 2.1 or more after it. Under plain nights
+that holds at block 18 alone.
 
 Questions this suggests for a later exploration or a round:
 - H-47's layout with only the stimulus sequence complemented, the groups and the patterns in H-47's order, to see which of layout 2's three
