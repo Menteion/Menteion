@@ -53,7 +53,7 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 
 ## The next decision
 
-[ADR-0237](adr/0237-learning-that-sleep-keeps-measured.md) reads H-47 as no at step 5, and M11 stays open.
-1. M11: [ADR-0238](adr/0238-what-keeps-a-mapping-where-the-replay-did-not.md) answers step 5. On seed 23 the rest of the night kept A and the replay cost A's own trials, and on seed 24 neither night kept A as the awake gap did. Exploration 021 reads, on H-47's twelve cells, on which stimulus and readout a replay's gain falls.
+[ADR-0238](adr/0238-what-keeps-a-mapping-where-the-replay-did-not.md) answers H-47's step 5 from its rows, and M11 stays open.
+1. M11: exploration 021 runs once ADR-0238 merges. It reads, on H-47's twelve cells, where a replay's gain falls, by stimulus and by readout. Whether a hypothesis follows it is the next decision.
 2. The schedule's sweep of 2026-11-04 at 20:17Z is the next to record, by the first ADR that merges after it ends.
 3. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
