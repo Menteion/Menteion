@@ -48037,3 +48037,335 @@ fn what_a_replay_costs_a_first_mapping_on_seed_22_from_the_mirrored_assignment_e
 fn what_a_replay_costs_the_eighth_image_on_seed_22_from_the_assignment_explore() {
     e020_job(0, 0);
 }
+
+// ---------------------------- exploration 021: where a replay's gain falls (on its branch alone)
+
+/// H-47's start `s` on network `n` laid out for `body` as `with_nights` lays it, or with stimulus
+/// A's and B's roles exchanged where `exchanged` says (exploration 021). Exchanged, stimulus A
+/// presents the units of H-47's stimulus B and stimulus B those of H-47's A, and the mapping in
+/// force is named the other way, so that each stimulus's units still answer the readout they
+/// answer in the start image. The pair is built on the exchanged sets: C shares the new A's units
+/// and D the new B's, their own units at places 5 and 16 as before. The derivation, the start
+/// image and the zero sum's targets are H-47's.
+fn with_roles(n: usize, s: usize, prefix: &str, exchanged: bool, body: impl FnOnce(&NightsStart)) {
+    let (from, arm) = NIGHTS_STARTS[s];
+    let name = format!("{prefix} {} {arm:?} {from:?}", ZERO_NAMES[n][ZERO_ARM]);
+    let made = probe_made(n, &name);
+    let groups = zero_groups(&made, &name);
+    let image = nights_image(&made, &groups, n, from, arm, &name);
+    let [a, b, r0, r1] = geometry(SCAN_UNITS, made.derived.rotation);
+    let (sets, mirrored) = if exchanged {
+        ([b, a, r0, r1], !nights_mirrored(from, arm))
+    } else {
+        ([a, b, r0, r1], nights_mirrored(from, arm))
+    };
+    let second = second_sets(&sets);
+    let pair = shared_pair(&sets, &second, NIGHTS_SHARE);
+    let held = shared_groups(&groups, &pair, &image, &name);
+    let start = NightsStart {
+        made: &made,
+        image: &image,
+        pair: &pair,
+        site: NightSite {
+            made: &made,
+            groups: &held,
+            sets,
+            mirrored,
+            presenting: None,
+        },
+        theirs: NightSite {
+            made: &made,
+            groups: &held,
+            sets: second,
+            mirrored: !mirrored,
+            presenting: Some(&pair.presenting),
+        },
+        name,
+    };
+    body(&start);
+}
+
+/// The zero sum's six values of a start, in `shared_groups`' order: A alone, B alone, A and C, B
+/// and D, C alone, D alone.
+fn e021_values(start: &NightsStart) -> Vec<i64> {
+    let groups = start.site.groups;
+    groups
+        .values
+        .iter()
+        .copied()
+        .chain(groups.further.iter().map(|g| g.1))
+        .collect()
+}
+
+/// Exploration 021's trial, on network `n` from start `s`: on path 0, the pair's head, the first
+/// night without replay and the first plain night on A's patterns, and each image's read as it was
+/// of A and of the pair, with the roles as H-47 has them and then exchanged. As H-47 has them, each
+/// image, the two reads, A's couplings and the gain are held to the row H-47 pinned there.
+/// Exchanged, the start's six groups are H-47's in the exchanged order, A's patterns are H-47's
+/// with the new A's first, and each image's row is dumped.
+fn e021_trial(n: usize, s: usize) {
+    let mut unexchanged: Option<(Vec<i64>, Vec<Vec<u32>>)> = None;
+    for exchanged in [false, true] {
+        let prefix = if exchanged {
+            "e021 trial exchanged"
+        } else {
+            "e021 trial"
+        };
+        with_roles(n, s, prefix, exchanged, |start| {
+            let first = mapping_patterns(&start.site, start.image);
+            let values = e021_values(start);
+            if let Some((was, patterns)) = &unexchanged {
+                let order = [1usize, 0, 3, 2, 4, 5].map(|i| was[i]);
+                assert_eq!(values, order, "{}: H-47's groups, exchanged", start.name);
+                let (new_a, new_b): (Vec<Vec<u32>>, Vec<Vec<u32>>) = patterns
+                    .iter()
+                    .cloned()
+                    .partition(|p| start.site.sets[0].contains(p[0]));
+                assert_eq!(
+                    first,
+                    [new_a, new_b].concat(),
+                    "{}: H-47's patterns, the new A's first",
+                    start.name
+                );
+                eprintln!(
+                    "DUMP {} holds H-47's groups and patterns, exchanged",
+                    start.name
+                );
+            }
+            let label = format!("{} path 0 head blocks {NIGHTS_EVERY}", start.name);
+            let (head, _) = nights_run(start, start.image, NIGHTS_EVERY, &label, path_from(0));
+            two_at_a_time(&NIGHTS_JOBS[0], |&f| {
+                let gap = NIGHTS_GAPS[f];
+                let at = format!("{} path 0 {}", start.name, gap.name());
+                let (image, gain) = nights_gap(
+                    start,
+                    gap,
+                    &head,
+                    &first,
+                    &format!("{at} gap {NIGHTS_EVERY}"),
+                );
+                let blocks = format!("{at} blocks {NIGHTS_EVERY}");
+                let (a, couplings) = spread_read(
+                    &start.site,
+                    &image,
+                    &format!("{blocks} first"),
+                    "as-it-was 0",
+                    nights_read_from(0),
+                );
+                let (pair, _) = spread_read(
+                    &start.theirs,
+                    &image,
+                    &format!("{blocks} second"),
+                    "as-it-was 0",
+                    nights_read_from(0),
+                );
+                let got = (crc64(&image), a, pair, couplings, Some(gain));
+                if exchanged {
+                    eprintln!("DUMP {at} exchanged row at block {NIGHTS_EVERY} {got:?}");
+                } else {
+                    let row = nights_row(NIGHTS_ROWS[n][s][f], 0, 0).expect("H-47 pinned the row");
+                    assert_eq!(
+                        got,
+                        (
+                            row.image,
+                            row.first[0],
+                            row.second[0],
+                            row.couplings,
+                            row.gain
+                        ),
+                        "{at}: H-47's row at block 6 on path 0"
+                    );
+                    eprintln!("DUMP {at} holds H-47's row at block 6 on path 0");
+                }
+            });
+            if !exchanged {
+                unexchanged = Some((values, first));
+            }
+        });
+    }
+}
+
+/// One job of exploration 021: H-47's job of the night without replay and the plain night on A's
+/// patterns (`nights_job`), on network `n` from start `s` with stimulus A's and B's roles exchanged
+/// (`with_roles`). Its rows are dumped as H-47's are, and held to nothing: H-47 ran none of them.
+fn e021_job(n: usize, s: usize) {
+    let forms = NIGHTS_JOBS[0];
+    with_roles(n, s, "e021 exchanged", true, |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        let heads = Mutex::new(BTreeMap::new());
+        two_at_a_time(&NIGHTS_PATHS, |&j| {
+            let at = format!("{} path {j} head blocks {NIGHTS_EVERY}", start.name);
+            let head = nights_run(start, start.image, NIGHTS_EVERY, &at, path_from(j));
+            heads.lock().expect("a head ended").insert(j, head);
+        });
+        let heads = heads.into_inner().expect("every head ended");
+        let chains: Vec<(usize, u64)> = forms
+            .iter()
+            .flat_map(|&f| NIGHTS_PATHS.iter().map(move |&j| (f, j)))
+            .collect();
+        let kept = Mutex::new(BTreeMap::new());
+        let readings = Mutex::new(BTreeMap::new());
+        two_at_a_time(&chains, |&(f, j)| {
+            let name = format!("{} path {j} {}", start.name, NIGHTS_GAPS[f].name());
+            let (mut at, mut ends) = heads[&j].clone();
+            for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                let label = format!("{name} blocks {block}");
+                if block > NIGHTS_LAST {
+                    let (image, ends) = nights_run(start, &at, NIGHTS_ON, &label, path_from(j));
+                    readings
+                        .lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (nights_highest(&ends), None));
+                    kept.lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (label, image));
+                    continue;
+                }
+                if block != NIGHTS_EVERY {
+                    (at, ends) = nights_run(start, &at, NIGHTS_EVERY, &label, path_from(j));
+                }
+                let gap = format!("{name} gap {block}");
+                let (image, gain) = nights_gap(start, NIGHTS_GAPS[f], &at, &first, &gap);
+                readings
+                    .lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (nights_highest(&ends), Some(gain)));
+                kept.lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (label, image.clone()));
+                at = image;
+            }
+        });
+        let kept = kept.into_inner().expect("every form ended");
+        let readings = readings.into_inner().expect("every form ended");
+        let read = nights_reads(start, &kept);
+        for f in forms {
+            for &j in &NIGHTS_PATHS {
+                for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                    let key = (f, j, c);
+                    let counts = |pair: bool| -> [u8; 16] {
+                        core::array::from_fn(|i| read[&(key, pair, i as u64)].0)
+                    };
+                    let (highest, gain) = readings[&key];
+                    let row = NightsRow {
+                        image: crc64(&kept[&key].1),
+                        first: counts(false),
+                        second: counts(true),
+                        couplings: read[&(key, false, 0)].1,
+                        highest,
+                        gain,
+                    };
+                    eprintln!(
+                        "DUMP {} {} path {j} block {block} PIN row {row:?}",
+                        start.name,
+                        NIGHTS_GAPS[f].name()
+                    );
+                }
+            }
+            eprintln!(
+                "DUMP {} {} exchanged: its rows are held to nothing",
+                start.name,
+                NIGHTS_GAPS[f].name()
+            );
+        }
+    });
+}
+
+/// Exploration 021's trial, on seed 23 from a first mapping and the mirrored assignment.
+#[test]
+#[ignore]
+fn the_harness_of_where_a_replays_gain_falls_explore() {
+    e021_trial(1, 3);
+}
+
+/// Exploration 021, A's and B's roles exchanged, on seed 23 from a first mapping and the mirrored
+/// assignment: in H-47, A answers readout 1, and the side lay on B's trials at blocks 18 to 36.
+#[test]
+#[ignore]
+fn the_roles_exchanged_a_first_mapping_on_seed_23_from_the_mirrored_assignment_explore() {
+    e021_job(1, 3);
+}
+
+/// Exploration 021, A's and B's roles exchanged, on seed 23 from a first mapping and the
+/// assignment: in H-47, A answers readout 0, and the side lay on A's trials at every checkpoint.
+#[test]
+#[ignore]
+fn the_roles_exchanged_a_first_mapping_on_seed_23_from_the_assignment_explore() {
+    e021_job(1, 2);
+}
+
+/// Exploration 021, A's and B's roles exchanged, on seed 24 from the eighth image and the mirrored
+/// assignment: in H-47, A answers readout 0, and the side lay on B's trials at every checkpoint.
+#[test]
+#[ignore]
+fn the_roles_exchanged_the_eighth_image_on_seed_24_from_the_mirrored_assignment_explore() {
+    e021_job(2, 1);
+}
+
+/// Exploration 021, A's and B's roles exchanged, on seed 22 from the eighth image and the
+/// assignment: in H-47, A answers readout 1, and the side lay on B's trials at blocks 18 to 36.
+#[test]
+#[ignore]
+fn the_roles_exchanged_the_eighth_image_on_seed_22_from_the_assignment_explore() {
+    e021_job(0, 0);
+}
+
+/// Exploration 020's job (`e020_job`) on H-47's cell of seed 22 from the eighth image and the
+/// mirrored assignment, for exploration 021.
+#[test]
+#[ignore]
+fn the_pair_and_the_readouts_the_eighth_image_on_seed_22_from_the_mirrored_assignment_explore() {
+    e020_job(0, 1);
+}
+
+/// Exploration 020's job on H-47's cell of seed 22 from a first mapping and the assignment.
+#[test]
+#[ignore]
+fn the_pair_and_the_readouts_a_first_mapping_on_seed_22_from_the_assignment_explore() {
+    e020_job(0, 2);
+}
+
+/// Exploration 020's job on H-47's cell of seed 23 from the eighth image and the assignment.
+#[test]
+#[ignore]
+fn the_pair_and_the_readouts_the_eighth_image_on_seed_23_from_the_assignment_explore() {
+    e020_job(1, 0);
+}
+
+/// Exploration 020's job on H-47's cell of seed 23 from the eighth image and the mirrored
+/// assignment.
+#[test]
+#[ignore]
+fn the_pair_and_the_readouts_the_eighth_image_on_seed_23_from_the_mirrored_assignment_explore() {
+    e020_job(1, 1);
+}
+
+/// Exploration 020's job on H-47's cell of seed 23 from a first mapping and the assignment.
+#[test]
+#[ignore]
+fn the_pair_and_the_readouts_a_first_mapping_on_seed_23_from_the_assignment_explore() {
+    e020_job(1, 2);
+}
+
+/// Exploration 020's job on H-47's cell of seed 24 from the eighth image and the mirrored
+/// assignment.
+#[test]
+#[ignore]
+fn the_pair_and_the_readouts_the_eighth_image_on_seed_24_from_the_mirrored_assignment_explore() {
+    e020_job(2, 1);
+}
+
+/// Exploration 020's job on H-47's cell of seed 24 from a first mapping and the assignment.
+#[test]
+#[ignore]
+fn the_pair_and_the_readouts_a_first_mapping_on_seed_24_from_the_assignment_explore() {
+    e020_job(2, 2);
+}
+
+/// Exploration 020's job on H-47's cell of seed 24 from a first mapping and the mirrored
+/// assignment.
+#[test]
+#[ignore]
+fn the_pair_and_the_readouts_a_first_mapping_on_seed_24_from_the_mirrored_assignment_explore() {
+    e020_job(2, 3);
+}
