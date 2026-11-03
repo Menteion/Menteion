@@ -413,11 +413,11 @@ inhibition. H-47's rows are exploration 020's job on the same cells; 021's excha
   by 0.37 to 3.55 M in layout 1, the same readouts as H-47's. **In layout 2 they add more onto readout 0's in three cells**, by 0.25 to
   2.45 M: stimulus A's readout on seed 22's eighth image from the assignment, by 0.25 M, and in the other two B's, the readout of H-47's A's
   units, by 1.13 and 2.45 M. On seed 23's first mapping from the mirrored assignment they add about as much onto each, 8.53 and 8.52 M.
-- **Against the side at block 36**, the readout that gains more inhibition onto its excitatory units is the side's in 1 cell of 4
-  in H-47's layout and in layout 1, and in 2 of the 3 in layout 2 where one readout gains more.
-- **The two readouts' excitatory units onto their own** lost together 0.44 to 5.27 M in H-47's layout, 0.35 to 5.15 M in layout 1 and
-  0.80 to 5.38 M in layout 2, in the same order of cells. The only gain of a readout's excitatory units onto its own is readout 0's on
-  seed 23's first mapping from the assignment, +0.18 M in H-47's layout and +0.30 M in layout 1.
+- **Against the side at block 36**, the readout that gains more inhibition onto its excitatory units under plain nights is the side's in 1
+  cell of 4 in H-47's layout and in layout 1, and in 2 of the 3 in layout 2 where one readout gains more.
+- **Under plain nights the two readouts' excitatory units onto their own** lost together 0.44 to 5.27 M in H-47's layout, 0.35 to 5.15 M in
+  layout 1 and 0.80 to 5.38 M in layout 2, in the same order of cells. Under plain nights the only gain of a readout's excitatory units onto
+  its own is readout 0's on seed 23's first mapping from the assignment, +0.18 M in H-47's layout and +0.30 M in layout 1.
 - **Every figure of the table lies within 0.83 M of H-47's** on the same cell and form, the largest 0.824 M: at most 0.34 and 0.40 M in
   layout 1, under nights without replay and plain nights, and 0.09 and 0.82 M in layout 2.
 
