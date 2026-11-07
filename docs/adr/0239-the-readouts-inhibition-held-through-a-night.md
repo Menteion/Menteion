@@ -4,7 +4,7 @@ date: 2026-11-08
 depends-on: ADR-0238
 title: The readouts' inhibition held through a night, M11's next exploration
 kind: decision
-summary: Explorations 021 to 023 read the side of a replay's gain lying with a group of units, the readout's index a name, and plain nights adding inhibition onto A's readout. No hypothesis is written: an exploration holds that inhibition through H-47's plain nights. The sweep of 2026-11-04 is recorded.
+summary: Explorations 021 to 023 read a replay's gain lying with a group of units, the index a name, and plain nights adding more inhibition onto A's readout than the other's. No hypothesis is written: an exploration holds that inhibition through H-47's plain nights. The 2026-11-04 sweep is recorded.
 decision-makers: Menteion maintainers
 ---
 
@@ -12,8 +12,8 @@ decision-makers: Menteion maintainers
 
 **In brief**
 - **Decision.** No hypothesis is written and no constant moves. Exploration 024 runs H-47's plain nights on A's patterns with the inhibitory synapses onto the readouts' excitatory units held where they stood, on exploration 020's four cells. It needs a change under `src/` on its own branch, and `main` takes nothing from it.
-- **Why.** In 020's four cells plain nights added 17.56 to 27.05 M of inhibitory weight. In 021's twelve they added more onto stimulus A's readout's excitatory units in every cell. ADR-0238 named a night that leaves the readouts' synapses where they stood and put the logs first. The logs are read.
-- **Left open.** Whether a hypothesis follows exploration 024; whether the slow-wave baseline enters the running configuration; chained episodes compiled in sleep (UPG-04).
+- **Why.** In 020's four cells plain nights added 17.56 to 27.05 M of inhibitory weight, where nights without replay moved it by −5.50 to +1.33 M. In H-47's layout they added more onto stimulus A's readout's excitatory units than onto the other readout's, in all twelve cells (021). ADR-0238 named a night that leaves the readouts' synapses where they stood and put the logs first; this takes its inhibitory half.
+- **Left open.** Whether a hypothesis follows exploration 024; the night's excitatory half; whether the slow-wave baseline enters the running configuration; chained episodes compiled in sleep (UPG-04).
 - **The schedule's sweep of 2026-11-04 is recorded here**: no survivor, so no finding.
 
 ## Context and Problem Statement
@@ -22,20 +22,21 @@ decision-makers: Menteion maintainers
 
 - **[Exploration 021](../explorations/021-where-the-gain-falls.md)**, on H-47's twelve cells: at blocks 6 and 12 the side lies on stimulus A in 10 cells of 12. From block 18 it lies on readout 0 in 9, 9 and 8. Exchanging A's and B's roles within a start does not move it from block 18 in any of four cells.
 - **[Exploration 022](../explorations/022-readout-or-the-pairs-own.md)**: from block 18 the side lies on the same readout in all four of its layouts, in all four cells. It goes with C's own units in none and with the role in none.
-- **[Exploration 023](../explorations/023-the-readouts-index-or-its-group.md)**: the readouts' index exchanged ran H-47's runs bit for bit, and their places exchanged ran H-47's other arm. So the index is a name, and the readout 0 of 021 and 022 is the odd places but 11. From block 18 the side lies there in three cells of four, and on the even places on seed 24's eighth image from the mirrored assignment.
+- **[Exploration 023](../explorations/023-the-readouts-index-or-its-group.md)**: the readouts' index exchanged ran H-47's runs bit for bit with the index exchanged. Their places exchanged ran H-47's other arm, on the two first-mapping cells it ran. So in these runs the index is a name, and the readout 0 of 021 and 022 is the odd places but 11. From block 18 the side lies there in three cells of four, and on the even places on seed 24's eighth image from the mirrored assignment.
 
-**What plain nights do to the inhibition**, against nights without replay:
-- In [exploration 020](../explorations/020-what-a-replay-costs.md)'s four cells, four plain nights took 19.75 to 23.59 M of the readouts' excitatory weight and added 17.56 to 27.05 M of inhibitory weight. At block 36 the readouts fired 20 % to 35 % less on A's trials.
-- In H-47's layout they add more inhibition onto stimulus A's readout's excitatory units than onto the other's, in all twelve cells (021): by 1.35 to 3.71 M where A answers readout 0, and by 0.10 to 1.41 M where it answers readout 1. A night without replay moved the inhibition onto each readout's excitatory units by −2.23 to +1.17 M.
-- The readout that gains more is the side's at block 36 in 6 cells of 12. In 022's layout with the roles exchanged and the pair's own units moved, more falls onto A's readout in one cell of four.
+**What plain nights do to the inhibition**, over four nights:
+- In [exploration 020](../explorations/020-what-a-replay-costs.md)'s four cells plain nights took 19.75 to 23.59 M of the readouts' excitatory weight and added 17.56 to 27.05 M of inhibitory weight. Nights without replay moved them by −0.62 to +1.69 M and −5.50 to +1.33 M. At block 36 the readouts fired 20 % to 35 % less on A's trials than without replay.
+- In H-47's layout plain nights add more inhibition onto stimulus A's readout's excitatory units than onto the other's, in all twelve cells (021): by 1.35 to 3.71 M where A answers readout 0, and by 0.10 to 1.41 M where it answers readout 1. A night without replay moved the inhibition onto each readout's excitatory units by −2.23 to +1.17 M.
+- At block 36 the side lay on the readout that gained more in 6 cells of 12, and on the other in 6. In 020's four cells, all with A answering readout 1, it lay on the other in all four.
+- In 022's layout with the roles exchanged and the pair's own units moved, more fell onto A's readout in one cell of four, and about as much onto each readout in another.
 
-**What the engine holds.** Under H-25's learning configuration every inhibitory synapse consolidates under the inhibitory baseline, asleep or awake ([ADR-0086](0086-the-inhibitory-baseline-built.md)), and ADR-0235's slow-wave baseline reaches none of them while that baseline is set. A baseline of zero would stop every inhibitory synapse consolidating, onto every unit and through the day as well. Nothing stops those onto a set of units, or for a night alone, and the baseline is the image's, which outranks a configuration.
+**What the engine holds.** Under H-25's learning configuration every inhibitory synapse consolidates under the inhibitory baseline, asleep or awake ([ADR-0086](0086-the-inhibitory-baseline-built.md)), and ADR-0235's slow-wave baseline reaches none of them while the inhibitory baseline is set. A baseline of zero would stop every inhibitory synapse consolidating, onto every unit and through the day as well. Nothing stops those onto a set of units, or for a night alone, and the baseline is the image's, which outranks a configuration.
 
 ## Decision Drivers
 
-- **The maintainers' choices** (2026-11-08): explore a night that holds the inhibitory synapses onto the readouts, before any hypothesis, and run it once this ADR merges.
-- **H-47's stopping rule**: step 8 allows no second attempt and no constant moved. A night changed is a new mechanism, and a hypothesis on it needs an ADR of its own.
-- **ADR-0238** named the night that leaves the readouts' synapses where they stood, and put the logs first. Explorations 020 to 023 hold H-47's two nights on these cells, with their splits and class matrices.
+- **The maintainers' choices** (2026-11-08): explore a night that holds the inhibitory synapses onto the readouts' excitatory units, before any hypothesis, and run it once this ADR merges.
+- **H-47's stopping rule**, step 8: "no constant moves after such a run; no second attempt, and no other baseline, shift, form, path or network." A held night is another form, so a hypothesis on it needs an ADR of its own.
+- **ADR-0238** named the night that leaves the readouts' synapses where they stood, and put the logs first. Exploration 020 holds H-47's two nights on these four cells with their splits and class matrices, and exploration 021 on H-47's other eight.
 
 ## Considered Options
 
@@ -51,17 +52,20 @@ decision-makers: Menteion maintainers
 ### Exploration 024 (Specified; it decides nothing)
 
 It writes no prediction and decides nothing.
-- **The held night** is H-47's plain night on A's patterns in which no inhibitory synapse onto an excitatory unit of either readout consolidates, from the night's first tick to its last. Every other synapse consolidates as in H-47. The readouts are H-47's: the odd places but 11 and the even places but 0.
+- **The held night** is H-47's plain night on A's patterns in which no inhibitory synapse onto an excitatory unit of either readout consolidates, from the night's first tick to its last. The readouts are H-47's, the odd places but 11 and the even places but 0, with the pair's own units at places 5 and 16 among them. At the night's last tick each held synapse's eligibility trace is cleared, so nothing the night built lands on it after the night. Every other synapse consolidates as in H-47.
+- **It is half of ADR-0238's night.** Exploration 020 named that night with the readouts' units' synapses held, excitatory and inhibitory. The inhibitory half is the one whose reading leaned toward A's readout in every cell of H-47's layout. The excitatory half is not run.
 - **Its branch** adds what the hold needs under `src/`, unset by default. `main` takes nothing from it; an engine change would be an ADR of its own.
 - **Its cells** are exploration 020's four. H-47's two that failed: seed 23's first mapping from the mirrored assignment, and seed 24's eighth image from the assignment. Seed 22's two of the same starts, where clause 1 held.
-- **Its forms**: the held night, and if the jobs allow, the night without replay with the same synapses held, to read the hold apart from the replay. H-47's two nights are read from H-47's logs.
-- **Its trial** holds H-47's rows with the hold unset, bit for bit. With it set, every held synapse ends a night at the weight it started with.
+- **Its job, one a cell**, runs the night without replay, its rows held to H-47's, and the held night: two forms, as 020's job ran in about 4 000 s. The held night without replay, to read the hold apart from the replay, joins the job if the job stays within its bound of 240 minutes. H-47's plain night is read from H-47's logs, and its splits and class matrices from exploration 020's.
+- **Its trial** holds H-47's row at block 6 on path 0 for the night without replay and the plain night, with the hold unset, bit for bit. With the hold set, every held synapse ends the night at the weight it started with and its trace cleared, and an inhibitory synapse onto a unit outside the held set moves.
 
-It reads at blocks 6, 12, 18, 24 and 36, in H-47's terms and with its paired SE:
-1. **A's count and each stimulus's trials** under the held night, against H-47's two nights on the same cell: held less without replay, as clause 1 reads it, and held less plain.
-2. **The side** under the held night, by stimulus and by group of units, against H-47's.
+It reads at blocks 6, 12, 18, 24 and 36, in H-47's terms:
+1. **A's count and each stimulus's trials** under the held night. Held less without replay, as clause 1 reads it, with H-47's paired SE, the two forms run in one job. Held less plain, with exploration 018's unpaired SE, as exploration 021 reads a form run in another job.
+2. **The side under the held night**: the stimulus whose held less without replay difference is the larger, by stimulus and by group of units, against H-47's side on the same cell.
 3. **The pair** under the held night and A's highest coupling, as clauses 2 and 3 read them.
 4. **What each night moved**, from the class matrix by group as exploration 021 reads it, with the held synapses' change shown nil.
+
+It does not run H-47's other eight cells, among them every cell where A answers readout 0, where the readouts' inhibition leaned most. Nor does it run plain nights on both, the awake gap or the night's excitatory half.
 
 ### The sweep
 
@@ -109,16 +113,17 @@ The schedule's run on `main`, [41944581270](https://github.com/Menteion/Menteion
 
 ## Consequences
 
-- **Good**: the one reading that held in every cell of H-47's layout is put to a run, on cells whose two nights are already in the logs.
+- **Good**: the lean of the readouts' inhibition toward A's readout, which held in every cell of H-47's layout, is put to a run on cells whose two nights are already in the logs.
 - **Bad**: the hold is a change under `src/` that `main` does not take, so what the exploration reads is not the engine's.
+- **Bad**: in all four cells A answers readout 1, where that lean was smallest.
 - **Bad**: M11 stays open, and no hypothesis is in view.
 - **Neutral**: nothing in the engine changes.
 
 ## Alternatives considered and why rejected
 
-- **Option 2, a hypothesis now**: no run has held these synapses. A prediction would rest on sums of weight, and the side has followed the inhibition in 6 cells of 12.
-- **Option 3, readouts that are not the two parities**: each first mapping would be learned again under them. An eighth image would need H-46's eight schedules learned again, whose first halves took 101.9 to 110.8 minutes. It parts places and moves no mechanism.
-- **Option 4, pause M11**: the replay helped in ten cells of twelve, and whether the inhibition it adds is what costs A is unread.
+- **Option 2, a hypothesis now**: no run has held these synapses. A prediction would rest on sums of weight, and at block 36 the side lay on the readout that gained more inhibition in 6 cells of 12 and on the other in 6.
+- **Option 3, readouts that are not the two parities**: each first mapping would be learned again under them. An eighth image would need H-46's eight schedules learned again, whose first halves took 101.9 to 110.8 minutes, before a job of about an hour; exploration 023 cut those cells for that. It parts places and moves no mechanism.
+- **Option 4, pause M11**: the replay helped in ten cells of twelve, and whether the inhibition it adds costs A where it does is unread.
 
 ## Confirmation
 
