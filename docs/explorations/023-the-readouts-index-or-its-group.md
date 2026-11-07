@@ -36,8 +36,8 @@ unless another is named.
 
 **In brief**
 - **Layout 1 ran H-47's runs, bit for bit, with the readouts' index exchanged.** In all four cells, under both forms, each of the 15 rows a
-  form, its image's CRC-64, its sixteen reads' counts of A and of the pair and its gain, held H-47's row with A's couplings exchanged by the
-  index. Every one of its 3 840 reads carries H-47's read's stimuli, right and tied masks, so each trial presented the same stimulus and was
+  form, its image's CRC-64, its sixteen reads' counts of A and of the pair and its gain, is H-47's row with A's couplings exchanged by the
+  index, as the job prints after each row; nothing in the job asserts it. Every one of its 3 840 reads carries H-47's read's stimuli, right and tied masks, so each trial presented the same stimulus and was
   right, tied or wrong as in H-47, and its spike counts by readout are H-47's exchanged. Each read's trace, which hashes the index
   selected, differs from H-47's in every read. Every split and class matrix is H-47's with the readouts' halves and classes exchanged.
 - **Layout 2 ran H-47's other arm, bit for bit.** Its first mapping, learned again under its readouts, is H-47's first mapping from the other
@@ -319,9 +319,10 @@ over the three paths. H-47's rows are exploration 020's and 021's jobs on the sa
 
 - **C's own units lie inside readout 1 and D's inside readout 0 in all six jobs**, 25 units each, and every one of the 55 splits of each
   job asserted it. By group they lie where H-47 lays them: C's in the odd places, D's in the even.
-- **Plain nights move each own kind's weight toward the group it lies in** in 7 of 8 readings in H-47 and layout 1, at the same figures,
-  and in all 4 of layout 2's. The eighth, in H-47 and layout 1, is C's own units on seed 22's eighth image from the assignment, −0.06 M onto
-  the odd places and +0.09 M onto the even.
+- **Plain nights move more of each own kind's weight onto the group it lies in than onto the other** in 7 of 8 readings in H-47 and
+  layout 1, at the same figures, and in all 4 of layout 2's. The eighth, in H-47 and layout 1, is C's own units on seed 22's eighth image
+  from the assignment, −0.06 M onto the odd places and +0.09 M onto the even. A kind gains onto its own group and loses onto the other in 6
+  of 8 there: on that cell D's own units gain onto both, 0.00 M onto the odd places and +0.07 M onto the even. In layout 2 all 4 do.
 
 ## 4. What plain nights take from each group's own synapses
 
@@ -376,9 +377,9 @@ for either index. So the readout 0 that explorations 021 and 022 read the side l
 these four cells, and on the even places in the fourth.
 
 **Exchanging the readouts' places, with the first mapping learned again, starts H-47's other arm.** Layout 2's first mapping and every row
-after it are H-47's from the other arm under the other index. With the index a name, a stimulus answering the even places from the
-assignment is the mirrored assignment, so a layout of these two groups can only be one of H-47's two arms. Layout 2 parts nothing from H-47
-that H-47's two arms did not already. On seed 23's first mapping those two put the side on the odd places from block 18 from either arm, on
+after it are H-47's from the other arm under the other index, on the two cells it ran. There, with the index a name, a stimulus answering
+the even places from the assignment ran as the mirrored assignment, so layout 2 parted nothing from H-47 that H-47's two arms did not
+already. Whether its eighth images would do the same is not run. On seed 23's first mapping those two put the side on the odd places from block 18 from either arm, on
 B from the mirrored assignment and on A from the assignment: there the side stays with the group of units, not with a stimulus.
 
 **What the odd places hold.** They hold C's own units at place 5 and places 1 and 19, next to stimulus A's place 0; the even places hold
