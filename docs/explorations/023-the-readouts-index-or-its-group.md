@@ -37,9 +37,10 @@ unless another is named.
 **In brief**
 - **Layout 1 ran H-47's runs, bit for bit, with the readouts' index exchanged.** In all four cells, under both forms, each of the 15 rows a
   form, its image's CRC-64, its sixteen reads' counts of A and of the pair and its gain, is H-47's row with A's couplings exchanged by the
-  index, as the job prints after each row; nothing in the job asserts it. Every one of its 3 840 reads carries H-47's read's stimuli, right and tied masks, so each trial presented the same stimulus and was
-  right, tied or wrong as in H-47, and its spike counts by readout are H-47's exchanged. Each read's trace, which hashes the index
-  selected, differs from H-47's in every read. Every split and class matrix is H-47's with the readouts' halves and classes exchanged.
+  index, as the job prints after each row; nothing in the job asserts it. Every one of its 3 840 reads carries H-47's read's stimuli,
+  right and tied masks, so each trial presented the same stimulus and was right, tied or wrong as in H-47, and its spike counts by readout
+  are H-47's exchanged. Each read's trace, which hashes the index selected, differs from H-47's in every read. Every split and class
+  matrix is H-47's with the readouts' halves and classes exchanged.
 - **Layout 2 ran H-47's other arm, bit for bit.** Its first mapping, learned again under its readouts, is H-47's first mapping from the other
   arm: the same 24 blocks of correct trials and the same image. From there each of its 30 rows a job, its 1 920 reads, its splits and its
   class matrices are H-47's of the other arm's cell with the index exchanged. Its two jobs print the lines of layout 1's two first-mapping
@@ -106,7 +107,8 @@ three the odd places'. Every split held that, and every split's parts added up t
 group's excitatory units are its readout's two classes and the pair's own kind inside it, C's own in the odd places and D's in the even.
 
 **Layout 2 runs from a first mapping alone.** An eighth image under its readouts would need H-46's eight schedules learned again from H-42's
-image. H-46's first halves, which made its eighth images, took 101.9 to 110.8 minutes, before a job of about 64 to 68 minutes, past this exploration's 1.5 hours a job.
+image. H-46's first halves, which made its eighth images, took 101.9 to 110.8 minutes, before a job of about 64 to 68 minutes, past this
+exploration's 1.5 hours a job.
 
 ## The runs are laid out as written
 
@@ -376,11 +378,12 @@ split and class matrix H-47's, the index exchanged. The selection releases a rea
 for either index. So the readout 0 that explorations 021 and 022 read the side lying on from block 18 is the odd places: there in three of
 these four cells, and on the even places in the fourth.
 
-**Exchanging the readouts' places, with the first mapping learned again, starts H-47's other arm.** Layout 2's first mapping and every row
-after it are H-47's from the other arm under the other index, on the two cells it ran. There, with the index a name, a stimulus answering
-the even places from the assignment ran as the mirrored assignment, so layout 2 parted nothing from H-47 that H-47's two arms did not
-already. Whether its eighth images would do the same is not run. On seed 23's first mapping those two put the side on the odd places from block 18 from either arm, on
-B from the mirrored assignment and on A from the assignment: there the side stays with the group of units, not with a stimulus.
+**Exchanging the readouts' places, with the first mapping learned again, started H-47's other arm on both cells it ran.** Layout 2's first
+mapping and every row after it are H-47's from the other arm under the other index. There, with the index a name, a stimulus answering the
+even places from the assignment ran as the mirrored assignment, so layout 2 parted nothing from H-47 that H-47's two arms did not already.
+Whether its eighth images would do the same is not run. On seed 23's first mapping those two arms put the side on the odd places from
+block 18 from either arm, on B from the mirrored assignment and on A from the assignment: there the side stays with the group of units, not
+with a stimulus.
 
 **What the odd places hold.** They hold C's own units at place 5 and places 1 and 19, next to stimulus A's place 0; the even places hold
 D's own units at place 16 and places 10 and 12, next to B's place 11. These runs do not part the side from any of those. On seed 24's eighth
