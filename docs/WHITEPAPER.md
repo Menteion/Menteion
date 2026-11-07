@@ -2649,7 +2649,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0236](adr/0236-learning-that-sleep-keeps-its-protocol.md) | Learning that sleep keeps, its protocol | accepted |
 | [ADR-0237](adr/0237-learning-that-sleep-keeps-measured.md) | Learning that sleep keeps, measured | accepted |
 | [ADR-0238](adr/0238-what-keeps-a-mapping-where-the-replay-did-not.md) | What keeps a mapping where the replay did not, and M11's next exploration | accepted |
-| [ADR-0239](adr/0239-the-readouts-inhibition-held-through-a-night.md) | The readouts' inhibition held through a night, M11's next exploration | proposed |
+| [ADR-0239](adr/0239-the-readouts-inhibition-held-through-a-night.md) | The readouts' inhibition held through a night, M11's next exploration | accepted |
 <!-- adr-index: end decisions -->
 
 ---

@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-08
 depends-on: ADR-0238
 title: The readouts' inhibition held through a night, M11's next exploration
