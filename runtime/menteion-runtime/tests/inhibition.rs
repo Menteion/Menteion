@@ -49584,3 +49584,590 @@ fn the_readouts_places_exchanged_a_first_mapping_on_seed_23_from_the_mirrored_as
 fn the_readouts_places_exchanged_a_first_mapping_on_seed_23_from_the_assignment_explore() {
     e023_job(1, 2, E023Layout::Places);
 }
+
+// ------------------ exploration 024: the readouts' inhibition held through a night (on its branch alone)
+
+/// Exploration 024's forms of a gap (ADR-0239): H-47's night without replay; the held night,
+/// H-47's plain night on A's patterns with the night hold set; and the held night without
+/// replay, H-47's night without replay with the night hold set.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum E024Form {
+    NoReplay,
+    Held,
+    HeldNoReplay,
+}
+
+impl E024Form {
+    /// Its name in a label.
+    const fn name(self) -> &'static str {
+        match self {
+            Self::NoReplay => "no-replay",
+            Self::Held => "held",
+            Self::HeldNoReplay => "held-no-replay",
+        }
+    }
+
+    /// Whether its night tags A's patterns.
+    const fn tags(self) -> bool {
+        matches!(self, Self::Held)
+    }
+
+    /// Whether its night holds the readouts' inhibition.
+    const fn holds(self) -> bool {
+        !matches!(self, Self::NoReplay)
+    }
+
+    /// The index in `NIGHTS_GAPS` of H-47's form its rows are set beside: the night without
+    /// replay for itself and for the held night without replay, the plain night on A's patterns
+    /// for the held night.
+    const fn h47(self) -> usize {
+        match self {
+            Self::NoReplay | Self::HeldNoReplay => 0,
+            Self::Held => 1,
+        }
+    }
+}
+
+/// A job's three forms, in its tables' order.
+const E024_FORMS: [E024Form; 3] = [E024Form::NoReplay, E024Form::Held, E024Form::HeldNoReplay];
+
+/// The units exploration 024 holds the inhibition onto: every excitatory unit of A's two
+/// readouts, the odd places but 11 and the even places but 0, the pair's own units at places 5
+/// and 16 among them; held here against the start image's flags, and none of A's or B's units.
+fn e024_held(start: &NightsStart, label: &str) -> Vec<u32> {
+    let exec = zero_from(start.image, SCAN_UNITS, ZERO_ARM);
+    let sets = start.site.sets;
+    let in_readout = |id: u32| sets[2].contains(id) || sets[3].contains(id);
+    let mut held: Vec<u32> = exec
+        .units()
+        .iter()
+        .filter(|u| u.flags & FLAG_INHIBITORY == 0)
+        .map(|u| u.id as u32)
+        .filter(|&id| in_readout(id))
+        .collect();
+    held.sort_unstable();
+    let inhibitory = exec
+        .units()
+        .iter()
+        .filter(|u| u.flags & FLAG_INHIBITORY != 0 && in_readout(u.id as u32))
+        .count();
+    let kinds = &start.pair.kinds;
+    assert!(
+        kinds[2]
+            .iter()
+            .chain(&kinds[5])
+            .all(|u| held.binary_search(u).is_ok()),
+        "{label}: the pair's own units are held"
+    );
+    assert!(
+        held.iter()
+            .all(|&u| !sets[0].contains(u) && !sets[1].contains(u)),
+        "{label}: no unit of A's stimuli is held"
+    );
+    let by_readout = [2usize, 3].map(|r| held.iter().filter(|&&u| sets[r].contains(u)).count());
+    eprintln!(
+        "DUMP {label} hold units {} of readout 0 {} of readout 1 {}; the readouts' inhibitory units, not held, {inhibitory}; C's own held {} D's own held {}",
+        held.len(),
+        by_readout[0],
+        by_readout[1],
+        kinds[2].len(),
+        kinds[5].len()
+    );
+    undropped(exec, label);
+    held
+}
+
+/// One inhibitory synapse as exploration 024 reads it: its block and slot, its target, whether the
+/// night hold holds it, its weight and its trace.
+#[derive(Clone, Copy, Debug)]
+struct E024Synapse {
+    block: u32,
+    slot: usize,
+    target: u32,
+    held: bool,
+    weight: i16,
+    trace: i16,
+}
+
+/// Every inhibitory synapse of `exec`, in the arena's order of units and chains.
+fn e024_inhibitory(exec: &Engine, held: &[u32]) -> Vec<E024Synapse> {
+    let (units, blocks) = (exec.units(), exec.blocks());
+    let mut out = Vec::new();
+    for unit in units.iter().filter(|u| u.flags & FLAG_INHIBITORY != 0) {
+        for b in unit.chain(blocks) {
+            let block = &blocks[b as usize];
+            for slot in 0..SYNAPSES_PER_BLOCK {
+                let Some(target) = block.target(slot) else {
+                    continue;
+                };
+                out.push(E024Synapse {
+                    block: b,
+                    slot,
+                    target,
+                    held: held.binary_search(&target).is_ok(),
+                    weight: block.weights_q1_15[slot],
+                    trace: block.eligibility_q1_15[slot],
+                });
+            }
+        }
+    }
+    out
+}
+
+/// Of `after` against `before`, synapse by synapse, the held ones or the others: how many, how
+/// many moved, the change of their magnitudes in Q1.15 LSB (more inhibition positive), and how
+/// many hold a trace other than zero.
+fn e024_moved(before: &[E024Synapse], after: &[E024Synapse], held: bool) -> (u64, u64, i64, u64) {
+    assert_eq!(before.len(), after.len(), "the same synapses");
+    let mut out = (0u64, 0u64, 0i64, 0u64);
+    for (b, a) in before.iter().zip(after) {
+        assert_eq!(
+            (b.block, b.slot, b.target),
+            (a.block, a.slot, a.target),
+            "the same synapse"
+        );
+        if b.held != held {
+            continue;
+        }
+        out.0 = out.0.saturating_add(1);
+        out.1 = out.1.saturating_add(u64::from(a.weight != b.weight));
+        out.2 = out
+            .2
+            .saturating_add(i64::from(b.weight).saturating_sub(i64::from(a.weight)));
+        out.3 = out.3.saturating_add(u64::from(a.trace != 0));
+    }
+    out
+}
+
+/// What the held synapses of `exec` will read at their presynaptic unit's next spike from spikes
+/// on record since the night's first tick `began`, at `now`, the tick after the image: the pairing
+/// of the post's last spike after the presynaptic unit's last, a count, its sum and its largest in
+/// Q1.15 LSB; and the pairing of the post's last spike with a presynaptic spike at `now`, the most
+/// it can be, a count and its sum. Then how many held synapses' presynaptic unit fired at or after
+/// `woke`, the night's last tick.
+fn e024_pending(
+    exec: &Engine,
+    synapses: &[E024Synapse],
+    began: u32,
+    woke: u32,
+    now: u32,
+) -> ((u64, i64, i64), (u64, i64), u64) {
+    let (units, blocks) = (exec.units(), exec.blocks());
+    let since = |t: u32| t != NO_SPIKE_ON_RECORD && t.wrapping_sub(began) as i32 >= 0;
+    let (mut after, mut at_now, mut fired) = ((0u64, 0i64, 0i64), (0u64, 0i64), 0u64);
+    for s in synapses.iter().filter(|s| s.held) {
+        let p = blocks[s.block as usize].last_spike_tick;
+        let q = units[s.target as usize].last_soma_spike_tick;
+        if p != NO_SPIKE_ON_RECORD && p.wrapping_sub(woke) as i32 >= 0 {
+            fired = fired.saturating_add(1);
+        }
+        if !since(q) {
+            continue;
+        }
+        let gap = q.wrapping_sub(p) as i32;
+        if since(p) && gap > 0 {
+            let w = i64::from(pair_window(STDP_A_PLUS_Q1_15, gap as u32));
+            after = (
+                after.0.saturating_add(1),
+                after.1.saturating_add(w),
+                after.2.max(w),
+            );
+        }
+        let to_now = now.wrapping_sub(q) as i32;
+        if to_now > 0 {
+            let w = i64::from(pair_window(STDP_A_PLUS_Q1_15, to_now as u32));
+            at_now = (at_now.0.saturating_add(1), at_now.1.saturating_add(w));
+        }
+    }
+    (after, at_now, fired)
+}
+
+/// `e020_night` with exploration 024's night hold set on the units of `hold` where it is given:
+/// the same engine, stages, watch and dumps. Held, the inhibitory synapses are read at the
+/// night's first tick, at its last before the quiet ticks and after them: at its last every held
+/// synapse stands at its first weight with its trace cleared, and some inhibitory synapse onto
+/// another unit has moved, held here; after the quiet ticks what they moved and what the held
+/// synapses will read at their next presynaptic spike are dumped.
+fn e024_night(
+    start: &NightsStart,
+    image: &[u8],
+    label: &str,
+    patterns: &[Vec<u32>],
+    tag: bool,
+    watch: bool,
+    hold: Option<&[u32]>,
+) -> (Vec<u8>, (u32, u32)) {
+    let site = &start.site;
+    let sets = site.sets;
+    let mut exec = night_engine(image, patterns.len(), Some(site.groups), |h| {
+        h.sleep_shift = NIGHT_SHIFT;
+        h.sleep_stage = STAGE_SWS;
+        h.sleep_pressure_q16 = PRESSURE_MAX_Q16;
+    });
+    let first_synapses = hold.map(|held| {
+        assert!(
+            exec.set_night_hold(held),
+            "{label}: every held unit in the arena"
+        );
+        let synapses = e024_inhibitory(&exec, held);
+        let (n, _, _, traced) = e024_moved(&synapses, &synapses, true);
+        eprintln!(
+            "DUMP {label} hold set on {} units, inhibitory synapses {} of them held {n}, held with a trace {traced}",
+            held.len(),
+            synapses.len()
+        );
+        synapses
+    });
+    exec.spend_episodes();
+    if tag {
+        for pattern in patterns {
+            exec.tag_episode(pattern, NIGHT_PRIORITY)
+                .expect("the ledger has room and the pattern is one");
+        }
+    }
+    let start_state = night_state(&exec, &sets);
+    eprintln!(
+        "DUMP {label} start {start_state:?} target {:?} step {} period {} pattern sums {:?}",
+        exec.rate_target_per_window(),
+        exec.homeostasis().control_step_q0_16,
+        exec.istdp_target_period_ticks(),
+        pattern_sums(&exec, patterns)
+    );
+    let source = drive(SCAN_UNITS);
+    let driven = Some(&source);
+    let began = exec.ticks();
+    let lead = NIGHT_RIPPLE.wrapping_sub(began) & NIGHT_RIPPLE.wrapping_sub(1);
+    night_ticks(&mut exec, driven, lead);
+    let mut watching = watch.then(|| ReplayWatch::new(label, start, &mut exec, patterns));
+    let mut read = RippleRead::default();
+    let mut spikes = 0u64;
+    for _ in 0..NIGHT_RIPPLES_MAX {
+        let at = exec.ticks();
+        let hand = exec.hippocampus().replay_hand as usize;
+        let pattern = (exec.sleep_stage() == STAGE_SWS)
+            .then(|| exec.episodes().get(hand))
+            .flatten()
+            .filter(|e| !e.is_spent())
+            .map(|e| e.pattern().to_vec());
+        match &mut watching {
+            None => night_ticks(&mut exec, driven, NIGHT_RIPPLE),
+            Some(w) => {
+                w.open(pattern.as_deref());
+                for _ in 0..NIGHT_RIPPLE {
+                    w.before(&exec);
+                    night_ticks(&mut exec, driven, 1);
+                    w.after(&mut exec);
+                }
+                w.close();
+            }
+        }
+        let train = exec.train();
+        let from = train.partition_point(|s| s.0 < at as u32);
+        let mine = &train[from..];
+        spikes = spikes.saturating_add(mine.len() as u64);
+        if let Some(pattern) = &pattern {
+            ripple_read(&mut read, mine, at as u32, pattern);
+        }
+        if exec.ticks() & WINDOW_TICKS.wrapping_sub(1) == 0 {
+            eprintln!(
+                "DUMP {label} window {:?} spikes {spikes} replays {} depotentiations {} {read:?}",
+                night_state(&exec, &sets),
+                exec.replays(),
+                exec.depotentiations()
+            );
+            spikes = 0;
+            read = RippleRead::default();
+        }
+        if exec.sleep_stage() == STAGE_AWAKE {
+            break;
+        }
+    }
+    assert_eq!(exec.sleep_stage(), STAGE_AWAKE, "{label}: the night ended");
+    let woke = exec.ticks().wrapping_sub(1);
+    let at_wake = match (hold, &first_synapses) {
+        (Some(held), Some(first)) => {
+            let synapses = e024_inhibitory(&exec, held);
+            let kept = e024_moved(first, &synapses, true);
+            let others = e024_moved(first, &synapses, false);
+            let cleared = exec.night_hold_cleared();
+            eprintln!(
+                "DUMP {label} hold at the night's last tick {woke}: held [synapses, moved, change, with a trace] {kept:?} cleared [slots, not zero, above zero, below zero] {cleared:?}; the others {others:?}"
+            );
+            assert_eq!(
+                (kept.1, kept.2, kept.3, cleared.0),
+                (0, 0, 0, kept.0),
+                "{label}: every held synapse at its first weight, its trace cleared"
+            );
+            assert!(
+                others.1 > 0,
+                "{label}: an inhibitory synapse onto another unit moved"
+            );
+            eprintln!(
+                "DUMP {label} holds every held synapse at its first weight with its trace cleared, and {} inhibitory synapses onto other units moved",
+                others.1
+            );
+            Some(synapses)
+        }
+        _ => None,
+    };
+    if let Some(w) = &watching {
+        w.dump();
+    }
+    let ticks = exec.ticks().wrapping_sub(began);
+    let quiet_ticks = quiet(&mut exec);
+    let end = night_state(&exec, &sets);
+    eprintln!(
+        "DUMP {label} end {end:?} quiet in {quiet_ticks} ticks, ticks {ticks}, replays {} depotentiations {} pattern sums {:?}",
+        exec.replays(),
+        exec.depotentiations(),
+        pattern_sums(&exec, patterns)
+    );
+    if let (Some(held), Some(wake)) = (hold, &at_wake) {
+        let synapses = e024_inhibitory(&exec, held);
+        let quieted = e024_moved(wake, &synapses, true);
+        let others = e024_moved(wake, &synapses, false);
+        let night = e024_moved(
+            first_synapses.as_deref().expect("read at the first tick"),
+            &synapses,
+            true,
+        );
+        let (after, at_now, fired) = e024_pending(
+            &exec,
+            &synapses,
+            began as u32,
+            woke as u32,
+            exec.ticks() as u32,
+        );
+        eprintln!(
+            "DUMP {label} hold after the quiet ticks: held [synapses, moved, change, with a trace] {quieted:?} the others {others:?}; held over the night and the quiet ticks {night:?}; held whose presynaptic unit fired from the night's last tick {fired}; pending [count, sum, largest] after the presynaptic spike {after:?} with a spike now [count, sum] {at_now:?}"
+        );
+    }
+    let awake = night_engine(&Image::encode(&exec).expect("quiescent"), 0, None, |h| {
+        h.sleep_shift = 0
+    });
+    undropped(exec, label);
+    let written = Image::encode(&awake).expect("quiescent");
+    undropped(awake, label);
+    (written, (start_state.gain, end.gain))
+}
+
+/// Exploration 024's trial: on network `n` from start `s`, on path 0, the pair's head, then four
+/// first nights, all watched: H-47's night without replay and plain night on A's patterns with
+/// the hold unset, each image and its read as it was of A held to the row H-47 pinned there; and
+/// the held night and the held night without replay, each held as `e024_night` holds it, with
+/// whether its row is H-47's of the form beside it printed.
+fn e024_trial(n: usize, s: usize) {
+    with_nights(n, s, "e024 trial", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        let targets = e020_targets(&first);
+        let held = e024_held(start, &start.name);
+        let label = format!("{} path 0 head blocks {NIGHTS_EVERY}", start.name);
+        let (head, _) = nights_run(start, start.image, NIGHTS_EVERY, &label, path_from(0));
+        let before = format!("{} path 0 gap {NIGHTS_EVERY} before", start.name);
+        e020_split(start, &head, &before, &targets);
+        // (the name, whether it tags, whether it holds, H-47's form beside it)
+        let nights = [
+            ("plain-first", true, false, 1usize),
+            ("held", true, true, 1),
+            ("no-replay", false, false, 0),
+            ("held-no-replay", false, true, 0),
+        ];
+        two_at_a_time(&nights, |&(name, tag, holds, f)| {
+            let at = format!("{} path 0 {name}", start.name);
+            let clock = std::time::Instant::now();
+            let (image, gain) = e024_night(
+                start,
+                &head,
+                &format!("{at} gap {NIGHTS_EVERY}"),
+                &first,
+                tag,
+                true,
+                holds.then_some(held.as_slice()),
+            );
+            eprintln!("DUMP {at} the night in {} s", clock.elapsed().as_secs());
+            let blocks = format!("{at} blocks {NIGHTS_EVERY}");
+            e020_split(start, &image, &blocks, &targets);
+            let (a, couplings) = spread_read(
+                &start.site,
+                &image,
+                &blocks,
+                "as-it-was 0",
+                nights_read_from(0),
+            );
+            let row = nights_row(NIGHTS_ROWS[n][s][f], 0, 0).expect("H-47 pinned the row");
+            let got = (crc64(&image), a, couplings, Some(gain));
+            let h47 = (row.image, row.first[0], row.couplings, row.gain);
+            if holds {
+                eprintln!(
+                    "DUMP {at} row at block 6 on path 0 {got:?}; H-47's {} row {h47:?}; the same: {}",
+                    NIGHTS_GAPS[f].name(),
+                    got == h47
+                );
+            } else {
+                assert_eq!(got, h47, "{at}: H-47's row at block 6 on path 0");
+                eprintln!("DUMP {at} holds H-47's row at block 6 on path 0");
+            }
+        });
+    });
+}
+
+/// One job of exploration 024: on network `n` from start `s`, exploration 020's job with the forms
+/// of `E024_FORMS`, each on the three paths: the night without replay, every row held to the row
+/// H-47 pinned; the held night and the held night without replay, each row printed with whether it
+/// is H-47's row of the form beside it. With A's patterns' composition, each image's split, the
+/// image before each gap with its kinds and split, and the nights at `WATCH_GAPS` watched.
+fn e024_job(n: usize, s: usize) {
+    with_nights(n, s, "e024", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        e020_patterns(start, &first);
+        let targets = e020_targets(&first);
+        let held = e024_held(start, &start.name);
+        e020_split(
+            start,
+            start.image,
+            &format!("{} start", start.name),
+            &targets,
+        );
+        let heads = Mutex::new(BTreeMap::new());
+        two_at_a_time(&NIGHTS_PATHS, |&j| {
+            let at = format!("{} path {j} head blocks {NIGHTS_EVERY}", start.name);
+            let head = nights_run(start, start.image, NIGHTS_EVERY, &at, path_from(j));
+            heads.lock().expect("a head ended").insert(j, head);
+        });
+        let heads = heads.into_inner().expect("every head ended");
+        let chains: Vec<(usize, u64)> = (0..E024_FORMS.len())
+            .flat_map(|f| NIGHTS_PATHS.iter().map(move |&j| (f, j)))
+            .collect();
+        let kept = Mutex::new(BTreeMap::new());
+        let readings = Mutex::new(BTreeMap::new());
+        two_at_a_time(&chains, |&(f, j)| {
+            let form = E024_FORMS[f];
+            let name = format!("{} path {j} {}", start.name, form.name());
+            let (mut at, mut ends) = heads[&j].clone();
+            for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                let label = format!("{name} blocks {block}");
+                if block > NIGHTS_LAST {
+                    let (image, ends) = nights_run(start, &at, NIGHTS_ON, &label, path_from(j));
+                    e020_split(start, &image, &label, &targets);
+                    readings
+                        .lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (nights_highest(&ends), None));
+                    kept.lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (label, image));
+                    continue;
+                }
+                if block != NIGHTS_EVERY {
+                    (at, ends) = nights_run(start, &at, NIGHTS_EVERY, &label, path_from(j));
+                }
+                let before = format!("{name} gap {block} before");
+                shared_sums(start, &at, &before);
+                e020_split(start, &at, &before, &targets);
+                let gap = format!("{name} gap {block}");
+                let watch = WATCH_GAPS.contains(&block);
+                let (image, gain) = e024_night(
+                    start,
+                    &at,
+                    &gap,
+                    &first,
+                    form.tags(),
+                    watch,
+                    form.holds().then_some(held.as_slice()),
+                );
+                e020_split(start, &image, &label, &targets);
+                readings
+                    .lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (nights_highest(&ends), Some(gain)));
+                kept.lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (label, image.clone()));
+                at = image;
+            }
+        });
+        let kept = kept.into_inner().expect("every form ended");
+        let readings = readings.into_inner().expect("every form ended");
+        let read = nights_reads(start, &kept);
+        for (f, form) in E024_FORMS.iter().enumerate() {
+            let mut rows = Vec::new();
+            for (p, &j) in NIGHTS_PATHS.iter().enumerate() {
+                for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                    let key = (f, j, c);
+                    let counts = |pair: bool| -> [u8; 16] {
+                        core::array::from_fn(|i| read[&(key, pair, i as u64)].0)
+                    };
+                    let (highest, gain) = readings[&key];
+                    let row = NightsRow {
+                        image: crc64(&kept[&key].1),
+                        first: counts(false),
+                        second: counts(true),
+                        couplings: read[&(key, false, 0)].1,
+                        highest,
+                        gain,
+                    };
+                    eprintln!(
+                        "DUMP {} {} path {j} block {block} PIN row {row:?}",
+                        start.name,
+                        form.name()
+                    );
+                    assert_eq!(nights_row(&rows, p, c), None, "rows in order");
+                    rows.push(row);
+                }
+            }
+            let beside = NIGHTS_ROWS[n][s][form.h47()];
+            assert!(!beside.is_empty(), "H-47 pinned the form's rows");
+            if form.holds() {
+                let same = rows.iter().zip(beside).filter(|(a, b)| a == b).count();
+                eprintln!(
+                    "DUMP {} {}: rows the same as H-47's {} rows {same} of {}",
+                    start.name,
+                    form.name(),
+                    NIGHTS_GAPS[form.h47()].name(),
+                    rows.len()
+                );
+            } else {
+                assert_eq!(rows.as_slice(), beside, "{}: H-47's rows", start.name);
+                eprintln!("DUMP {} {}: every row is H-47's", start.name, form.name());
+            }
+        }
+    });
+}
+
+/// Exploration 024's trial, on seed 23 from a first mapping and the mirrored assignment.
+#[test]
+#[ignore]
+fn the_harness_of_the_readouts_inhibition_held_explore() {
+    e024_trial(1, 3);
+}
+
+/// Exploration 024 on seed 23, from a first mapping and the mirrored assignment: H-47's cell whose
+/// plain nights kept 4.9 less of A than nights without replay.
+#[test]
+#[ignore]
+fn the_readouts_inhibition_held_a_first_mapping_on_seed_23_from_the_mirrored_assignment_explore() {
+    e024_job(1, 3);
+}
+
+/// Exploration 024 on seed 24, from the eighth image and the assignment: H-47's cell whose plain
+/// nights kept 1.8 more of A, within 2 SE.
+#[test]
+#[ignore]
+fn the_readouts_inhibition_held_the_eighth_image_on_seed_24_from_the_assignment_explore() {
+    e024_job(2, 0);
+}
+
+/// Exploration 024 on seed 22, from a first mapping and the mirrored assignment, where clause 1
+/// held.
+#[test]
+#[ignore]
+fn the_readouts_inhibition_held_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore() {
+    e024_job(0, 3);
+}
+
+/// Exploration 024 on seed 22, from the eighth image and the assignment, where clause 1 held.
+#[test]
+#[ignore]
+fn the_readouts_inhibition_held_the_eighth_image_on_seed_22_from_the_assignment_explore() {
+    e024_job(0, 0);
+}
