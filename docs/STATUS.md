@@ -1,7 +1,7 @@
 # Where the work stands
 
 Every round rewrites this page whole, and it holds no history ([ADR-0197](adr/0197-one-place-for-each-kind-of-fact.md)).
-[ADR-0239](adr/0239-the-readouts-inhibition-held-through-a-night.md) wrote it on 2026-11-08, after exploration 023.
+[ADR-0240](adr/0240-the-readouts-excitatory-synapses-held-through-a-night.md) wrote it on 2026-11-08, after exploration 024.
 
 ## The engine
 
@@ -53,7 +53,7 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 
 ## The next decision
 
-[ADR-0239](adr/0239-the-readouts-inhibition-held-through-a-night.md) reads explorations 021 to 023 and writes no hypothesis, and M11 stays open.
-1. M11: exploration 024 runs once ADR-0239 merges. It holds the inhibitory synapses onto the readouts' excitatory units through H-47's plain nights on exploration 020's four cells, on a branch of its own. Whether a hypothesis follows it is the next decision.
-2. ADR-0239 recorded the schedule's sweep of 2026-11-04. The run of 2026-11-11 at 20:17Z is the next to record, by the first ADR that merges after it ends.
+[ADR-0240](adr/0240-the-readouts-excitatory-synapses-held-through-a-night.md) reads exploration 024 and writes no hypothesis, and M11 stays open.
+1. M11: exploration 025 runs on the maintainers' word, not on ADR-0240's merge. It holds the synapses of the readouts' excitatory units through H-47's plain nights, alone and with exploration 024's hold, on exploration 020's four cells, on a branch of its own. Whether a hypothesis follows it is the next decision.
+2. The schedule's sweep of 2026-11-11 at 20:17Z is the next to record, by the first ADR that merges after it ends.
 3. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
