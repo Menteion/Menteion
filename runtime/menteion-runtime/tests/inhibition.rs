@@ -50875,3 +50875,326 @@ fn the_synapses_from_the_readouts_excitatory_units_held_the_eighth_image_on_seed
  {
     e025_job(0, 0);
 }
+
+/// Exploration 026's forms of a gap (ADR-0241): exploration 025's, the night under both holds left
+/// out. H-47's night without replay, the excitatory night (H-47's plain night on A's patterns with
+/// exploration 025's excitatory hold set) and the excitatory night without replay.
+const E026_FORMS: [E025Form; 3] = [
+    E025Form::NoReplay,
+    E025Form::Excitatory,
+    E025Form::ExcitatoryNoReplay,
+];
+
+/// The row exploration 025's trial printed for its excitatory night at block 6 on path 0, on seed
+/// 23 from a first mapping and the mirrored assignment (run 42468595193): the image's CRC-64, A's
+/// first count, A's couplings and the gain at the night's start and end.
+const E025_TRIAL_EXCITATORY: (u64, u8, [i64; 4], Option<(u32, u32)>) = (
+    6_708_481_004_547_388_324,
+    58,
+    [5_823_952, 6_939_381, 7_241_457, 6_005_004],
+    Some((112_166, 107_611)),
+);
+
+/// Exploration 026's trial (ADR-0241), on path 0. On seed 23 from a first mapping and the
+/// assignment: the pair's head, then the first night of H-47's plain night on A's patterns and of
+/// each form of `E026_FORMS`, all watched. With no hold set, the night without replay and the
+/// plain night are each held to the row H-47 pinned at block 6 on path 0; the excitatory night and
+/// the excitatory night without replay are held as `e025_night` holds them, each row printed with
+/// whether it is H-47's of the form beside it. On seed 23 from a first mapping and the mirrored
+/// assignment: the pair's head and the excitatory night's first night, watched, its row held to
+/// the one exploration 025's trial printed (`E025_TRIAL_EXCITATORY`).
+fn e026_trial() {
+    with_nights(1, 2, "e026 trial", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        let targets = e020_targets(&first);
+        let inhibited = e024_held(start, &start.name);
+        let held = e025_held(start, &start.name, &inhibited);
+        let label = format!("{} path 0 head blocks {NIGHTS_EVERY}", start.name);
+        let (head, _) = nights_run(start, start.image, NIGHTS_EVERY, &label, path_from(0));
+        let before = format!("{} path 0 gap {NIGHTS_EVERY} before", start.name);
+        e020_split(start, &head, &before, &targets);
+        // (the name, whether it tags, whether it holds the synapses from the held units, H-47's
+        // form beside it)
+        let nights = [
+            ("plain-first", true, false, 1usize),
+            ("no-replay", false, false, 0),
+            ("excitatory", true, true, 1),
+            ("excitatory-no-replay", false, true, 0),
+        ];
+        two_at_a_time(&nights, |&(name, tag, from, f)| {
+            let at = format!("{} path 0 {name}", start.name);
+            let clock = std::time::Instant::now();
+            let (image, gain) = e025_night(
+                start,
+                &head,
+                &format!("{at} gap {NIGHTS_EVERY}"),
+                &first,
+                tag,
+                true,
+                from.then_some(held.as_slice()),
+                None,
+            );
+            eprintln!("DUMP {at} the night in {} s", clock.elapsed().as_secs());
+            let blocks = format!("{at} blocks {NIGHTS_EVERY}");
+            e020_split(start, &image, &blocks, &targets);
+            let (a, couplings) = spread_read(
+                &start.site,
+                &image,
+                &blocks,
+                "as-it-was 0",
+                nights_read_from(0),
+            );
+            let row = nights_row(NIGHTS_ROWS[1][2][f], 0, 0).expect("H-47 pinned the row");
+            let got = (crc64(&image), a, couplings, Some(gain));
+            let h47 = (row.image, row.first[0], row.couplings, row.gain);
+            if from {
+                eprintln!(
+                    "DUMP {at} row at block 6 on path 0 {got:?}; H-47's {} row {h47:?}; the same: {}",
+                    NIGHTS_GAPS[f].name(),
+                    got == h47
+                );
+            } else {
+                assert_eq!(got, h47, "{at}: H-47's row at block 6 on path 0");
+                eprintln!("DUMP {at} holds H-47's row at block 6 on path 0");
+            }
+        });
+    });
+    with_nights(1, 3, "e026 trial", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        let targets = e020_targets(&first);
+        let inhibited = e024_held(start, &start.name);
+        let held = e025_held(start, &start.name, &inhibited);
+        let label = format!("{} path 0 head blocks {NIGHTS_EVERY}", start.name);
+        let (head, _) = nights_run(start, start.image, NIGHTS_EVERY, &label, path_from(0));
+        let before = format!("{} path 0 gap {NIGHTS_EVERY} before", start.name);
+        e020_split(start, &head, &before, &targets);
+        let at = format!("{} path 0 excitatory", start.name);
+        let clock = std::time::Instant::now();
+        let (image, gain) = e025_night(
+            start,
+            &head,
+            &format!("{at} gap {NIGHTS_EVERY}"),
+            &first,
+            true,
+            true,
+            Some(held.as_slice()),
+            None,
+        );
+        eprintln!("DUMP {at} the night in {} s", clock.elapsed().as_secs());
+        let blocks = format!("{at} blocks {NIGHTS_EVERY}");
+        e020_split(start, &image, &blocks, &targets);
+        let (a, couplings) = spread_read(
+            &start.site,
+            &image,
+            &blocks,
+            "as-it-was 0",
+            nights_read_from(0),
+        );
+        let got = (crc64(&image), a, couplings, Some(gain));
+        assert_eq!(
+            got, E025_TRIAL_EXCITATORY,
+            "{at}: exploration 025's trial's excitatory row at block 6 on path 0"
+        );
+        eprintln!(
+            "DUMP {at} holds exploration 025's trial's excitatory row at block 6 on path 0 {got:?}"
+        );
+    });
+}
+
+/// One job of exploration 026: on network `n` from start `s`, exploration 025's job with the forms
+/// of `E026_FORMS`, each on the three paths: the night without replay, every row held to the row
+/// H-47 pinned; the excitatory night and the excitatory night without replay, each row printed
+/// with whether it is H-47's row of the form beside it. With A's patterns' composition, each
+/// image's split, the image before each gap with its kinds and split, and the nights at
+/// `WATCH_GAPS` watched.
+fn e026_job(n: usize, s: usize) {
+    with_nights(n, s, "e026", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        e020_patterns(start, &first);
+        let targets = e020_targets(&first);
+        let inhibited = e024_held(start, &start.name);
+        let held = e025_held(start, &start.name, &inhibited);
+        e020_split(
+            start,
+            start.image,
+            &format!("{} start", start.name),
+            &targets,
+        );
+        let heads = Mutex::new(BTreeMap::new());
+        two_at_a_time(&NIGHTS_PATHS, |&j| {
+            let at = format!("{} path {j} head blocks {NIGHTS_EVERY}", start.name);
+            let head = nights_run(start, start.image, NIGHTS_EVERY, &at, path_from(j));
+            heads.lock().expect("a head ended").insert(j, head);
+        });
+        let heads = heads.into_inner().expect("every head ended");
+        let chains: Vec<(usize, u64)> = (0..E026_FORMS.len())
+            .flat_map(|f| NIGHTS_PATHS.iter().map(move |&j| (f, j)))
+            .collect();
+        let kept = Mutex::new(BTreeMap::new());
+        let readings = Mutex::new(BTreeMap::new());
+        two_at_a_time(&chains, |&(f, j)| {
+            let form = E026_FORMS[f];
+            let name = format!("{} path {j} {}", start.name, form.name());
+            let (mut at, mut ends) = heads[&j].clone();
+            for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                let label = format!("{name} blocks {block}");
+                if block > NIGHTS_LAST {
+                    let (image, ends) = nights_run(start, &at, NIGHTS_ON, &label, path_from(j));
+                    e020_split(start, &image, &label, &targets);
+                    readings
+                        .lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (nights_highest(&ends), None));
+                    kept.lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (label, image));
+                    continue;
+                }
+                if block != NIGHTS_EVERY {
+                    (at, ends) = nights_run(start, &at, NIGHTS_EVERY, &label, path_from(j));
+                }
+                let before = format!("{name} gap {block} before");
+                shared_sums(start, &at, &before);
+                e020_split(start, &at, &before, &targets);
+                let gap = format!("{name} gap {block}");
+                let watch = WATCH_GAPS.contains(&block);
+                let (image, gain) = e025_night(
+                    start,
+                    &at,
+                    &gap,
+                    &first,
+                    form.tags(),
+                    watch,
+                    form.holds_sources().then_some(held.as_slice()),
+                    None,
+                );
+                e020_split(start, &image, &label, &targets);
+                readings
+                    .lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (nights_highest(&ends), Some(gain)));
+                kept.lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (label, image.clone()));
+                at = image;
+            }
+        });
+        let kept = kept.into_inner().expect("every form ended");
+        let readings = readings.into_inner().expect("every form ended");
+        let read = nights_reads(start, &kept);
+        for (f, form) in E026_FORMS.iter().enumerate() {
+            let mut rows = Vec::new();
+            for (p, &j) in NIGHTS_PATHS.iter().enumerate() {
+                for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                    let key = (f, j, c);
+                    let counts = |pair: bool| -> [u8; 16] {
+                        core::array::from_fn(|i| read[&(key, pair, i as u64)].0)
+                    };
+                    let (highest, gain) = readings[&key];
+                    let row = NightsRow {
+                        image: crc64(&kept[&key].1),
+                        first: counts(false),
+                        second: counts(true),
+                        couplings: read[&(key, false, 0)].1,
+                        highest,
+                        gain,
+                    };
+                    eprintln!(
+                        "DUMP {} {} path {j} block {block} PIN row {row:?}",
+                        start.name,
+                        form.name()
+                    );
+                    assert_eq!(nights_row(&rows, p, c), None, "rows in order");
+                    rows.push(row);
+                }
+            }
+            let beside = NIGHTS_ROWS[n][s][form.h47()];
+            assert!(!beside.is_empty(), "H-47 pinned the form's rows");
+            if form.holds_sources() {
+                let same = rows.iter().zip(beside).filter(|(a, b)| a == b).count();
+                eprintln!(
+                    "DUMP {} {}: rows the same as H-47's {} rows {same} of {}",
+                    start.name,
+                    form.name(),
+                    NIGHTS_GAPS[form.h47()].name(),
+                    rows.len()
+                );
+            } else {
+                assert_eq!(rows.as_slice(), beside, "{}: H-47's rows", start.name);
+                eprintln!("DUMP {} {}: every row is H-47's", start.name, form.name());
+            }
+        }
+    });
+}
+
+/// Exploration 026's trial, on seed 23 from a first mapping and the assignment, then from a first
+/// mapping and the mirrored assignment.
+#[test]
+#[ignore]
+fn the_harness_of_the_excitatory_hold_on_eight_cells_explore() {
+    e026_trial();
+}
+
+/// Exploration 026 on seed 22, from the eighth image and the mirrored assignment, where A answers
+/// readout 0.
+#[test]
+#[ignore]
+fn the_excitatory_hold_on_eight_cells_the_eighth_image_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    e026_job(0, 1);
+}
+
+/// Exploration 026 on seed 22, from a first mapping and the assignment, where A answers readout 0.
+#[test]
+#[ignore]
+fn the_excitatory_hold_on_eight_cells_a_first_mapping_on_seed_22_from_the_assignment_explore() {
+    e026_job(0, 2);
+}
+
+/// Exploration 026 on seed 23, from the eighth image and the assignment, where A answers readout 1.
+#[test]
+#[ignore]
+fn the_excitatory_hold_on_eight_cells_the_eighth_image_on_seed_23_from_the_assignment_explore() {
+    e026_job(1, 0);
+}
+
+/// Exploration 026 on seed 23, from the eighth image and the mirrored assignment, where A answers
+/// readout 0.
+#[test]
+#[ignore]
+fn the_excitatory_hold_on_eight_cells_the_eighth_image_on_seed_23_from_the_mirrored_assignment_explore()
+ {
+    e026_job(1, 1);
+}
+
+/// Exploration 026 on seed 23, from a first mapping and the assignment, where A answers readout 0.
+#[test]
+#[ignore]
+fn the_excitatory_hold_on_eight_cells_a_first_mapping_on_seed_23_from_the_assignment_explore() {
+    e026_job(1, 2);
+}
+
+/// Exploration 026 on seed 24, from the eighth image and the mirrored assignment, where A answers
+/// readout 0.
+#[test]
+#[ignore]
+fn the_excitatory_hold_on_eight_cells_the_eighth_image_on_seed_24_from_the_mirrored_assignment_explore()
+ {
+    e026_job(2, 1);
+}
+
+/// Exploration 026 on seed 24, from a first mapping and the assignment, where A answers readout 0.
+#[test]
+#[ignore]
+fn the_excitatory_hold_on_eight_cells_a_first_mapping_on_seed_24_from_the_assignment_explore() {
+    e026_job(2, 2);
+}
+
+/// Exploration 026 on seed 24, from a first mapping and the mirrored assignment, where A answers
+/// readout 1.
+#[test]
+#[ignore]
+fn the_excitatory_hold_on_eight_cells_a_first_mapping_on_seed_24_from_the_mirrored_assignment_explore()
+ {
+    e026_job(2, 3);
+}
