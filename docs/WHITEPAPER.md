@@ -2651,7 +2651,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0238](adr/0238-what-keeps-a-mapping-where-the-replay-did-not.md) | What keeps a mapping where the replay did not, and M11's next exploration | accepted |
 | [ADR-0239](adr/0239-the-readouts-inhibition-held-through-a-night.md) | The readouts' inhibition held through a night, M11's next exploration | accepted |
 | [ADR-0240](adr/0240-synapses-from-the-readouts-excitatory-units-held.md) | Synapses from the readouts' excitatory units held through a night | accepted |
-| [ADR-0241](adr/0241-synapses-from-the-readouts-excitatory-units-on-eight-cells.md) | Synapses from the readouts' excitatory units held on H-47's other eight cells | proposed |
+| [ADR-0241](adr/0241-synapses-from-the-readouts-excitatory-units-on-eight-cells.md) | Synapses from the readouts' excitatory units held on H-47's other eight cells | accepted |
 <!-- adr-index: end decisions -->
 
 ---

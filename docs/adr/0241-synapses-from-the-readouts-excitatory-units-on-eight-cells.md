@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-08
 depends-on: ADR-0240
 title: Synapses from the readouts' excitatory units held on H-47's other eight cells
@@ -53,7 +53,7 @@ It writes no prediction and decides nothing.
 - **Its branch** starts from `main` with exploration 025's tag merged in, which carries 024's and 025's changes under `src/`. It changes nothing there; `main` takes nothing from it.
 - **Its cells** are H-47's eight outside exploration 020's four: seed 22's eighth image from the mirrored assignment and its first mapping from the assignment; seed 23's eighth image from the assignment and from the mirrored assignment, and its first mapping from the assignment; seed 24's eighth image from the mirrored assignment, and its first mapping from the assignment and from the mirrored assignment.
 
-**Its job, one a cell**, runs three forms, the night under both holds left out. Exploration 025 read that night within −2.4 to +0.6 of the excitatory night's. Exploration 024's three-form jobs took 5 796 to 6 057 s, so each job takes about 95 to 100 minutes, within an arms job's 240:
+**Its job, one a cell**, runs three forms, the night under both holds left out. Exploration 025 read that night within −2.4 to +0.6 of the excitatory night's, beyond 2 SE at three checkpoints, all below. Exploration 024's three-form jobs on 020's four cells took 5 796 to 6 057 s, so each job should take about 95 to 100 minutes, within an arms job's 240 minutes:
 - **the night without replay**, its rows held to H-47's. It runs H-47's night bit for bit, and runs to hold the branch to H-47's rows over the whole run, as 024's and 025's did;
 - **the excitatory night**: H-47's plain night on A's patterns with the excitatory hold set;
 - **the excitatory night without replay**, to read the hold apart from the replay.
@@ -88,7 +88,7 @@ It does not run exploration 024's hold on these cells, alone or with 025's, nor 
 
 - **Option 2, the held units' synapses held by target**: it would read which part of the hold carries the excitatory night's gain on four cells, all where A answers readout 1, and leave the other eight unread under any hold.
 - **Option 3, a hypothesis now**: four cells are read under the hold, none where A answers readout 0. On seed 23's first mapping from the mirrored assignment the excitatory night still stood 1.7 ± 0.42 under the night without replay at block 36 (025).
-- **Option 4, pause M11**: the excitatory night stood above the plain night beyond 2 SE in three of four cells (025). What it does where A answers readout 0, and in six of the ten cells where the replay helped, is unread.
+- **Option 4, pause M11**: the excitatory night stood above the plain night beyond 2 SE in three of four cells (025). What it does in eight of the ten cells where the replay helped, six of them where A answers readout 0, is unread.
 
 ## Confirmation
 
