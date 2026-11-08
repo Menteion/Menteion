@@ -19,8 +19,8 @@ exploration 020's job on these eight cells. Section 6 reads exploration 025's ru
 [Exploration 025](025-synapses-from-the-readouts-excitatory-units.md) held every synapse from the readouts' excitatory units, the pair's
 own units excepted, from a night's first tick to its last, on [exploration 020](020-what-a-replay-costs.md)'s four cells, all where
 stimulus A answers readout 1. Under that excitatory night A's count stood within 2 SE of H-47's plain night's or above it at every
-checkpoint, above at 8 of 20. This note runs the same hold, unchanged, on H-47's other eight cells, where no hold has run: A answers readout
-0 in six of them and readout 1 in two, and H-47's clause 1 held in all eight. It asks, at blocks 6, 12, 18, 24 and 36:
+checkpoint, beyond 2 SE above at 8 of 20. This note runs the same hold, unchanged, on H-47's other eight cells, where no hold has run:
+A answers readout 0 in six of them and readout 1 in two, and H-47's clause 1 held in all eight. It asks, at blocks 6, 12, 18, 24 and 36:
 
 1. A's count and each stimulus's correct trials under each held form: less the night without replay, with H-47's paired SE, the forms run
    in one job; and the excitatory night less H-47's plain night, with [exploration 018](018-what-nights-keep.md)'s unpaired SE, the forms
@@ -177,8 +177,8 @@ as the trial prints. So all three forms ran.
 - The two held forms' rows at block 6 on path 0 on seed 23's first mapping from the assignment are not H-47's of the form beside them, as
   the trial prints: each image's CRC-64, A's couplings and the gain differ, and A's first count is 56 under the excitatory night, where
   H-47's plain night read 57, and 52 under the excitatory night without replay, where H-47's night without replay read 50. The watch read
-  `wrong 0` in the trial's five nights; the plain night and the excitatory night on each cell read 1 339 replays and 640 depotentiations
-  each, and the two nights without replay none.
+  `wrong 0` in the trial's five nights. The plain night and the excitatory night on the first cell, and the excitatory night on the
+  second, each read 1 339 replays and 640 depotentiations, and the two nights without replay none.
 - **Each of the eight jobs** ran to the end. Their reproduction, cell by cell:
 
 | Cell | Without replay: rows H-47's | Excitatory: rows H-47's plain on A's | Excitatory without replay: rows H-47's without replay | Without replay: its paths' lines in 021's job, label aside | Heads: lines in 021's job | Held nights: the excitatory hold held inside the test |
@@ -527,9 +527,9 @@ Under the excitatory night without replay, its side, read the same way against t
 | Seed 24, first mapping, mirrored | 36 | −5.5 ± 0.48 | +2.4 ± 0.47 | −7.9 ± 0.17 | B, the odd places |
 
 Its side is H-47's at 29 of the 40 checkpoints and lies beyond twice its SE at 23. It lies on A, the odd places, at every checkpoint on
-seed 22's first mapping and on seed 23's eighth image from the mirrored assignment and first mapping; on B at every checkpoint on seed 24's
-eighth image, the even places, and on seed 23's eighth image from the assignment, the odd places; and on B, the odd places, from block 12 on,
-on seed 24's first mapping from the mirrored assignment.
+seed 22's first mapping from the assignment, seed 23's eighth image from the mirrored assignment and seed 23's first mapping from the
+assignment; on B at every checkpoint on seed 24's eighth image from the mirrored assignment, the even places, and on seed 23's eighth image
+from the assignment, the odd places; and on B, the odd places, from block 12 on, on seed 24's first mapping from the mirrored assignment.
 
 ## 3. The pair and A's couplings
 
@@ -561,8 +561,8 @@ A's highest coupling over H-42's under each form, in any image read and at any b
 
 Under the excitatory night the pair stands at 61.7 to 63.0 at block 36, where H-47's plain night gave 61.8 to 63.4, the night without
 replay 62.1 to 63.4 and the excitatory night without replay 62.5 to 63.3. A's highest coupling is 1.146 to 1.236 of H-42's under the
-excitatory night, where H-47's plain night gave 1.141 to 1.223; under the excitatory night without replay it is the night without replay's
-in every cell, 1.078 to 1.177.
+excitatory night, where H-47's plain night gave 1.141 to 1.223. Under the excitatory night without replay it is the night without replay's
+in every cell, 1.078 to 1.177, both reached at the head's block ends, before the first night, where every form reads the same.
 
 ## 4. What each night moved
 
@@ -877,7 +877,8 @@ pooled across cells:
 | Seed 22, eighth, assignment | readout 1, the even places | 025 | +4.6 ± 0.66 | +2.4 ± 1.49 | +2.2 ± 0.65 | B, the odd places |
 
 - **Less H-47's plain night** the excitatory night lies beyond 2 SE above in five of the twelve cells and below in three. Where A answers
-  readout 0 it lies below in three, seed 22's two cells and seed 23's eighth image from the mirrored assignment; above in two, seed 24's
+  readout 0 it lies below in three, seed 22's eighth image from the mirrored assignment and first mapping from the assignment and seed
+  23's eighth image from the mirrored assignment; above in two, seed 24's
   eighth image from the mirrored assignment and first mapping from the assignment; and within 2 SE on seed 23's first mapping from the
   assignment. Where A answers readout 1 it lies above in three, seed 23's eighth image from the assignment, seed 23's first mapping from the
   mirrored assignment and seed 24's eighth image from the assignment, and within 2 SE in the other three.
@@ -885,7 +886,7 @@ pooled across cells:
   the mirrored assignment, −1.7 ± 0.42, where H-47's clause 1 read −4.9 ± 1.09.
 - **The side under the excitatory night** at block 36 lies on the odd places in nine of the twelve cells: on A in five where A answers
   readout 0 and on B in four where A answers readout 1. It lies on the even places on seed 24's eighth image from the mirrored assignment,
-  on B, and on seed 23's eighth image and seed 24's eighth image from the assignment, on A.
+  on B, and on seed 23's and seed 24's eighth images from the assignment, on A.
 
 ## What it costs
 
