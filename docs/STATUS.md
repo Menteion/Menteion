@@ -54,6 +54,6 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 ## The next decision
 
 [ADR-0241](adr/0241-synapses-from-the-readouts-excitatory-units-on-eight-cells.md) reads exploration 025 and writes no hypothesis, and M11 stays open.
-1. M11: exploration 026 runs once ADR-0241 merges. It holds the synapses from the readouts' excitatory units, the pair's own excepted, through H-47's plain nights on H-47's eight cells that explorations 020 to 025 did not run, on a branch of its own. Whether a hypothesis follows it is the next decision.
+1. M11: exploration 026 runs once ADR-0241 merges. It holds the synapses from the readouts' excitatory units, the pair's own excepted, through H-47's plain nights on H-47's eight cells outside exploration 020's four, where no hold has run, on a branch of its own. Whether a hypothesis follows it is the next decision.
 2. The schedule's sweep of 2026-11-11 at 20:17Z is the next to record, by the first ADR that merges after it ends.
 3. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
