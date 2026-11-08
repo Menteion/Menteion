@@ -61,7 +61,8 @@ sixteen on each of three paths, and a difference carries its paired SE unless an
   9.36 M.
 - **The pairings the hold leaves**: after the quiet ticks of each excitatory night, 10 879 to 11 619 of the 21 248 held synapses carry a
   pending gain, 482 753 to 663 569 LSB together, read at the presynaptic unit's next spike if it comes before the target's next spike. A
-  presynaptic spike at the first tick after the image would read a loss of 47 851 to 94 482 LSB on them together, and a later one less.
+  presynaptic spike at the first tick after the image would read a loss of 47 851 to 94 482 LSB on them together, and a later one, before
+  the target's next spike, no more.
 - **The pair under the excitatory night** stands at 62.6 to 63.0 at block 36, and A's highest coupling at 1.151 to 1.196 of H-42's.
 
 ## What ran
@@ -613,10 +614,11 @@ comes before the target's next spike:
   674 358 LSB together, and under the excitatory night without replay on 11 184 to 11 722, 266 798 to 348 779 LSB together.
 - **The pending loss** with a presynaptic spike at the first tick after the image is on all 21 248 held synapses, every one's target having
   fired since the night's first tick: 47 851 to 94 482 LSB together under the excitatory night, the largest 102 to 149 LSB; 46 563 to
-  93 458 under both holds, and 56 594 to 91 163 under the excitatory night without replay. A later spike reads less.
-- **Against what the hold cleared.** These pairings were never in the trace the hold cleared, which held, synapse by synapse, the net of
-  what the trace carried into the night and the pairings read at the night's presynaptic spikes. Set beside it as sizes alone: the pending
-  gains are 75.4 % to 102.9 % the size of the traces cleared above zero under the excitatory night, and 56.0 % to 75.0 % under the
+  93 458 under both holds, and 56 594 to 91 163 under the excitatory night without replay. A later spike, before the target's next one,
+  reads no more.
+- **Against what the hold cleared.** These pairings were never in the trace the hold cleared, which held, synapse by synapse, the decayed
+  net of what the trace carried into the night and the pairings read at the night's presynaptic spikes. Set beside it as sizes alone: the
+  pending gains are 75.4 % to 102.9 % the size of the traces cleared above zero under the excitatory night, and 56.0 % to 75.0 % under the
   excitatory night without replay; the most the pending losses can be is 3.9 % to 10.1 % the size of the traces cleared below zero under
   the excitatory night, and 9.9 % to 16.9 % without replay.
 - These are trace, not weight: at the next presynaptic spike, in the next day's engine, each synapse's trace takes its pairings, and its
@@ -624,7 +626,7 @@ comes before the target's next spike:
 
 Exploration 024's hold under both holds, as 024's section 5 reads it:
 
-| Cell | Nights | Held inhibitory synapses | Traces cleared, not zero | cleared above zero, LSB | below zero | Other inhibitory synapses moved | Nights a held synapse's presynaptic unit fired at or after the night's last tick | Nights held synapses moved in the quiet ticks | Pending pairings after the presynaptic spike | their sum, LSB | their largest | With a spike at the next tick, at most, LSB |
+| Cell | Nights | Held inhibitory synapses | Traces cleared, not zero | cleared above zero, LSB | below zero | Other inhibitory synapses moved | Nights a held synapse's presynaptic unit fired at or after the night's last tick | Nights held synapses moved in the quiet ticks | Pending pairings after the presynaptic spike | their sum, LSB | their largest | With a spike at the next tick, LSB |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Seed 23, first mapping, mirrored | 12 | 4 881 | 4 872 to 4 879 | 580 937 to 734 723 | −124 350 to −106 357 | 1 529 to 1 587 | 0 | none | 1 936 to 2 227 | 68 576 to 95 391 | 326 to 328 | 11 132 to 15 241 |
 | Seed 24, eighth, assignment | 12 | 4 904 | 4 895 to 4 903 | 701 086 to 818 421 | −118 380 to −103 590 | 1 403 to 1 446 | 3 | 3: 15 to 25 synapses, −147 to −46 LSB | 2 064 to 2 233 | 83 848 to 111 793 | 327 to 328 | 11 508 to 15 565 |
