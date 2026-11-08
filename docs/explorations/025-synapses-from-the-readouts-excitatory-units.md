@@ -17,8 +17,8 @@ matrix and night lines from exploration 020's runs [41500459562](https://github.
 
 [ADR-0240](../adr/0240-synapses-from-the-readouts-excitatory-units-held.md) ordered this exploration. Under
 [exploration 024](024-the-readouts-inhibition-held.md)'s held night, the inhibition onto the readouts' excitatory units held, A's count
-stood within 2 SE of H-47's plain night's at every checkpoint of its four cells, while the same nights took 9.35 to 13.21 M from the
-synapses from those units. This note runs H-47's plain night on A's patterns with every synapse from the readouts' excitatory units held
+stood within 2 SE of H-47's plain night's at every checkpoint of its four cells, while the same nights took 9.35 to 13.21 M from each
+group's excitatory units' synapses. This note runs H-47's plain night on A's patterns with every synapse from the readouts' excitatory units held
 where it stood, the pair's own units excepted, from the night's first tick to its last, alone and with exploration 024's hold, on
 [exploration 020](020-what-a-replay-costs.md)'s four cells. It asks, at blocks 6, 12, 18, 24 and 36:
 
@@ -61,7 +61,7 @@ sixteen on each of three paths, and a difference carries its paired SE unless an
   9.36 M.
 - **The pairings the hold leaves**: after the quiet ticks of each excitatory night, 10 879 to 11 619 of the 21 248 held synapses carry a
   pending gain, 482 753 to 663 569 LSB together, read at the presynaptic unit's next spike if it comes before the target's next spike. A
-  presynaptic spike at the first tick after the image would read a loss of at most 47 851 to 94 482 LSB on them together.
+  presynaptic spike at the first tick after the image would read a loss of 47 851 to 94 482 LSB on them together, and a later one less.
 - **The pair under the excitatory night** stands at 62.6 to 63.0 at block 36, and A's highest coupling at 1.151 to 1.196 of H-42's.
 
 ## What ran
@@ -107,9 +107,10 @@ H-47's logs, its class matrix and night lines from exploration 020's, and explor
 **At each night with the excitatory hold** (`e025_night`) the job reads every excitatory synapse three times: before the night's first
 tick, at its last, and after the quiet ticks, the awake ticks without drive that H-47's harness runs until the engine is quiescent, before
 it writes the night's image. At the last it holds, inside the test, that every held synapse stands at its first weight with its trace
-cleared and that some excitatory synapse from a unit outside the hold moved. After the quiet ticks it prints what they moved, and what each
-held synapse would read at its presynaptic unit's next spike from the spikes on record since the night's first tick, if that spike came
-before its target's next one. Under both holds it reads exploration 024's held synapses as 024's job did, in the same lines.
+cleared and that some excitatory synapse from a unit outside the hold moved. After the quiet ticks it prints what they moved, and what the
+held synapses would read at their presynaptic unit's next spike from the spikes on record since the night's first tick, if that spike came
+before the target's next one: for the gain and for the loss, how many held synapses carry one, their sum and the largest. Under both
+holds it reads exploration 024's held synapses as 024's job did, in the same lines.
 
 **The excitatory rule** (`step_stdp_shaped`, in `crates/menteion-core/src/dynamics/synapse.rs`) reads two pairings at a presynaptic spike
 at $t$, with $p$ the presynaptic unit's previous spike and $q$ the target's last spike: if $p < q \le t$, a gain of
@@ -585,14 +586,14 @@ synapses:
 | Seed 22, eighth, assignment | excitatory without replay | 12 | 21 248 | 14 177 to 14 515 | 441 547 to 500 490 | −602 671 to −536 329 | 4 934 to 4 977 | 0 | none |
 
 - **Before the night's first tick** 12 337 to 13 416 of the 21 248 held synapses carried a trace that was not zero.
-- **A held unit fired at or after the night's last tick** in 3 of the 12 excitatory nights and 3 of the 12 nights under both holds, all on
-  seed 22's eighth image, and in 6 of the excitatory nights without replay, 3 on seed 23 and 3 on seed 24. The quiet ticks moved no held
-  synapse in any of the 144 nights; after them 0 to 18 held synapses carried a trace.
+- **A held unit fired at or after the night's last tick** in 3 of the 48 excitatory nights and the same 3 of the 48 nights under both
+  holds, all on seed 22's eighth image after block 12, and in 6 of the 48 excitatory nights without replay, 3 on seed 23 and 3 on seed 24.
+  The quiet ticks moved no held synapse in any of the 144 nights; after them 0 to 18 held synapses carried a trace.
 
 The night's pairings still to be read, as What ran defines them, each read at the held synapse's presynaptic unit's next spike if that spike
 comes before the target's next spike:
 
-| Cell | Form | Pending gains: held synapses | their sum, LSB | their largest | Pending losses with a presynaptic spike at the next tick: held synapses | their sum, at most, LSB | their largest |
+| Cell | Form | Pending gains: held synapses | their sum, LSB | their largest | Pending losses with a presynaptic spike at the next tick: held synapses | their sum, LSB | their largest |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
 | Seed 23, first mapping, mirrored | excitatory | 10 879 to 11 278 | 507 930 to 647 736 | 328 | 21 248 | 56 478 to 71 535 | 108 to 130 |
 | Seed 23, first mapping, mirrored | both holds | 10 885 to 11 206 | 509 807 to 647 504 | 328 | 21 248 | 57 136 to 71 707 | 108 to 130 |
@@ -606,29 +607,29 @@ comes before the target's next spike:
 | Seed 22, eighth, assignment | excitatory | 11 006 to 11 367 | 499 297 to 581 746 | 328 | 21 248 | 52 869 to 79 743 | 108 to 129 |
 | Seed 22, eighth, assignment | both holds | 10 899 to 11 391 | 559 587 to 595 416 | 328 | 21 248 | 52 261 to 80 355 | 108 to 129 |
 | Seed 22, eighth, assignment | excitatory without replay | 11 363 to 11 535 | 279 758 to 348 779 | 326 to 328 | 21 248 | 65 132 to 79 391 | 115 to 125 |
+
+- **The pending gain**, the target's spike after the presynaptic unit's last, is on 10 879 to 11 619 held synapses under the excitatory
+  night, 482 753 to 663 569 LSB together, the largest 328 LSB, which is $A_+$. Under both holds it is on 10 885 to 11 571, 482 210 to
+  674 358 LSB together, and under the excitatory night without replay on 11 184 to 11 722, 266 798 to 348 779 LSB together.
+- **The pending loss** with a presynaptic spike at the first tick after the image is on all 21 248 held synapses, every one's target having
+  fired since the night's first tick: 47 851 to 94 482 LSB together under the excitatory night, the largest 102 to 149 LSB; 46 563 to
+  93 458 under both holds, and 56 594 to 91 163 under the excitatory night without replay. A later spike reads less.
+- **Against what the hold cleared.** These pairings were never in the trace the hold cleared, which held, synapse by synapse, the net of
+  what the trace carried into the night and the pairings read at the night's presynaptic spikes. Set beside it as sizes alone: the pending
+  gains are 75.4 % to 102.9 % the size of the traces cleared above zero under the excitatory night, and 56.0 % to 75.0 % under the
+  excitatory night without replay; the most the pending losses can be is 3.9 % to 10.1 % the size of the traces cleared below zero under
+  the excitatory night, and 9.9 % to 16.9 % without replay.
+- These are trace, not weight: at the next presynaptic spike, in the next day's engine, each synapse's trace takes its pairings, and its
+  consolidation moves the weight under that day's modulation. That consolidation is not read here.
+
+Exploration 024's hold under both holds, as 024's section 5 reads it:
+
 | Cell | Nights | Held inhibitory synapses | Traces cleared, not zero | cleared above zero, LSB | below zero | Other inhibitory synapses moved | Nights a held synapse's presynaptic unit fired at or after the night's last tick | Nights held synapses moved in the quiet ticks | Pending pairings after the presynaptic spike | their sum, LSB | their largest | With a spike at the next tick, at most, LSB |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Seed 23, first mapping, mirrored | 12 | 4 881 | 4 872 to 4 879 | 580 937 to 734 723 | −124 350 to −106 357 | 1 529 to 1 587 | 0 | none | 1 936 to 2 227 | 68 576 to 95 391 | 326 to 328 | 11 132 to 15 241 |
 | Seed 24, eighth, assignment | 12 | 4 904 | 4 895 to 4 903 | 701 086 to 818 421 | −118 380 to −103 590 | 1 403 to 1 446 | 3 | 3: 15 to 25 synapses, −147 to −46 LSB | 2 064 to 2 233 | 83 848 to 111 793 | 327 to 328 | 11 508 to 15 565 |
 | Seed 22, first mapping, mirrored | 12 | 4 863 | 4 844 to 4 863 | 571 918 to 677 296 | −127 652 to −114 728 | 1 543 to 1 600 | 0 | none | 1 894 to 2 110 | 62 327 to 81 281 | 327 to 328 | 12 920 to 17 280 |
 | Seed 22, eighth, assignment | 12 | 4 863 | 4 853 to 4 862 | 642 926 to 784 991 | −117 267 to −107 065 | 1 406 to 1 500 | 2 | 2: 15 to 16 synapses, 210 to 222 LSB | 1 934 to 2 269 | 73 331 to 107 434 | 327 to 328 | 10 755 to 15 238 |
-
-- **The pending gain**, the target's spike after the presynaptic unit's last, is on 10 879 to 11 619 held synapses under the excitatory
-  night, 482 753 to 663 569 LSB together, the largest 328 LSB, which is $A_+$. Under both holds it is on 10 885 to 11 571, 482 210 to
-  674 358 LSB together, and under the excitatory night without replay on 11 184 to 11 722, 266 798 to 348 779 LSB together.
-- **The pending loss** with a presynaptic spike at the first tick after the image is on all 21 248 held synapses, every one's target having
-  fired since the night's first tick: at most 47 851 to 94 482 LSB together under the excitatory night, the largest 102 to 149 LSB; 46 563 to
-  93 458 under both holds, and 56 594 to 91 163 under the excitatory night without replay. A later spike reads less.
-- **Against what the hold cleared.** These pairings were never in the trace the hold cleared, which holds the pairings read at the night's
-  presynaptic spikes, each synapse's net. Set beside it as sizes alone: the pending gains are 75.4 % to 102.9 % the size of the traces
-  cleared above zero under the excitatory night, and 56.0 % to 75.0 % under the excitatory night without replay; the most the pending losses
-  can be is 3.9 % to 10.1 % the size of the traces cleared below zero under the excitatory night, and 9.9 % to 16.9 % without replay.
-- These are trace, not weight: at the next presynaptic spike, in the next day's engine, each synapse's trace takes its pairings, and its
-  consolidation moves the weight under that day's modulation. That consolidation is not read here.
-
-Exploration 024's hold under both holds, as 024's section 5 reads it:
-
-{{hold024}}
 
 - **The quiet ticks moved 024's held synapses in 5 of the 48 nights**, 3 on seed 24's eighth image, by −147 to −46 LSB together, and 2 on
   seed 22's, by +210 to +222 LSB. Its pending pairings after the presynaptic spike are 62 327 to 111 793 LSB together, 10.3 % to 15.2 % the
