@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-09
 depends-on: ADR-0241
 title: The readouts' excitatory hold split by target
