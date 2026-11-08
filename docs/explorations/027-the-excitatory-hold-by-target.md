@@ -1150,12 +1150,14 @@ synapses of the held part:
 - **The other part moved** in every held night: under the night held across 13 451 to 13 881 of the part held within's synapses, 6 370 to
   8 034 of them with a trace at the night's last tick; under the night held within 7 241 to 7 465 of the part held across's, 2 792 to
   3 643 with a trace. The excitatory synapses from units outside the hold moved: 4 940 to 4 992 under either.
-- **A held synapse's presynaptic unit fired at or after the night's last tick** in 13 of the 144 nights held across, 3 on each of seed 23's
-  eighth image from each arm, seed 23's first mapping from the mirrored assignment and seed 22's eighth image from the assignment, and 1 on
-  seed 24's eighth image from the mirrored assignment; and in 12 of the 144 held within, 3 on each of seed 23's eighth image from each arm,
-  seed 22's first mapping from the mirrored assignment and seed 22's eighth image from the assignment. The quiet ticks moved no synapse of
-  either part in any of the 288 held nights. After them, in the nights that hold it, 0 to 7 synapses of the part held across carried a
-  trace, and 0 to 11 of the part held within; the part not held kept the traces it carried at the night's last tick.
+- **A held synapse's presynaptic unit fired at or after the night's last tick** in 13 of the 144 nights held across, 3 on each of four
+  cells, seed 23's eighth image from each arm, seed 23's first mapping from the mirrored assignment and seed 22's eighth image from the
+  assignment, and 1 on seed 24's eighth image from the mirrored assignment; and in 12 of the 144 held within, 3 on each of four cells, seed
+  23's eighth image from each arm, seed 22's first mapping from the mirrored assignment and seed 22's eighth image from the assignment. The
+  quiet ticks moved no synapse of either part in any of the 288 held nights. After them, in the nights that hold it, 0 to 7 synapses of
+  the part held across carried a trace, and 0 to 11 of the part held within. Of the part not held, as many synapses carried a trace as at
+  the night's last tick in 268 of the 288 held nights, and 1 to 3 more or fewer in the other 20, all nights in which a held synapse's
+  presynaptic unit fired at or after the night's last tick. The jobs print these counts, not the traces themselves.
 
 The night's pairings still to be read on the held part's synapses, as What ran defines them, each read at the synapse's presynaptic unit's
 next spike if that spike comes before the target's next spike:
