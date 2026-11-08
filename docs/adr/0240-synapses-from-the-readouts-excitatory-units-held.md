@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-08
 depends-on: ADR-0239
 title: Synapses from the readouts' excitatory units held through a night
@@ -12,7 +12,7 @@ decision-makers: Menteion maintainers
 
 **In brief**
 - **Decision.** No hypothesis is written and no constant moves. Exploration 025 runs H-47's plain nights on A's patterns with the synapses from the readouts' excitatory units held where they stood, the pair's own units excepted, alone and with exploration 024's hold, on exploration 020's four cells. Its change under `src/` lives on its own branch, and `main` takes nothing from it. It runs on the maintainers' word, not on this merge.
-- **Why.** Under exploration 024's held night A's count stood within 2 SE of H-47's plain night's at all 20 checkpoints of its four cells, and the side was H-47's at all 20, though the inhibition onto the readouts' excitatory units did not move in the nights. The same nights took 9.35 to 13.21 M from the synapses from those units, the plain night 9.20 to 12.33 M. Holding them is the excitatory part of what [ADR-0238](0238-what-keeps-a-mapping-where-the-replay-did-not.md)'s night left after 024.
+- **Why.** Under exploration 024's held night A's count stood within 2 SE of H-47's plain night's at all 20 checkpoints of its four cells, and the side was H-47's at all 20, though the inhibition onto the readouts' excitatory units did not move in the nights. The same nights took 9.35 to 13.21 M from the synapses from those units, the plain night 9.20 to 12.33 M. Holding them, cut by source, is the excitatory part of what [ADR-0238](0238-what-keeps-a-mapping-where-the-replay-did-not.md)'s night left after 024.
 - **Left open.** Whether a hypothesis follows exploration 025; the inhibitory synapses onto the readouts' inhibitory units, which neither hold reaches; H-47's other eight cells; what the next day does with the pairings a hold leaves; whether the slow-wave baseline enters the running configuration; chained episodes compiled in sleep (UPG-04).
 
 ## Context and Problem Statement
@@ -44,7 +44,7 @@ decision-makers: Menteion maintainers
 ## Considered Options
 
 1. **Explore the synapses from the readouts' excitatory units held**, by presynaptic unit, alone and with exploration 024's hold, on exploration 020's four cells.
-2. **Explore the excitatory synapses onto the readouts' units held**, by target, as exploration 024's half was cut.
+2. **Explore the excitatory synapses onto the readouts' units held**, by target, as exploration 024's hold was cut.
 3. **Explore exploration 024's held night on H-47's other eight cells**, among them every cell where A answers readout 0.
 4. **Write a hypothesis on a held night now**, built by a brief and measured by a round.
 5. **Pause M11** and turn to M13, [ADR-0187](0187-the-upgrade-suite-planned.md)'s next milestone.
@@ -88,10 +88,10 @@ It does not run H-47's other eight cells, among them every cell where A answers 
 
 ## Consequences
 
-- **Good**: the excitatory part of what ADR-0238's night left is put to a run, beside exploration 024's, on cells whose nights are already in the logs.
+- **Good**: the excitatory part of what ADR-0238's night left, cut by source, is put to a run, beside exploration 024's, on cells whose nights are already in the logs.
 - **Bad**: the hold is a change under `src/` that `main` does not take, so what the exploration reads is not the engine's.
 - **Bad**: in all four cells A answers readout 1, and no hold has run where A answers readout 0.
-- **Bad**: the two holds, cut by target and by source, still leave the synapses from A's, B's and the pair's own units and those onto the readouts' inhibitory units consolidating, so no run holds every synapse of the readouts.
+- **Bad**: the two holds, cut by target and by source, still leave the synapses from A's, B's and the pair's own units and the inhibitory synapses onto the readouts' inhibitory units consolidating, so no run holds every synapse of the readouts.
 - **Bad**: M11 stays open, and no hypothesis is in view.
 - **Neutral**: nothing in the engine changes, and the exploration waits for the maintainers' word.
 
