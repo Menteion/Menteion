@@ -489,8 +489,8 @@ Each held form less the nights run in other jobs, with [exploration 018](018-wha
   −5.0 ± 0.97; on seed 24's eighth image from the assignment at blocks 24 and 36, −5.8 ± 2.27 and −6.0 ± 2.22; on seed 24's first mapping
   from the mirrored assignment at block 18, −1.8 ± 0.90; and on seed 22's eighth image from the assignment at block 12, −1.7 ± 0.73.
 - **The night held within less the excitatory night** lies between −4.7 and +1.6, beyond twice its unpaired SE at 4 of the 60, all below
-  and all on seed 24's eighth image from the assignment, from block 12 on: −2.3 ± 0.87, −4.0 ± 1.52, −4.3 ± 1.53 and −4.7 ± 1.54. None is
-  beyond 3.05 times it.
+  and all on seed 24's eighth image from the assignment, from block 12 on: −2.3 ± 0.87, −4.0 ± 1.52, −4.3 ± 1.53 and −4.7 ± 1.54, the
+  largest 3.05 times it.
 - The excitatory night less H-47's plain night, on the same cells, lay beyond twice its unpaired SE at 8 of exploration 025's 20
   checkpoints and at 17 of exploration 026's 40.
 
@@ -850,7 +850,7 @@ What the four nights moved, summed over the four, the mean over the three paths,
 night, in M. A group's held units are its readout's two classes, the pair's own kind left out; "onto their own group" counts the pair's own
 kind among the targets. The column marked held across is the part held across; the other columns are the part held within. H-47's plain
 night is exploration 021's run of exploration 020's job for exploration 026's eight cells and exploration 020's runs for exploration 020's
-four, and the excitatory night is left out, since it moved none of these:
+four, and the excitatory night's rows read 0.00, since it moved none of these:
 
 | Cell | Form | The odd places' held units onto their own group | onto the even places' excitatory (held across) | onto the inhibitory units | onto A's and B's units | onto the other excitatory | The even places' held units onto their own group | onto the odd places' excitatory (held across) | onto the inhibitory units | onto A's and B's units | onto the other excitatory |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -1145,17 +1145,17 @@ synapses of the held part:
 | Seed 22, eighth, assignment | held across | 12 | 7 345 | 4 001 to 4 238 | 113 022 to 141 353 | −438 595 to −348 360 | 13 533 to 13 880 | 6 697 to 7 280 | 4 947 to 4 989 | 3 | none |
 | Seed 22, eighth, assignment | held within | 12 | 13 903 | 8 486 to 8 784 | 485 262 to 579 698 | −862 280 to −674 130 | 7 253 to 7 338 | 2 858 to 3 427 | 4 960 to 4 991 | 3 | none |
 
-- **Before the night's first tick** 4 036 to 4 606 of the 7 345 to 7 476 synapses of the part held across carried a trace that was not
-  zero, and 8 001 to 9 097 of the 13 772 to 13 903 synapses of the part held within.
+- **Before the night's first tick**, in the nights that hold it, 4 036 to 4 606 of the 7 345 to 7 476 synapses of the part held across
+  carried a trace that was not zero, and 8 001 to 9 097 of the 13 772 to 13 903 synapses of the part held within.
 - **The other part moved** in every held night: under the night held across 13 451 to 13 881 of the part held within's synapses, 6 370 to
   8 034 of them with a trace at the night's last tick; under the night held within 7 241 to 7 465 of the part held across's, 2 792 to
   3 643 with a trace. The excitatory synapses from units outside the hold moved: 4 940 to 4 992 under either.
 - **A held synapse's presynaptic unit fired at or after the night's last tick** in 13 of the 144 nights held across, 3 on each of seed 23's
-  eighth images, on seed 23's first mapping from the mirrored assignment and on seed 22's eighth image from the assignment, and 1 on seed
-  24's eighth image from the mirrored assignment; and in 12 of the 144 held within, 3 on each of seed 23's eighth images, on seed 22's
-  first mapping from the mirrored assignment and on seed 22's eighth image from the assignment. The quiet ticks moved no synapse of either
-  part in any of the 288 held nights; after them 0 to 7 synapses of the part held across carried a trace, and 0 to 11 of the part held
-  within.
+  eighth image from each arm, seed 23's first mapping from the mirrored assignment and seed 22's eighth image from the assignment, and 1 on
+  seed 24's eighth image from the mirrored assignment; and in 12 of the 144 held within, 3 on each of seed 23's eighth image from each arm,
+  seed 22's first mapping from the mirrored assignment and seed 22's eighth image from the assignment. The quiet ticks moved no synapse of
+  either part in any of the 288 held nights. After them, in the nights that hold it, 0 to 7 synapses of the part held across carried a
+  trace, and 0 to 11 of the part held within; the part not held kept the traces it carried at the night's last tick.
 
 The night's pairings still to be read on the held part's synapses, as What ran defines them, each read at the synapse's presynaptic unit's
 next spike if that spike comes before the target's next spike:
@@ -1280,7 +1280,7 @@ in all twelve. "Less without replay" and "less held within" carry the paired SE 
   image from the assignment, seed 24's first mapping from the mirrored assignment and seed 24's eighth image from the assignment, on A.
 ## What it costs
 
-The trial took 785 s and the twelve jobs 5 718 to 6 153 s, 95.3 to 102.5 minutes, at most 42.7 % of a job's 240 minutes; ADR-0242 put a
+The trial took 785 s and the twelve jobs 5 718 to 6 153 s, 95.3 to 102.6 minutes, at most 42.7 % of a job's 240 minutes; ADR-0242 put a
 job at about 95 to 105 minutes. Nothing was cut: every cell ran its three forms. Thirteen jobs ran, the trial's and twelve, every one to the
 end.
 
@@ -1298,9 +1298,10 @@ all above and all on exploration 020's four cells, the night held within lies ab
 across at 2.
 
 **In exploration 026's eight cells, then, A's count under the excitatory night follows the hold of the part held within more than the
-hold of the part held across**, though the part held across is the target the plain night moved most of the held units' synapses onto:
-−4.73 to −6.98 M a group over four nights. Held alone, the part held across left the part held within moving by 1.04 to 1.20 times the
-plain night's change; held alone, the part held within left the part held across moving as under the plain night, 0.97 to 1.03 times it.
+hold of the part held across**, though in every one of the twelve cells the part held across is the target the plain night moved most of
+the held units' synapses onto: −4.73 to −6.98 M a group over four nights. Over the twelve cells, held alone, the part held across left the
+part held within moving by 1.04 to 1.20 times the plain night's change; held alone, the part held within left the part held across moving
+as under the plain night, 0.97 to 1.03 times it.
 The side under the night held within is the excitatory night's at 56 of the 60 checkpoints, and at block 36 in all twelve cells.
 
 **These runs do not part the part held within by target.** It holds the held units' synapses onto their own group, onto the inhibitory
