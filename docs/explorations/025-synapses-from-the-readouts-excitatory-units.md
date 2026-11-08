@@ -39,8 +39,9 @@ sixteen on each of three paths, and a difference carries its paired SE unless an
 **In brief**
 - **The hold held, and the night without replay ran H-47's.** In all 144 nights with the excitatory hold every held synapse ended the night
   at the weight it started with and its trace cleared, held inside the test, while 4 934 to 4 989 excitatory synapses from other units
-  moved; under both holds exploration 024's held too, in all 48 nights. No quiet tick after a night moved a held synapse. Every row of the
-  night without replay, 15 a cell, is H-47's, held inside the test.
+  moved; under both holds exploration 024's held too, in all 48 nights. The quiet ticks after a night moved no synapse the excitatory hold
+  held; under both holds they moved exploration 024's held synapses in 5 of the 48 nights (section 5). Every row of the night without
+  replay, 15 a cell, is H-47's, held inside the test.
 - **Under the excitatory night A's count less H-47's plain night's** lies between −0.3 and +7.1, beyond twice its unpaired SE at 8 of the
   20 checkpoints, all above: on seed 24's eighth image from block 12 on, +2.6 ± 1.04 to +7.1 ± 1.50; on seed 23's at blocks 18 and 36,
   +1.8 ± 0.89 and +3.2 ± 1.10; on seed 22's eighth image at blocks 12 and 24, +2.2 ± 0.91 and +2.0 ± 0.92. On seed 22's first mapping it
@@ -450,7 +451,7 @@ job's:
 | Seed 22, eighth, assignment | 024's held | −2.64 | −6.00 | −2.33 | −0.63 | +0.04 | −2.94 | −6.76 | −2.51 | −0.51 | −0.02 |
 
 - **Under every held form the held units' synapses show 0.00**, and the class matrix's held entries moved by exactly nothing, in LSB, in
-  every one of the 144 held nights; no quiet tick after a night moved a held synapse (below).
+  every one of the 144 held nights; no quiet tick after a night moved any of the held units' synapses (below).
 - **Under H-47's plain night the held units' synapses lost most onto the other readout's excitatory units**: −4.73 to −6.56 M a group over
   four nights, against −1.66 to −2.79 M onto their own group, −1.65 to −2.59 M onto the inhibitory units, −0.23 to −0.96 M onto A's and B's
   units and −0.04 to +0.04 M onto the other excitatory units. Under 024's held night the same splits are −4.76 to −6.76, −1.67 to −2.94,
@@ -589,7 +590,7 @@ synapses:
 - **Before the night's first tick** 12 337 to 13 416 of the 21 248 held synapses carried a trace that was not zero.
 - **A held unit fired at or after the night's last tick** in 3 of the 48 excitatory nights and the same 3 of the 48 nights under both
   holds, all on seed 22's eighth image after block 12, and in 6 of the 48 excitatory nights without replay, 3 on seed 23 and 3 on seed 24.
-  The quiet ticks moved no held synapse in any of the 144 nights; after them 0 to 18 held synapses carried a trace.
+  The quiet ticks moved none of the held units' synapses in any of the 144 nights; after them 0 to 18 of those synapses carried a trace.
 
 The night's pairings still to be read, as What ran defines them, each read at the held synapse's presynaptic unit's next spike if that spike
 comes before the target's next spike:
