@@ -56,7 +56,7 @@ count is a mean over the cell's 48 reads, sixteen on each of three paths, and a 
   below beyond 2 SE; after block 12 or 18 alone −0.5 ± 1.11 and +0.3 ± 0.83, within. All but after block 6 −1.7 ± 0.54 and all but after
   block 18 −2.6 ± 1.10, below beyond 2 SE; all but after block 12 −2.5 ± 1.66 and all but after block 24 −1.3 ± 1.40, within. H-47's plain
   night read −4.9 ± 1.09.
-- **Less H-47's plain night at block 36**, every form but after block 24 alone lies above beyond twice exploration 018's unpaired SE,
+- **Less H-47's plain night at block 36**, every form except after block 24 alone lies above beyond twice exploration 018's unpaired SE,
   +2.3 ± 0.64 to +6.6 ± 0.90; after block 24 alone reads +2.5 ± 1.31, within 2 SE.
 - **Summed at block 36**, the four single nights' differences from the night without replay read −0.9 and the plain night's four
   differences from the forms leaving a night out −11.5, beside the plain night less the night without replay, −4.9 ± 1.09; no SE is
@@ -69,10 +69,11 @@ count is a mean over the cell's 48 reads, sixteen on each of three paths, and a 
   the odd places' excitatory units lost 3.35 to 3.99 M, the inhibition onto the even places' excitatory units, the group A answers, rose
   3.27 to 3.56 M, A's margin rose 1.03 to 1.21 M, with 1 339 to 1 341 replays a path. A replayed night after an earlier one moved
   less: −1.53 to −3.00 M, +1.13 to +2.51 M and +0.54 to +1.01 M, with 1 129 to 1 268 replays.
-- **C's own units lost margin onto A's answer over every night and every stretch of blocks after the first night, under every form, on
+- **C's own units lost margin onto A's answer over every night, and every stretch of blocks after the first night, under every form, on
   every path**; over the four nights 0.16 M under the night without replay, 0.19 to 0.28 M under the single nights, 0.29 to 0.36 M under
   the forms leaving a night out and 0.34 M under H-47's plain night. On the twin each of H-47's plain night's nights raised it.
-- **The pair** stands at 62.96 to 63.54 at block 36 under every form, and A's highest coupling at 1.082 to 1.147 of H-42's.
+- **The pair** stands at 62.96 to 63.54 at block 36 under every form, and A's highest coupling at 1.082 to 1.147 of H-42's under the
+  nine forms run here, 1.158 under H-47's plain night.
 
 ## What ran
 
@@ -177,7 +178,7 @@ them side by side.
   A and of the pair. Each image, those two reads, A's couplings, their highest over the head and the gain held, inside the test, H-47's
   row at block 6 on path 0 of the form whose first night it is:
 
-| Form | Its first night | H-47's row at block 6 on path 0 it holds | Image's CRC-64 | A's read as it was | The pair's | A's couplings | Gain over the night | Replays | Depotentiations | Watch: wrong |
+| Form | Its first night | H-47's row at block 6 on path 0 it holds | Image's CRC-64, H-47's row held inside the test | A's read as it was | The pair's | A's couplings | Gain over the night | Replays | Depotentiations | Watch: wrong |
 | :--- | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
 | Without replay | without replay | the night without replay's | 16452926217147532021 | 57 | 46 | 6 057 644, 6 705 699, 6 936 603, 6 309 843 | 112 166 to 114 098 | 0 | 0 | 0 |
 | After block 6 alone | replays | the plain night's | 3409025272862731850 | 57 | 46 | 5 820 629, 6 942 733, 7 247 189, 5 999 268 | 112 166 to 107 803 | 1 339 | 640 | 0 |
@@ -279,7 +280,7 @@ replay's, read with H-47's paired SE, and "= plain" one where they are the plain
 | All but after block 18 | = plain | = plain | −1.9 ± 0.98 | +2.5 ± 1.17 | +2.3 ± 0.64 |
 | All but after block 24 | = plain | = plain | = plain | +1.3 ± 1.12 | +3.6 ± 0.71 |
 
-- **At block 36 every form but after block 24 alone lies above H-47's plain night beyond twice the unpaired SE**: after block 6, 12 or 18
+- **At block 36 every form except after block 24 alone lies above H-47's plain night beyond twice the unpaired SE**: after block 6, 12 or 18
   alone +6.6 ± 0.90, +4.4 ± 0.59 and +5.2 ± 1.22, and all but after block 6, 12, 18 or 24 +3.2 ± 1.05, +2.4 ± 1.02, +2.3 ± 0.64 and
   +3.6 ± 0.71. After block 24 alone reads +2.5 ± 1.31, within 2 SE.
 - **Right after the one night a form leaves out**, where that form less the plain night is that night's replay left out, with the
@@ -360,7 +361,8 @@ each stimulus's trials less the night without replay, ± the paired SE, and less
 
 At block 36, each single night's difference from the night without replay, and the plain night's difference from each form leaving a
 night out, each the difference of the two means of 48, with their sums, signed, beside H-47's plain night less the night without replay
-± its paired SE. No SE is claimed for either sum:
+± its paired SE. Each sum is of the unrounded differences, so the rounded figures beside it may add to 0.1 more or less. No SE is
+claimed for either sum:
 
 | Of | After block 6 alone less without replay | after 12 alone | after 18 alone | after 24 alone | Their sum | Plain less all but after block 6 | less all but after 12 | less all but after 18 | less all but after 24 | Their sum | H-47: plain less without replay |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -445,7 +447,7 @@ The side, form by form:
   A's less B's −3.6 ± 2.04. Under after block 24 alone it lies on A, the even places, within 2 SE: both stimuli's trials read below the
   night without replay, A's −1.1 ± 0.24 and B's −1.3 ± 0.96, A's less B's +0.3 ± 1.11.
 - **At blocks 18 and 24** every form whose rows are not the night without replay's puts the side on B, the odd places, as H-47's plain
-  night does: at block 24 beyond 2 SE under each form but two, after block 6 alone and after block 24 alone, where it lies within 2 SE;
+  night does: at block 24 beyond 2 SE under six of the eight forms, and within 2 SE under after block 6 alone and after block 24 alone;
   at block 18 beyond 2 SE under after block 6 or 12 alone and all but after block 18 or 24.
 - **At block 12**, where H-47's plain night puts it on A, the even places, within 2 SE, so do after block 12 alone and all but after block
   6, 18 or 24, within 2 SE; after block 6 alone and all but after block 12 put it on B, the odd places, within 2 SE. At block 6 each
@@ -548,8 +550,8 @@ A answers the odd places:
   them, the odd places' excitatory units lost 1.53 to 3.00 M and the inhibition onto the even places' excitatory units rose by 1.13 to
   2.51 M. H-47's plain night's night after block 24 moved least, −1.53 M and +1.13 M.
 - **A night without replay after a replayed night** raised the odd places' excitatory weight onto all by 0.17 to 0.42 M and lowered the
-  inhibition onto the even places' excitatory units by 0.58 to 0.73 M, where the nights without replay before any replay moved them by
-  −0.16 to +0.68 M and −0.46 to −0.57 M.
+  inhibition onto the even places' excitatory units by 0.58 to 0.73 M, where the nights without replay before any replay on this cell moved
+  them by −0.16 to +0.68 M and −0.46 to −0.57 M.
 - **On the twin**, where A answers the odd places, H-47's plain night's night after block 6 took 3.48 M of the odd places' excitatory
   weight and raised the inhibition onto the odd places' excitatory units by 4.28 M and onto the even places' by 3.42 M.
 
@@ -615,7 +617,7 @@ blocks 1 to 6, is the same in every form of a cell, from the start image to the 
 
 - **The blocks move no excitatory weight of the readouts' units onto all**: at most 0.01 M either way in any stretch of any form, as
   exploration 020 read over the pair's blocks.
-- **The inhibition falls in every stretch of every form, and falls more in each stretch after a replayed night.** The odd places'
+- **The inhibition falls in every stretch of every form, and falls more in each stretch once any night has replayed.** The odd places'
   inhibitory units' weight onto all fell over blocks 7 to 12 by 1.35 M after a replayed night and 0.97 M without one; over blocks 13 to
   18 by 1.26 to 1.51 M and 1.07 M; over blocks 19 to 24 by 1.31 to 1.64 M and 1.09 M; and over blocks 25 to 36 by 2.73 to 3.31 M and
   2.28 M, the most under H-47's plain night. A stretch before which no night replayed fell as the night without replay's.
@@ -640,7 +642,7 @@ nights and "blocks 7 to 36" the four stretches after the first night. On the twi
 | Twin: plain on A's (021's job) | −0.48 | +0.12 | −0.50 | +0.17 | −0.15 | +0.10 | −0.07 | +0.11 | −0.16 | +0.51 | −0.88 |
 | Twin: without replay (021's job) | −0.48 | −0.05 | −0.44 | −0.03 | −0.05 | −0.03 | 0.00 | −0.02 | −0.05 | −0.13 | −0.53 |
 
-D's own units onto B's answer under A, readout 0 on this cell, less onto readout 1, where they lie:
+D's own units onto B's answer under A, readout 0 on this cell, less onto readout 1, where they lie; on the twin, the other way:
 
 | Form | blocks 1 to 6 | night after 6 | blocks 7 to 12 | night after 12 | blocks 13 to 18 | night after 18 | blocks 19 to 24 | night after 24 | blocks 25 to 36 | The four nights | Blocks 7 to 36 |
 | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -748,10 +750,10 @@ over the three paths, and each other column a ripple's mean:
 | 24 | Twin: plain on A's (021's job) | A | 1 728 | 3.0 | 25.3 | 0.6 | 0.6 | 11.9 | 12.7 | 2.5 | 0.1 |
 | 24 | Twin: plain on A's (021's job) | B | 1 623 | 3.0 | 21.9 | 0.5 | 0.6 | 11.0 | 13.6 | 2.2 | 0.1 |
 
-- **Each form's first night that replays ran as many ripples as H-47's first plain night**: 2 097 to 2 100 on A's patterns and 1 921 to
-  1 923 on B's over the three paths, after block 6, 12, 18 or 24 alike. H-47's plain night's later nights ran 1 917, 1 818 and 1 728 on
-  A's patterns and 1 851, 1 752 and 1 623 on B's, and the later replayed nights of the forms leaving a night out 1 806 to 1 917 and 1 737
-  to 1 857.
+- **Each form's first night that replays ran about as many ripples as H-47's first plain night**: 2 097 to 2 100 on A's patterns and 1 921
+  to 1 923 on B's over the three paths, after block 6, 12, 18 or 24 alike. H-47's plain night's later nights ran 1 917, 1 818 and 1 728 on
+  A's patterns and 1 851, 1 752 and 1 623 on B's, and the later replayed nights of the forms leaving a night out 1 806 to 1 917 and 1 737 to
+  1 857.
 - **Beyond the pattern, a replay drives the other readout more than the answer's** in every row here, by 0.57 to 2.31 spikes a ripple, and
   on the twin by 0.85 to 2.64, as exploration 020 read over the four nights. The pattern's first unit fires 3.00 to 3.08 times a ripple and
   the rest of the pattern 21.7 to 22.3 times on this cell; on the twin the rest of A's patterns fire 25.3 to 25.4 times.
@@ -878,14 +880,15 @@ trial's and two, every one to the end.
 
 ## What it suggests
 
-**On this cell no single night's replay, after nights without replay, left A's count at block 36 as far below the night without replay as
-H-47's four did.** The four single nights read +1.7, −0.5, +0.3 and −2.4 there, against H-47's −4.9, and their differences sum to −0.9.
-Only the night after block 24, the last, lies below beyond 2 SE alone; there both stimuli's trials read below the night without replay,
-A's beyond 2 SE. Right after it, at block 24, it read −0.3 ± 0.81.
+**On this cell no single night's replay, every other night without replay, left A's count at block 36 as far below the night without replay
+as H-47's four did**, though after block 24 alone lies within 2 SE of H-47's plain night there, +2.5 ± 1.31. The four single nights read
++1.7, −0.5, +0.3 and −2.4 there, against H-47's −4.9, and their differences sum to −0.9. Only after block 24 alone lies below beyond 2 SE;
+there both stimuli's trials read below the night without replay, A's beyond 2 SE. Right after it, at block 24, it read −0.3 ± 0.81.
 
 **Each form leaving one night out lies at block 36 below the night without replay, −1.3 to −2.6, beyond 2 SE in two, and above H-47's
 plain night beyond 2 SE in all four, +2.3 to +3.6.** On stimulus A's trials all four lie below the night without replay beyond 2 SE, as
-H-47's plain night does, by less than it.
+H-47's plain night does, by less than it; less H-47's plain night on A's trials, all but after block 6 lies above beyond 2 SE,
++2.5 ± 1.22, and the other three within, +1.2 to +1.6.
 
 **What a replayed night moved on the readouts' synapses ran with how many replayed nights came before it.** A form's first replayed night
 took 3.35 to 3.99 M of the odd places' excitatory weight after any block; a second took 2.59 to 3.00 M, a third 1.77 to 1.95 M, and
