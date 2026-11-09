@@ -47534,6 +47534,20 @@ fn e020_night(
     tag: bool,
     watch: bool,
 ) -> (Vec<u8>, (u32, u32)) {
+    let (written, gain, _) = e020_night_counted(start, image, label, patterns, tag, watch);
+    (written, gain)
+}
+
+/// `e020_night`, with the night's replays and depotentiations as its end line prints them
+/// (exploration 030): the same engine, stages and dumps.
+fn e020_night_counted(
+    start: &NightsStart,
+    image: &[u8],
+    label: &str,
+    patterns: &[Vec<u32>],
+    tag: bool,
+    watch: bool,
+) -> (Vec<u8>, (u32, u32), (u64, u64)) {
     let site = &start.site;
     let sets = site.sets;
     let mut exec = night_engine(image, patterns.len(), Some(site.groups), |h| {
@@ -47612,10 +47626,11 @@ fn e020_night(
     let ticks = exec.ticks().wrapping_sub(began);
     let quiet_ticks = quiet(&mut exec);
     let end = night_state(&exec, &sets);
+    let counts = (exec.replays(), exec.depotentiations());
     eprintln!(
         "DUMP {label} end {end:?} quiet in {quiet_ticks} ticks, ticks {ticks}, replays {} depotentiations {} pattern sums {:?}",
-        exec.replays(),
-        exec.depotentiations(),
+        counts.0,
+        counts.1,
         pattern_sums(&exec, patterns)
     );
     let awake = night_engine(&Image::encode(&exec).expect("quiescent"), 0, None, |h| {
@@ -47624,7 +47639,7 @@ fn e020_night(
     undropped(exec, label);
     let written = Image::encode(&awake).expect("quiescent");
     undropped(awake, label);
-    (written, (start_state.gain, end.gain))
+    (written, (start_state.gain, end.gain), counts)
 }
 
 /// `nights_gap` with the night without replay and the plain night on A's patterns watched where
@@ -49583,4 +49598,417 @@ fn the_readouts_places_exchanged_a_first_mapping_on_seed_23_from_the_mirrored_as
 #[ignore]
 fn the_readouts_places_exchanged_a_first_mapping_on_seed_23_from_the_assignment_explore() {
     e023_job(1, 2, E023Layout::Places);
+}
+
+// ----------------------------- exploration 030: one cell, night by night (on its branch alone)
+
+/// A form of exploration 030 (ADR-0245): which of the four nights, after blocks 6, 12, 18 and
+/// 24, replays. A night that replays is H-47's plain night on A's patterns, A's 102 patterns
+/// drawn from the start image and tagged; every other night is H-47's night without replay, the
+/// same night with nothing tagged. No hold is set.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct E030Form {
+    name: &'static str,
+    replays: [bool; 4],
+}
+
+/// H-47's night without replay on every night, run in each job beside its four forms.
+const E030_NO_REPLAY: E030Form = E030Form {
+    name: "no-replay",
+    replays: [false; 4],
+};
+
+/// The first job: the night without replay, and replay after one block alone.
+const E030_ALONE: [E030Form; 5] = [
+    E030_NO_REPLAY,
+    E030Form {
+        name: "alone-6",
+        replays: [true, false, false, false],
+    },
+    E030Form {
+        name: "alone-12",
+        replays: [false, true, false, false],
+    },
+    E030Form {
+        name: "alone-18",
+        replays: [false, false, true, false],
+    },
+    E030Form {
+        name: "alone-24",
+        replays: [false, false, false, true],
+    },
+];
+
+/// The second job: the night without replay, and replay after every block but one.
+const E030_BUT: [E030Form; 5] = [
+    E030_NO_REPLAY,
+    E030Form {
+        name: "but-6",
+        replays: [false, true, true, true],
+    },
+    E030Form {
+        name: "but-12",
+        replays: [true, false, true, true],
+    },
+    E030Form {
+        name: "but-18",
+        replays: [true, true, false, true],
+    },
+    E030Form {
+        name: "but-24",
+        replays: [true, true, true, false],
+    },
+];
+
+const _: () = assert!(WATCH_GAPS.len() == 4 && NIGHTS_CHECKPOINTS.len() == 5);
+
+impl E030Form {
+    /// Its night after the block of checkpoint `c`, 0 to 3.
+    fn gap(self, c: usize) -> NightsGap {
+        if self.replays.get(c).copied().unwrap_or(false) {
+            NightsGap::PlainFirst
+        } else {
+            NightsGap::NoReplay
+        }
+    }
+
+    /// The form of H-47 whose row its row at checkpoint `c` must be: where every night up to the
+    /// one after that checkpoint's block is H-47's night without replay, or every one its plain
+    /// night on A's patterns. A checkpoint is read after the night that follows its block, and
+    /// block 36's after all four nights and the blocks after them.
+    fn held_to(self, c: usize) -> Option<NightsGap> {
+        let nights = self.replays.get(..=c.min(3)).unwrap_or(&[]);
+        if nights.iter().all(|&r| !r) {
+            Some(NightsGap::NoReplay)
+        } else if nights.iter().all(|&r| r) {
+            Some(NightsGap::PlainFirst)
+        } else {
+            None
+        }
+    }
+}
+
+/// A form of H-47's index in `NIGHTS_GAPS`, which `NIGHTS_ROWS` is laid out by.
+fn e030_index(gap: NightsGap) -> usize {
+    NIGHTS_GAPS
+        .iter()
+        .position(|&g| g == gap)
+        .expect("one of H-47's four forms")
+}
+
+/// One night of exploration 030, watched (`e020_night`): H-47's plain night on A's patterns where
+/// `replay` says, its night without replay where not. Held here: a night that replays reads
+/// replays and depotentiations that are not zero, and every other night reads none of either.
+fn e030_night(
+    start: &NightsStart,
+    image: &[u8],
+    first: &[Vec<u32>],
+    label: &str,
+    replay: bool,
+) -> (Vec<u8>, (u32, u32)) {
+    let (written, gain, (replays, depotentiations)) =
+        e020_night_counted(start, image, label, first, replay, true);
+    if replay {
+        assert!(
+            replays > 0 && depotentiations > 0,
+            "{label}: a night that replays reads replays and depotentiations"
+        );
+    } else {
+        assert_eq!(
+            (replays, depotentiations),
+            (0, 0),
+            "{label}: a night without replay reads none"
+        );
+    }
+    eprintln!(
+        "DUMP {label} night as its form asks: replay {replay}, replays {replays} depotentiations {depotentiations}"
+    );
+    (written, gain)
+}
+
+/// Exploration 030's trial: on network `n` from start `s`, on path 0, the pair's head, then each
+/// form's first night, watched, each image split, and its read as it was of A and of the pair.
+/// Each image, those two reads, A's couplings, their highest over the head and the gain are held
+/// to H-47's row at block 6 on path 0 of the form whose first night it is.
+fn e030_trial(n: usize, s: usize) {
+    with_nights(n, s, "e030 trial", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        let targets = e020_targets(&first);
+        let label = format!("{} path 0 head blocks {NIGHTS_EVERY}", start.name);
+        let (head, ends) = nights_run(start, start.image, NIGHTS_EVERY, &label, path_from(0));
+        let forms: Vec<E030Form> = E030_ALONE
+            .iter()
+            .chain(E030_BUT.iter().skip(1))
+            .copied()
+            .collect();
+        two_at_a_time(&forms, |form| {
+            let at = format!("{} path 0 {}", start.name, form.name);
+            let gap = format!("{at} gap {NIGHTS_EVERY}");
+            let replay = form.gap(0) == NightsGap::PlainFirst;
+            let (image, gain) = e030_night(start, &head, &first, &gap, replay);
+            let blocks = format!("{at} blocks {NIGHTS_EVERY}");
+            e020_split(start, &image, &blocks, &targets);
+            let (a, couplings) = spread_read(
+                &start.site,
+                &image,
+                &blocks,
+                "as-it-was 0",
+                nights_read_from(0),
+            );
+            let (pair, _) = spread_read(
+                &start.theirs,
+                &image,
+                &blocks,
+                "as-it-was 0",
+                nights_read_from(0),
+            );
+            let held = form.held_to(0).expect("a first night is one of H-47's two");
+            let row =
+                nights_row(NIGHTS_ROWS[n][s][e030_index(held)], 0, 0).expect("H-47 pinned the row");
+            assert_eq!(
+                (
+                    crc64(&image),
+                    a,
+                    pair,
+                    couplings,
+                    nights_highest(&ends),
+                    Some(gain)
+                ),
+                (
+                    row.image,
+                    row.first[0],
+                    row.second[0],
+                    row.couplings,
+                    row.highest,
+                    row.gain
+                ),
+                "{at}: H-47's {} row at block 6 on path 0",
+                held.name()
+            );
+            eprintln!(
+                "DUMP {at} holds H-47's {} row at block 6 on path 0",
+                held.name()
+            );
+        });
+    });
+}
+
+/// One job of exploration 030: on network `n` from start `s`, exploration 020's job
+/// (`e020_job`) with the forms of `forms`, each night chosen by its form, every night watched.
+/// A's patterns' composition, the split and class matrix of the start image, of the image before
+/// each night and of the image after it, and at block 36. Every row is dumped; a row whose nights
+/// so far are all H-47's night without replay, or all its plain night on A's patterns, is held to
+/// H-47's row of that form on the same path at the same block, so the night without replay's
+/// fifteen are. Beside each form, how many of its rows are each of H-47's two forms'.
+fn e030_job(n: usize, s: usize, forms: &[E030Form]) {
+    with_nights(n, s, "e030", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        e020_patterns(start, &first);
+        let targets = e020_targets(&first);
+        e020_split(
+            start,
+            start.image,
+            &format!("{} start", start.name),
+            &targets,
+        );
+        let heads = Mutex::new(BTreeMap::new());
+        two_at_a_time(&NIGHTS_PATHS, |&j| {
+            let at = format!("{} path {j} head blocks {NIGHTS_EVERY}", start.name);
+            let head = nights_run(start, start.image, NIGHTS_EVERY, &at, path_from(j));
+            heads.lock().expect("a head ended").insert(j, head);
+        });
+        let heads = heads.into_inner().expect("every head ended");
+        let chains: Vec<(usize, u64)> = (0..forms.len())
+            .flat_map(|f| NIGHTS_PATHS.iter().map(move |&j| (f, j)))
+            .collect();
+        let kept = Mutex::new(BTreeMap::new());
+        let readings = Mutex::new(BTreeMap::new());
+        two_at_a_time(&chains, |&(f, j)| {
+            let form = forms[f];
+            let name = format!("{} path {j} {}", start.name, form.name);
+            let (mut at, mut ends) = heads[&j].clone();
+            for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                let label = format!("{name} blocks {block}");
+                if block > NIGHTS_LAST {
+                    let (image, ends) = nights_run(start, &at, NIGHTS_ON, &label, path_from(j));
+                    e020_split(start, &image, &label, &targets);
+                    readings
+                        .lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (nights_highest(&ends), None));
+                    kept.lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (label, image));
+                    continue;
+                }
+                if block != NIGHTS_EVERY {
+                    (at, ends) = nights_run(start, &at, NIGHTS_EVERY, &label, path_from(j));
+                }
+                let before = format!("{name} gap {block} before");
+                shared_sums(start, &at, &before);
+                e020_split(start, &at, &before, &targets);
+                let gap = format!("{name} gap {block}");
+                let replay = form.gap(c) == NightsGap::PlainFirst;
+                let (image, gain) = e030_night(start, &at, &first, &gap, replay);
+                e020_split(start, &image, &label, &targets);
+                readings
+                    .lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (nights_highest(&ends), Some(gain)));
+                kept.lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (label, image.clone()));
+                at = image;
+            }
+        });
+        let kept = kept.into_inner().expect("every form ended");
+        let readings = readings.into_inner().expect("every form ended");
+        let read = nights_reads(start, &kept);
+        let theirs = [NightsGap::NoReplay, NightsGap::PlainFirst];
+        for (f, form) in forms.iter().enumerate() {
+            let mut rows = Vec::new();
+            let mut held: [Vec<usize>; 2] = [Vec::new(), Vec::new()];
+            let mut same = [0usize; 2];
+            for (p, &j) in NIGHTS_PATHS.iter().enumerate() {
+                for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                    let key = (f, j, c);
+                    let counts = |pair: bool| -> [u8; 16] {
+                        core::array::from_fn(|i| read[&(key, pair, i as u64)].0)
+                    };
+                    let (highest, gain) = readings[&key];
+                    let row = NightsRow {
+                        image: crc64(&kept[&key].1),
+                        first: counts(false),
+                        second: counts(true),
+                        couplings: read[&(key, false, 0)].1,
+                        highest,
+                        gain,
+                    };
+                    eprintln!(
+                        "DUMP {} {} path {j} block {block} PIN row {row:?}",
+                        start.name, form.name
+                    );
+                    assert_eq!(nights_row(&rows, p, c), None, "rows in order");
+                    for (k, &gap) in theirs.iter().enumerate() {
+                        let pinned = nights_row(NIGHTS_ROWS[n][s][e030_index(gap)], p, c)
+                            .expect("H-47 pinned the row");
+                        same[k] = same[k].saturating_add(usize::from(pinned == &row));
+                        if form.held_to(c) == Some(gap) {
+                            assert_eq!(
+                                &row,
+                                pinned,
+                                "{} {} path {j} block {block}: H-47's {} row",
+                                start.name,
+                                form.name,
+                                gap.name()
+                            );
+                            if p == 0 {
+                                held[k].push(block);
+                            }
+                        }
+                    }
+                    rows.push(row);
+                }
+            }
+            eprintln!(
+                "DUMP {} {}: rows held to H-47's no-replay at blocks {:?} and to its plain-first at blocks {:?}, on every path; of its {} rows, {} are H-47's no-replay's and {} its plain-first's",
+                start.name,
+                form.name,
+                held[0],
+                held[1],
+                rows.len(),
+                same[0],
+                same[1]
+            );
+        }
+    });
+}
+
+/// Exploration 030's forms as ADR-0245 writes them: each night alone and each night left out, in
+/// the order of the nights, and the row of H-47's that each row up to its first parting is.
+#[test]
+fn exploration_030_s_forms_and_the_rows_they_are_held_to() {
+    for (k, (alone, but)) in E030_ALONE
+        .iter()
+        .skip(1)
+        .zip(E030_BUT.iter().skip(1))
+        .enumerate()
+    {
+        let block = WATCH_GAPS[k];
+        assert_eq!(alone.name, format!("alone-{block}"));
+        assert_eq!(but.name, format!("but-{block}"));
+        for c in 0..4usize {
+            assert_eq!(alone.replays[c], c == k, "{}", alone.name);
+            assert_eq!(but.replays[c], c != k, "{}", but.name);
+            assert_eq!(alone.gap(c) == NightsGap::PlainFirst, c == k);
+            assert_eq!(but.gap(c) == NightsGap::PlainFirst, c != k);
+        }
+        for (c, &at) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+            let (alone_held, but_held) = if c < k {
+                (Some(NightsGap::NoReplay), Some(NightsGap::PlainFirst))
+            } else if c == k && k == 0 {
+                (Some(NightsGap::PlainFirst), Some(NightsGap::NoReplay))
+            } else {
+                (None, None)
+            };
+            assert_eq!(alone.held_to(c), alone_held, "{} at {at}", alone.name);
+            assert_eq!(but.held_to(c), but_held, "{} at {at}", but.name);
+        }
+    }
+    for form in [E030_ALONE[0], E030_BUT[0]] {
+        assert_eq!(form, E030_NO_REPLAY);
+        for c in 0..NIGHTS_CHECKPOINTS.len() {
+            assert_eq!(form.held_to(c), Some(NightsGap::NoReplay));
+        }
+    }
+    let first: Vec<Option<NightsGap>> = E030_ALONE
+        .iter()
+        .chain(E030_BUT.iter().skip(1))
+        .map(|f| f.held_to(0))
+        .collect();
+    assert_eq!(
+        first,
+        [
+            Some(NightsGap::NoReplay),
+            Some(NightsGap::PlainFirst),
+            Some(NightsGap::NoReplay),
+            Some(NightsGap::NoReplay),
+            Some(NightsGap::NoReplay),
+            Some(NightsGap::NoReplay),
+            Some(NightsGap::PlainFirst),
+            Some(NightsGap::PlainFirst),
+            Some(NightsGap::PlainFirst),
+        ],
+        "the trial's nine first nights, as ADR-0245 names them"
+    );
+    assert_eq!(
+        (
+            e030_index(NightsGap::NoReplay),
+            e030_index(NightsGap::PlainFirst)
+        ),
+        (0, 1)
+    );
+}
+
+/// Exploration 030's trial, on seed 23 from a first mapping and the mirrored assignment.
+#[test]
+#[ignore]
+fn the_harness_of_one_cell_night_by_night_explore() {
+    e030_trial(1, 3);
+}
+
+/// Exploration 030, replay on one night alone (after block 6, 12, 18 or 24) beside the night
+/// without replay, on seed 23 from a first mapping and the mirrored assignment.
+#[test]
+#[ignore]
+fn one_night_alone_a_first_mapping_on_seed_23_from_the_mirrored_assignment_explore() {
+    e030_job(1, 3, &E030_ALONE);
+}
+
+/// Exploration 030, replay on every night but one (but the one after block 6, 12, 18 or 24)
+/// beside the night without replay, on seed 23 from a first mapping and the mirrored assignment.
+#[test]
+#[ignore]
+fn one_night_left_out_a_first_mapping_on_seed_23_from_the_mirrored_assignment_explore() {
+    e030_job(1, 3, &E030_BUT);
 }
