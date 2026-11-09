@@ -2655,7 +2655,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0242](adr/0242-the-readouts-excitatory-hold-split-by-target.md) | The readouts' excitatory hold split by target | accepted |
 | [ADR-0243](adr/0243-the-part-held-within-split-by-target.md) | The part held within split by target | accepted |
 | [ADR-0244](adr/0244-the-part-held-within-two-parts-at-a-time.md) | The part held within, two parts at a time | accepted |
-| [ADR-0245](adr/0245-one-cell-night-by-night.md) | One cell, night by night | proposed |
+| [ADR-0245](adr/0245-one-cell-night-by-night.md) | One cell, night by night | accepted |
 <!-- adr-index: end decisions -->
 
 ---
