@@ -172,14 +172,15 @@ reading of that night; section 5 sets the form's night beside theirs and reads i
 - Each of the two nights' lines, its start, its windows, its watch and its end, are the lines of exploration 021's job's night of the same
   kind after block 6 on path 0 of the same cell, the label and the form's name aside: 91 of 91 for the night without replay and 420 of 420
   for the night that replays. So is the head's line. The night that replays read 1 339 replays and 640 depotentiations and the night
-  without replay none, held inside the test, and the watch read `wrong 0` in both.
+  without replay none, as the trial prints; inside the test the first was held to read both not zero and the second none of either. The
+  watch read `wrong 0` in both.
 
 - **Each of the eleven jobs** ran to the end, its two forms on the three paths. Inside the test, every row of the night without replay held
   H-47's row of its form on the same path and block, fifteen a cell, and the form's row at block 6 on each path held H-47's plain night's,
   three a cell. Beside each form the job prints how many of its fifteen rows are H-47's rows of either form. Set beside H-47's rows here,
   cell by cell, with seed 23's first mapping from the mirrored assignment read from exploration 030's job:
 
-| Cell | Without replay: rows H-47's | After block 6 alone: rows H-47's plain night's, its night without replay's | Without replay: lines in H-47's lines job, label aside | Heads: lines in that job | After block 6 alone, night after block 6: lines of that job's plain night after block 6 | Its later nights' end lines among that job's, either form | Reads with H-47's plain night's `stimuli` mask | Lines job |
+| Cell | Without replay: rows H-47's | After block 6 alone: rows H-47's plain night's, its night without replay's | Without replay: lines in H-47's lines job, label aside | Heads: lines in that job | After block 6 alone, night after block 6: its start, window, watch and end lines that are that job's plain night's after block 6 | Its later nights' end lines among that job's, either form | Reads with H-47's plain night's `stimuli` mask | Lines job |
 | :--- | :--- | ---: | :--- | :--- | :--- | :--- | :--- | :--- |
 | Seed 22, eighth, mirrored | 15 of 15 | 3, 0 | 1 647 of 1 647 | 3 of 3 | 1 156 of 1 156 | 0 of 9 | 960 of 960 | 021 |
 | Seed 22, first mapping, assignment | 15 of 15 | 3, 0 | 1 647 of 1 647 | 3 of 3 | 1 141 of 1 141 | 0 of 9 | 960 of 960 | 021 |
@@ -201,17 +202,17 @@ reading of that night; section 5 sets the form's night beside theirs and reads i
 - **Each read of the night without replay** carries H-47's read's count and its `stimuli`, `right` and `tied` masks, 480 a cell, and every
   read of both forms carries the `stimuli` mask of H-47's plain night's read of the same path, checkpoint, mapping and stream, 960 a cell,
   so each trial presented the stimulus it presented in H-47.
-- **The form's night after block 6** prints on its three paths the lines of that job's plain night after block 6, label and form aside,
-  1 130 to 1 260 lines a cell, all of them. Of its nights after blocks 12, 18 and 24, nine a cell, none ends on the end line of that job's
-  night without replay or plain night after the same block. Its head, its night after block 6 and its blocks 7 to 12 read in the class
-  matrix what H-47's plain night's read in that job, in every cell.
+- **The form's night after block 6** prints on its three paths the lines of that job's plain night after block 6, label and form aside, its
+  start, windows, watch and end, 1 130 to 1 260 lines a cell, all of them. Of its nights after blocks 12, 18 and 24, nine a cell, none ends
+  on the end line of that job's night without replay or plain night after the same block. Its head, its night after block 6 and its blocks 7
+  to 12 read in the class matrix what H-47's plain night's read in that job, in every cell.
 - **The rows.** Of the form's fifteen rows in each cell, the three at block 6 are H-47's plain night's and none is its night without
   replay's; the night without replay's fifteen are H-47's night without replay's and none its plain night's, as each job prints and as the
   rows set beside H-47's read.
-- **The nights.** The form's 36 nights after block 6, three a cell, read 1 329 to 1 340 replays and 640 depotentiations each, and the other
-  252 nights of both forms `replays 0` and `depotentiations 0`, held inside the test, exploration 030's job's among them. The watch read
-  `wrong 0` in all 288 nights, over 57 566 208 pairings. Each job's log prints H-42's couplings on its seed as H-47's and the lines job's
-  logs print them.
+- **The nights.** The form's 36 nights after block 6, three a cell, read 1 329 to 1 340 replays and 640 depotentiations each, as the jobs
+  print, held inside the test to be not zero; the other 252 nights of both forms read `replays 0` and `depotentiations 0`, held inside the
+  test, exploration 030's job's among them. The watch read `wrong 0` in all 288 nights, over 57 566 208 pairings, a tally over the twelve
+  jobs. Each job's log prints H-42's couplings on its seed as H-47's and the lines job's logs print them.
 
 ## 1. A's count and each stimulus's trials under the form
 
@@ -987,10 +988,10 @@ A's margin, the four kinds A alone, A and C, B alone and B and D, each onto the 
   0.75 M under the form. Of the 144 path-nights, it fell in 79 under the form, 35 under H-47's plain night and 99 under its night without
   replay.
 - **A's margin** rose by 1.05 to 1.38 M over the form's night after block 6, H-47's first plain night, and moved by −0.21 to +0.15 M over
-  each of its later nights, where H-47's later plain nights raised it by 0.54 to 1.17 M and its nights without replay moved it by −0.12 to
-  +0.22 M. Over the four nights it rose by 0.81 to 1.59 M under the form and by 3.33 to 4.33 M under H-47's plain night, and moved by −0.23
-  to +0.86 M under its night without replay; the form less the night without replay over the four nights reads +0.74 to +1.20 M. Over
-  blocks 7 to 36 A's margin fell under all three in every cell, by 0.63 to 2.00 M under the form.
+  each of its later nights, where H-47's later plain nights raised it by 0.54 to 1.17 M and its nights without replay after the same blocks
+  moved it by −0.12 to +0.22 M. Over the four nights it rose by 0.81 to 1.59 M under the form and by 3.33 to 4.33 M under H-47's plain
+  night, and moved by −0.23 to +0.86 M under its night without replay; the form less the night without replay over the four nights reads
+  +0.74 to +1.20 M. Over blocks 7 to 36 A's margin fell under all three in every cell, by 0.63 to 2.00 M under the form.
 - **D's own units** moved over the four nights by −0.24 to +0.25 M under the form, by −0.22 to +0.60 M under H-47's plain night and by
   −0.25 to +0.09 M under its night without replay.
 
@@ -1000,7 +1001,7 @@ The form's night after block 6 beside H-47's plain night's night after block 6 o
 lines, its replays on each path, the ripples that replay one of A's patterns, by the pattern's stimulus, over the three paths, and the
 pairings of A's and B's 102 stimulus units the watch read over the three paths:
 
-| Cell | Its lines that are the lines job's plain night after block 6, label aside | Replays, paths 0, 5, 6 | H-47's plain night: replays | Ripples on A's patterns | H-47's plain night | Ripples on B's patterns | H-47's plain night | Pairings watched | H-47's plain night | Lines job |
+| Cell | Its start, window, watch and end lines that are the lines job's plain night's after block 6, label aside | Replays, paths 0, 5, 6 | H-47's plain night: replays | Ripples on A's patterns | H-47's plain night | Ripples on B's patterns | H-47's plain night | Pairings watched | H-47's plain night | Lines job |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :--- |
 | Seed 22, eighth, mirrored | 1 156 of 1 156 | 1 329, 1 329, 1 330 | 1 329, 1 329, 1 330 | 2 048 | 2 048 | 1 940 | 1 940 | 669 312 | 669 312 | 021 |
 | Seed 22, first mapping, assignment | 1 141 of 1 141 | 1 339, 1 340, 1 339 | 1 339, 1 340, 1 339 | 2 097 | 2 097 | 1 921 | 1 921 | 716 448 | 716 448 | 021 |
@@ -1175,9 +1176,9 @@ replay are this exploration's jobs'; H-47's plain night is exploration 020's or 
 - **The form's night after block 6**, H-47's first plain night, lowered the excitatory sum by 6.29 to 9.49 M, raised the inhibitory sum by
   7.36 to 10.56 M and lowered the gain by 4 075 to 5 067, with 1 329 to 1 340 replays and 640 depotentiations on each path.
 - **Its nights after blocks 12, 18 and 24** read `replays 0` and `depotentiations 0`, held inside the test, moved the excitatory sum by
-  −0.11 to +1.00 M and the inhibitory by −1.71 to +0.01 M, and raised the gain by 1 806 to 2 352. In each of those 36 nights the
-  inhibitory sum's change lay 0.17 to 1.01 M below the night without replay's after the same block on the same cell. The night without
-  replay's nights moved the excitatory sum by −0.82 to +1.52 M and the inhibitory by −1.46 to +0.68 M, and raised the gain by 1 782 to
+  −0.11 to +1.00 M and the inhibitory by −1.71 to +0.01 M, and raised the gain by 1 806 to 2 352. In each of those 36 nights the inhibitory
+  sum's change lay 0.17 to 1.01 M below the night without replay's after the same block on the same cell. The night without replay's nights
+  after the same blocks moved the excitatory sum by −0.14 to +1.52 M and the inhibitory by −1.46 to +0.68 M, and raised the gain by 1 782 to
   2 448; H-47's later plain nights lowered the excitatory sum by 2.20 to 6.68 M, raised the inhibitory by 2.24 to 8.49 M and lowered the
   gain by 2 768 to 4 483, with 1 128 to 1 268 replays a path.
 - **The watch read `wrong 0`** in each of the 288 nights of the twelve jobs and in H-47's plain night's 144 in exploration 020's and 021's
@@ -1306,9 +1307,9 @@ stretch of blocks 13 to 36; over those nights A's margin moved by −0.21 to +0.
 Questions this suggests for a later exploration or a round:
 - Replay after block 12, 18 or 24 alone on the eleven cells, which exploration 030 read on one cell alone: whether any one replayed night,
   not only the first, leaves A's count where the form does here.
-- Seed 24's eighth image from the assignment, the one cell where the form lies below the night without replay beyond 2 SE, at blocks 24
-  and 36, and where H-47's plain night lies below it at blocks 18 and 24: what the blocks after the replayed night move there on A's and
-  B's trials.
+- Seed 24's eighth image from the assignment, the one cell where the form lies below the night without replay beyond 2 SE at block 36, and
+  at block 24 too, and where H-47's plain night lies below it at blocks 18 and 24: what the blocks after the replayed night move there on
+  A's and B's trials.
 - Replay on two of the four nights, on any cell.
 - A read unit by unit, to see which readout units fire on A's trials after the replayed night.
 
@@ -1326,10 +1327,12 @@ Questions this suggests for a later exploration or a round:
 - **The next day's reading of the pairings a night leaves** pending.
 - **The replayed night read anew**: the form's night after block 6 is H-47's first plain night on the same image, so its ripples and
   pairings by class are exploration 020's and 021's reading, set beside it in section 5 and not read here.
-- **Any SE for sections 4 and 5**: the class matrix, the split and the watch are means or totals over the three paths.
+- **Any SE for section 4, or for section 5's tables of the replayed night and the engine**: the class matrix, the split and the watch are
+  means or totals over the three paths. Section 5's ties carry the paired SE.
 - **H-47's plain night run again**: its rows and reads are H-47's job's and its night lines exploration 020's or 021's, so the form less
   it carries exploration 018's unpaired SE.
-- **Any figure pooled across cells**, in section 6 or elsewhere.
+- **Any count, difference or SE pooled across cells**, in section 6 or elsewhere; the nights and pairings of "The runs are laid out as
+  written" are tallies over the jobs.
 - **Any other share, form, network or seed.**
 
 ## The runs
