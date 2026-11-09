@@ -1331,8 +1331,8 @@ Questions this suggests for a later exploration or a round:
   means or totals over the three paths. Section 5's ties carry the paired SE.
 - **H-47's plain night run again**: its rows and reads are H-47's job's and its night lines exploration 020's or 021's, so the form less
   it carries exploration 018's unpaired SE.
-- **Any count, difference or SE pooled across cells**, in section 6 or elsewhere; the nights and pairings of "The runs are laid out as
-  written" are tallies over the jobs.
+- **Any mean, difference or SE pooled across cells**, in section 6 or elsewhere. The tallies of cells, checkpoints, path-nights, nights
+  and pairings are counts of where each cell's own reading falls, not pooled figures.
 - **Any other share, form, network or seed.**
 
 ## The runs
