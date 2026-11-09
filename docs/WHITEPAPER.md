@@ -1,6 +1,6 @@
 ---
 title: Menteion Architecture Whitepaper
-version: 5.36.0
+version: 5.37.0
 status: active
 date: 2026-11-09
 ---
@@ -11,7 +11,7 @@ date: 2026-11-09
 
 | Document control | |
 | :--- | :--- |
-| Version | 5.36.0 |
+| Version | 5.37.0 |
 | Status | Active (living document; amended by ADR) |
 | Date | 2026-11-09 |
 | Supersedes | Whitepaper 4.134.0 (2026-10-19), whose §6.5 and §11.1 told the rounds now in [docs/research/](research/README.md). It superseded 3.0.0 (2026-09-10, eighteen crates), which superseded Specification 2.8.0 |
@@ -2653,6 +2653,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0240](adr/0240-synapses-from-the-readouts-excitatory-units-held.md) | Synapses from the readouts' excitatory units held through a night | accepted |
 | [ADR-0241](adr/0241-synapses-from-the-readouts-excitatory-units-on-eight-cells.md) | Synapses from the readouts' excitatory units held on H-47's other eight cells | accepted |
 | [ADR-0242](adr/0242-the-readouts-excitatory-hold-split-by-target.md) | The readouts' excitatory hold split by target | accepted |
+| [ADR-0243](adr/0243-the-part-held-within-split-by-target.md) | The part held within split by target | accepted |
 <!-- adr-index: end decisions -->
 
 ---
@@ -3183,7 +3184,7 @@ Milestones follow the founding design note; each ends with an exit test.
 | M8 Digital embodiment, language and the brokered pipelines | Tool ring and broker; hypervector unbinding and the lexicon behind `menteion-linguistic`; the veto gate in the dispatch path; the relay table behind `menteion-thalamus`; the prover and document-engine services (R-10, R-11); a term arena for unification; second records for the crates of [ADR-0016](adr/0016-thirty-two-crate-architecture.md) that need one. | A tool call round trip through the broker under the veto gate, denied and permitted; a frame realised as tokens in both lexicon languages; a two-step refutation certified through the broker and consolidated; a document audit that re-computes a stated figure and flags a contradiction. | Frames, rules, the two categories' opcodes, the resolution step and certification done (ADR-0016); induction, the continued-fraction search and the discovery path's record side done (brief 021, [ADR-0041](adr/0041-induction-on-the-term-arena.md), [ADR-0042](adr/0042-continued-fractions.md), [ADR-0043](adr/0043-discovery-path.md)); broker, rings, stub and dispatch path open; unification done (brief 014, [ADR-0025](adr/0025-term-arena-and-unification.md)); the hypervector body and its algebra, categorial reduction, and the frame's round trip through both on ids done (brief 020, [ADR-0039](adr/0039-hypervector-body.md), [ADR-0040](adr/0040-categorial-reduction.md)); the clause search and a bounded proof search done (brief 022, [ADR-0045](adr/0045-clause-search.md)); the lexicon on ids in both directions done (brief 023, [ADR-0046](adr/0046-lexicon.md)); the words of a language the host's. |
 | M9 Self-amendment | A registry of the parameters the engine may amend; the amendment record and its gates; the trial in two forks of the image; the commit; persistence and replay; the amendment register behind the broker. | A proposal trialled in a fork, committed only with the forks' behaviour hashes equal, persisted, reloaded with the policy derived; a forged record refused by the loader. | Done for the sweep's two parameters ([ADR-0031](adr/0031-policy-amendment.md)): the exit test passes as `runtime/menteion-runtime/tests/amendment.rs`; the other rules' parameters join as the runtime composes them; the register open. |
 | M10 A reward past the trial | A decision and a measured round on a reward that arrives trials after the choice; candidate: options and a critic over several timescales (UPG-03). | A hypothesis written before any run reads yes. | Done: built ([ADR-0208](adr/0208-a-reward-past-the-trial-its-address-kept-built.md)), and [H-43](research/H-43.md) yes on three networks at one and two trials' delay ([ADR-0210](adr/0210-a-reward-past-the-trial-its-address-kept-measured.md)). Untold, [H-45](research/H-45.md) yes too ([ADR-0219](adr/0219-a-delay-the-engine-reads-measured.md)). |
-| M11 Learning that sleep keeps | A learned mapping held through a sleep with replay, against one without; candidate: chained episodes compiled in sleep (UPG-04). | A hypothesis written before any run reads yes. | Open: built ([ADR-0235](adr/0235-learning-that-sleep-keeps-built.md)); [H-47](research/H-47.md) no at step 5 ([ADR-0237](adr/0237-learning-that-sleep-keeps-measured.md)). After explorations 021 to 026, [ADR-0242](adr/0242-the-readouts-excitatory-hold-split-by-target.md) has an exploration split the hold on the synapses from the readouts' excitatory units by target, on H-47's twelve cells. |
+| M11 Learning that sleep keeps | A learned mapping held through a sleep with replay, against one without; candidate: chained episodes compiled in sleep (UPG-04). | A hypothesis written before any run reads yes. | Open: built ([ADR-0235](adr/0235-learning-that-sleep-keeps-built.md)); [H-47](research/H-47.md) no at step 5 ([ADR-0237](adr/0237-learning-that-sleep-keeps-measured.md)). After exploration 027, [ADR-0243](adr/0243-the-part-held-within-split-by-target.md) has an exploration split by target the part of the excitatory hold not onto the other readout's excitatory units, on H-47's twelve cells. |
 | M12 Couplings over long runs | The couplings and the inhibitory sum bounded over many schedules; candidate: a sliding threshold (UPG-02), its layout decided first, since the bytes it asked for are `v_slow`'s; and for the rate's rule, a step adapted every window by its error's whiteness, a sign rule, explored first (2026-10-24). | A hypothesis written before any run reads yes. | Done: [H-46](research/H-46.md) yes on three networks over sixteen schedules ([ADR-0230](adr/0230-a-zero-sum-at-the-stimulus-measured.md)), closed by [ADR-0232](adr/0232-a-running-configuration-and-m12-closed.md), which names what is unread and what reopens it. Brief 086 builds its exponent into a running configuration, the host setting the zero sum's groups. |
 | M13 Lookahead | A choice made by an imagined rollout, against the reflexive one, on a task that needs it; candidate: a counterfactual rollout (UPG-08), the lookahead [ADR-0099](adr/0099-the-engines-speed.md) ordered. | A hypothesis written before any run reads yes. | Planned, fourth (ADR-0187). |
 | M14 Synthesis in sleep | A REM pass that proposes a term shortening the ledger's description; candidate: combinators under minimum description length (UPG-09). | A hypothesis written before any run reads yes. | Planned, fifth (ADR-0187); M8's remainder sixth. |
