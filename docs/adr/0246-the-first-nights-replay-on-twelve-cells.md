@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-10
 depends-on: ADR-0245
 title: The first night's replay alone, on twelve cells

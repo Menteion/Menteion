@@ -2656,7 +2656,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0243](adr/0243-the-part-held-within-split-by-target.md) | The part held within split by target | accepted |
 | [ADR-0244](adr/0244-the-part-held-within-two-parts-at-a-time.md) | The part held within, two parts at a time | accepted |
 | [ADR-0245](adr/0245-one-cell-night-by-night.md) | One cell, night by night | accepted |
-| [ADR-0246](adr/0246-the-first-nights-replay-on-twelve-cells.md) | The first night's replay alone, on twelve cells | proposed |
+| [ADR-0246](adr/0246-the-first-nights-replay-on-twelve-cells.md) | The first night's replay alone, on twelve cells | accepted |
 <!-- adr-index: end decisions -->
 
 ---
