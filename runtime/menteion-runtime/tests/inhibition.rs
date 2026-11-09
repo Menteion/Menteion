@@ -52267,16 +52267,30 @@ fn e028_moved(
         .collect()
 }
 
+/// How much of the parts its hold leaves free `e028_night` holds, beyond a synapse of the held
+/// units outside the held parts having moved.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum E028Free {
+    /// Nothing more: exploration 028's job.
+    Some,
+    /// A synapse of each part of the part held within left free moved: exploration 029's job.
+    Each,
+    /// That, and a synapse of the held units outside the held parts keeps a trace that is not zero
+    /// at the night's last tick: the trials of explorations 028 and 029.
+    Traced,
+}
+
 /// `e020_night` with exploration 028's hold set on `parts` of `hold`, where it is given: the same
 /// engine, stages, watch and dumps as `e027_night`. With the hold set, its parts are held as
-/// `e028_parts` holds them, and the excitatory synapses are read at the night's first tick, at its
-/// last before the quiet ticks and after them: at its last every synapse of the held parts stands
-/// at its first weight with its trace cleared, a synapse of the held units outside them and a
-/// synapse from a unit outside the hold have moved, held here; and, where `strict`, a synapse of
-/// each other part of the part held within has moved and a synapse of the held units outside the
-/// held parts keeps a trace that is not zero, held here. Each other part's synapses, moved and
-/// with a trace, are dumped as counts; after the quiet ticks what they moved and what the held
-/// parts' synapses will read at their next presynaptic spike are dumped.
+/// `e028_parts` holds them, and two parts as `e029_pairs` holds them too, and the excitatory
+/// synapses are read at the night's first tick, at its last before the quiet ticks and after
+/// them: at its last every synapse of the held parts stands at its first weight with its trace
+/// cleared, a synapse of the held units outside them and a synapse from a unit outside the hold
+/// have moved, held here; and, as `free` says, a synapse of each other part of the part held
+/// within has moved and a synapse of the held units outside the held parts keeps a trace that is
+/// not zero, held here. Each other part's synapses, moved and with a trace, are dumped as counts;
+/// after the quiet ticks what they moved and what the held parts' synapses will read at their next
+/// presynaptic spike are dumped.
 #[allow(clippy::too_many_arguments)]
 fn e028_night(
     start: &NightsStart,
@@ -52286,7 +52300,7 @@ fn e028_night(
     tag: bool,
     watch: bool,
     hold: Option<(&E028Hold, &[NightHoldPart])>,
-    strict: bool,
+    free: E028Free,
 ) -> (Vec<u8>, (u32, u32)) {
     let site = &start.site;
     let sets = site.sets;
@@ -52300,7 +52314,11 @@ fn e028_night(
             exec.set_night_hold_by_target_parts(&h.hold.sources, &h.hold.targets, parts),
             "{label}: every held unit excitatory, in the arena, once, and every target in the arena, once"
         );
-        e028_parts(&exec, h, label);
+        if parts.len() == 2 {
+            e029_pairs(&exec, h, label);
+        } else {
+            e028_parts(&exec, h, label);
+        }
         let held = e028_excitatory(&exec, h, parts);
         let other = e028_others(&exec, h, parts);
         let all = e025_excitatory(&exec, &h.hold.units);
@@ -52413,12 +52431,14 @@ fn e028_night(
                 moved > 0,
                 "{label}: a synapse of the held units outside the held parts moved"
             );
-            if strict {
+            if free != E028Free::Some {
                 for (p, m) in &other_moved {
                     if *p != NightHoldPart::Across {
                         assert!(m.1 > 0, "{label}: a synapse of {p:?} moved");
                     }
                 }
+            }
+            if free == E028Free::Traced {
                 assert!(
                     traced > 0,
                     "{label}: a synapse of the held units outside the held parts keeps a trace at the night's last tick"
@@ -52526,7 +52546,7 @@ fn e028_trial() {
                 tag,
                 true,
                 parts.map(|p| (&hold, p)),
-                true,
+                E028Free::Traced,
             );
             eprintln!("DUMP {at} the night in {} s", clock.elapsed().as_secs());
             let blocks = format!("{at} blocks {NIGHTS_EVERY}");
@@ -52632,7 +52652,7 @@ fn e028_job(n: usize, s: usize) {
                     form.tags(),
                     watch,
                     form.parts().map(|p| (&hold, p)),
-                    false,
+                    E028Free::Some,
                 );
                 e020_split(start, &image, &label, &targets);
                 readings
@@ -52794,4 +52814,534 @@ fn the_part_held_within_by_target_a_first_mapping_on_seed_24_from_the_assignment
 fn the_part_held_within_by_target_a_first_mapping_on_seed_24_from_the_mirrored_assignment_explore()
 {
     e028_job(2, 3);
+}
+
+// ------------------------------- exploration 029: the part held within, two parts at a time (ADR-0244)
+
+/// Exploration 029's forms of a gap (ADR-0244): H-47's night without replay; and H-47's plain
+/// night on A's patterns with two of the three parts of exploration 027's part held within held
+/// together, exploration 028's hold with both parts set: the night held onto the own group and the
+/// inhibitory units, the night held onto the own group and the units outside the readouts, and the
+/// night held onto the inhibitory units and the units outside the readouts. Each pair of parts is
+/// the part held within with one part left to consolidate.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum E029Form {
+    NoReplay,
+    OwnInhibitory,
+    OwnOutside,
+    InhibitoryOutside,
+}
+
+impl E029Form {
+    /// Its name in a label.
+    const fn name(self) -> &'static str {
+        match self {
+            Self::NoReplay => "no-replay",
+            Self::OwnInhibitory => "held-own-and-inhibitory",
+            Self::OwnOutside => "held-own-and-outside",
+            Self::InhibitoryOutside => "held-inhibitory-and-outside",
+        }
+    }
+
+    /// Whether its night tags A's patterns.
+    const fn tags(self) -> bool {
+        !matches!(self, Self::NoReplay)
+    }
+
+    /// The two parts its night holds, if any.
+    const fn parts(self) -> Option<&'static [NightHoldPart]> {
+        match self {
+            Self::NoReplay => None,
+            Self::OwnInhibitory => Some(&[NightHoldPart::OwnGroup, NightHoldPart::Inhibitory]),
+            Self::OwnOutside => Some(&[NightHoldPart::OwnGroup, NightHoldPart::Outside]),
+            Self::InhibitoryOutside => Some(&[NightHoldPart::Inhibitory, NightHoldPart::Outside]),
+        }
+    }
+
+    /// The part of the part held within its hold leaves to consolidate, if it holds any.
+    const fn free(self) -> Option<NightHoldPart> {
+        match self {
+            Self::NoReplay => None,
+            Self::OwnInhibitory => Some(NightHoldPart::Outside),
+            Self::OwnOutside => Some(NightHoldPart::Inhibitory),
+            Self::InhibitoryOutside => Some(NightHoldPart::OwnGroup),
+        }
+    }
+
+    /// The index in `NIGHTS_GAPS` of H-47's form its rows are set beside: the night without
+    /// replay for itself, the plain night on A's patterns for the three held nights.
+    const fn h47(self) -> usize {
+        match self {
+            Self::NoReplay => 0,
+            Self::OwnInhibitory | Self::OwnOutside | Self::InhibitoryOutside => 1,
+        }
+    }
+}
+
+/// A job's four forms, in its tables' order.
+const E029_FORMS: [E029Form; 4] = [
+    E029Form::NoReplay,
+    E029Form::OwnInhibitory,
+    E029Form::OwnOutside,
+    E029Form::InhibitoryOutside,
+];
+
+/// The three pairs of parts, in the tables' order.
+const E029_PAIRS: [E029Form; 3] = [
+    E029Form::OwnInhibitory,
+    E029Form::OwnOutside,
+    E029Form::InhibitoryOutside,
+];
+
+/// The synapses exploration 028's trial printed in each part of the part held within on seed 23
+/// from a first mapping and the assignment (run 42551926531), in `E028_THIRDS`' order.
+const E028_TRIAL_THIRDS: [usize; 3] = [6_919, 4_487, 2_366];
+
+/// The synapses each pair of parts holds on that cell, in `E029_PAIRS`' order: its two parts'.
+const E029_TRIAL_PAIRS: [usize; 3] = [11_406, 9_285, 6_853];
+const _: () = assert!(
+    E028_TRIAL_THIRDS[0] + E028_TRIAL_THIRDS[1] == E029_TRIAL_PAIRS[0]
+        && E028_TRIAL_THIRDS[0] + E028_TRIAL_THIRDS[2] == E029_TRIAL_PAIRS[1]
+        && E028_TRIAL_THIRDS[1] + E028_TRIAL_THIRDS[2] == E029_TRIAL_PAIRS[2]
+        && E028_TRIAL_THIRDS[0] + E028_TRIAL_THIRDS[1] + E028_TRIAL_THIRDS[2]
+            == E027_TRIAL_WITHIN_SYNAPSES
+);
+
+/// A trial's row at block 6 on path 0: the image's CRC-64, A's first count, A's couplings and
+/// the gain at the night's start and end.
+type E029TrialRow = (u64, u8, [i64; 4], Option<(u32, u32)>);
+
+/// The rows exploration 028's trial printed for each part held alone at block 6 on path 0 on that
+/// cell (run 42551926531), in `E028_THIRDS`' order: the image's CRC-64, A's first count, A's
+/// couplings and the gain at the night's start and end.
+const E028_TRIAL_ALONE: [E029TrialRow; 3] = [
+    (
+        17_161_476_349_453_458_528,
+        57,
+        [7_408_792, 5_354_546, 6_072_077, 7_174_358],
+        Some((112_276, 107_422)),
+    ),
+    (
+        16_037_928_774_145_384_866,
+        57,
+        [7_414_445, 5_348_916, 6_066_899, 7_179_549],
+        Some((112_276, 107_414)),
+    ),
+    (
+        11_971_943_527_930_658_059,
+        58,
+        [7_415_802, 5_347_530, 6_060_140, 7_186_290],
+        Some((112_276, 107_448)),
+    ),
+];
+
+/// The index of `part` in `E028_THIRDS`.
+fn e029_third(part: NightHoldPart) -> usize {
+    E028_THIRDS
+        .iter()
+        .position(|&p| p == part)
+        .expect("a part of the part held within")
+}
+
+/// The three pairs of parts in `exec`, synapse by synapse: the three parts held as `e028_parts`
+/// holds them, and each pair of parts exactly the union of its two parts and exactly the part held
+/// within less the part it leaves free, held here; each pair's count, by group, dumped. Returns
+/// the three parts' counts and the three pairs'.
+fn e029_pairs(exec: &Engine, hold: &E028Hold, label: &str) -> ([usize; 3], [usize; 3]) {
+    let thirds = e028_parts(exec, hold, label);
+    let (units, blocks) = (exec.units(), exec.blocks());
+    let mut counts = [[0usize; 2]; 3];
+    for unit in units.iter().filter(|u| u.flags & FLAG_INHIBITORY == 0) {
+        let id = unit.id as u32;
+        let group = hold
+            .hold
+            .sources
+            .binary_search_by_key(&id, |e| e.0)
+            .map_or(0, |i| hold.hold.sources[i].1);
+        for b in unit.chain(blocks) {
+            let block = &blocks[b as usize];
+            for slot in 0..SYNAPSES_PER_BLOCK {
+                let Some(target) = block.target(slot) else {
+                    continue;
+                };
+                let alone = E028_THIRDS.map(|p| e028_in(hold, id, target, p));
+                let within = e027_in(&hold.hold, id, target, NightHoldPart::Within);
+                for (k, form) in E029_PAIRS.iter().enumerate() {
+                    let parts = form.parts().expect("a pair of parts");
+                    let free = form.free().expect("a part left free");
+                    let held = parts.iter().any(|&p| e028_in(hold, id, target, p));
+                    let union = parts.iter().any(|&p| alone[e029_third(p)]);
+                    let less = within && !alone[e029_third(free)];
+                    assert!(
+                        held == union && held == less,
+                        "{label}: {form:?} from unit {id} onto unit {target}: its two parts' union, the part held within less {free:?}"
+                    );
+                    if held {
+                        let g = usize::from(group.saturating_sub(1));
+                        counts[k][g] = counts[k][g].saturating_add(1);
+                    }
+                }
+            }
+        }
+    }
+    let pairs = counts.map(|c| c[0].saturating_add(c[1]));
+    for (k, form) in E029_PAIRS.iter().enumerate() {
+        let parts = form.parts().expect("a pair of parts");
+        let sum = parts
+            .iter()
+            .fold(0usize, |t, &p| t.saturating_add(thirds[e029_third(p)]));
+        assert_eq!(pairs[k], sum, "{label}: {form:?} counts its two parts");
+    }
+    eprintln!(
+        "DUMP {label} pairs of parts: onto the own group and the inhibitory units {} onto the own group and the units outside the readouts {} onto the inhibitory units and the units outside the readouts {}; each its two parts' union and the part held within less the part left free, synapse by synapse; by group [group 1, group 2] {counts:?} in {:?}",
+        pairs[0],
+        pairs[1],
+        pairs[2],
+        E029_PAIRS.map(E029Form::name)
+    );
+    (thirds, pairs)
+}
+
+/// Exploration 029's trial (ADR-0244), on path 0, on seed 23 from a first mapping and the
+/// assignment: the pair's head, then the first night of H-47's plain night on A's patterns, of
+/// each form of `E029_FORMS` and of the plain night with the three parts held together, all
+/// watched. With no hold set, the night without replay and the plain night are each held to the
+/// row H-47 pinned at block 6 on path 0; each held night is held as `e028_night` holds it with
+/// `E028Free::Traced`; on the head's image the three parts are held to exploration 028's trial's
+/// counts and each pair of parts to its two parts' (`e029_pairs`); the night with the three held
+/// together is held to exploration 027's trial's row of the night held within (`E027_TRIAL_WITHIN`);
+/// each held night's row is printed beside H-47's plain night's, exploration 027's trial's night
+/// held within's and exploration 028's trial's rows for its two parts held alone
+/// (`E028_TRIAL_ALONE`), with whether it is each.
+fn e029_trial() {
+    with_nights(1, 2, "e029 trial", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        let targets = e020_targets(&first);
+        let inhibited = e024_held(start, &start.name);
+        let held = e025_held(start, &start.name, &inhibited);
+        let hold = e028_hold(start, &start.name, &inhibited, &held, &targets);
+        let label = format!("{} path 0 head blocks {NIGHTS_EVERY}", start.name);
+        let (head, _) = nights_run(start, start.image, NIGHTS_EVERY, &label, path_from(0));
+        let before = format!("{} path 0 gap {NIGHTS_EVERY} before", start.name);
+        e020_split(start, &head, &before, &targets);
+        {
+            let exec = zero_from(&head, SCAN_UNITS, ZERO_ARM);
+            let (thirds, pairs) = e029_pairs(&exec, &hold, &before);
+            assert_eq!(
+                (thirds, pairs),
+                (E028_TRIAL_THIRDS, E029_TRIAL_PAIRS),
+                "{before}: exploration 028's trial's parts and their pairs"
+            );
+            eprintln!(
+                "DUMP {before} holds the three parts exploration 028's trial's {thirds:?}, together exploration 027's trial's {E027_TRIAL_WITHIN_SYNAPSES} synapses held within, and the three pairs of parts {pairs:?}, each its two parts"
+            );
+            undropped(exec, &before);
+        }
+        // (the name, whether it tags, the parts it holds, H-47's form beside it)
+        let mut nights: Vec<(&str, bool, Option<&[NightHoldPart]>, usize)> = vec![
+            ("plain-first", true, None, 1usize),
+            ("no-replay", false, None, 0),
+        ];
+        for form in E029_PAIRS {
+            nights.push((form.name(), true, form.parts(), form.h47()));
+        }
+        nights.push(("held-three", true, Some(&E028_THIRDS), 1));
+        two_at_a_time(&nights, |&(name, tag, parts, f)| {
+            let at = format!("{} path 0 {name}", start.name);
+            let clock = std::time::Instant::now();
+            let (image, gain) = e028_night(
+                start,
+                &head,
+                &format!("{at} gap {NIGHTS_EVERY}"),
+                &first,
+                tag,
+                true,
+                parts.map(|p| (&hold, p)),
+                E028Free::Traced,
+            );
+            eprintln!("DUMP {at} the night in {} s", clock.elapsed().as_secs());
+            let blocks = format!("{at} blocks {NIGHTS_EVERY}");
+            e020_split(start, &image, &blocks, &targets);
+            let (a, couplings) = spread_read(
+                &start.site,
+                &image,
+                &blocks,
+                "as-it-was 0",
+                nights_read_from(0),
+            );
+            let row = nights_row(NIGHTS_ROWS[1][2][f], 0, 0).expect("H-47 pinned the row");
+            let got = (crc64(&image), a, couplings, Some(gain));
+            let h47 = (row.image, row.first[0], row.couplings, row.gain);
+            match parts {
+                None => {
+                    assert_eq!(got, h47, "{at}: H-47's row at block 6 on path 0");
+                    eprintln!("DUMP {at} holds H-47's row at block 6 on path 0");
+                }
+                Some(p) if p.len() == E028_THIRDS.len() => {
+                    assert_eq!(
+                        got, E027_TRIAL_WITHIN,
+                        "{at}: exploration 027's trial's row of the night held within at block 6 on path 0"
+                    );
+                    eprintln!(
+                        "DUMP {at} holds exploration 027's trial's row of the night held within at block 6 on path 0 {got:?}"
+                    );
+                }
+                Some(p) => {
+                    let alone: Vec<String> = p
+                        .iter()
+                        .map(|&q| {
+                            let r = E028_TRIAL_ALONE[e029_third(q)];
+                            format!(
+                                "exploration 028's trial's {q:?} alone row {r:?}; the same: {}",
+                                got == r
+                            )
+                        })
+                        .collect();
+                    eprintln!(
+                        "DUMP {at} row at block 6 on path 0 {got:?}; H-47's {} row {h47:?}; the same: {}; exploration 027's trial's held-within row {E027_TRIAL_WITHIN:?}; the same: {}; {}",
+                        NIGHTS_GAPS[f].name(),
+                        got == h47,
+                        got == E027_TRIAL_WITHIN,
+                        alone.join("; ")
+                    );
+                }
+            }
+        });
+    });
+}
+
+/// One job of exploration 029: on network `n` from start `s`, exploration 028's job with the forms
+/// of `E029_FORMS`, each on the three paths: the night without replay, every row held to the row
+/// H-47 pinned; each held night held as `e028_night` holds it with `E028Free::Each`, its rows
+/// printed with how many are H-47's rows of the plain night on A's patterns. With A's patterns'
+/// composition, each image's split, the image before each gap with its kinds and split, and the
+/// nights at `WATCH_GAPS` watched.
+fn e029_job(n: usize, s: usize) {
+    with_nights(n, s, "e029", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        e020_patterns(start, &first);
+        let targets = e020_targets(&first);
+        let inhibited = e024_held(start, &start.name);
+        let held = e025_held(start, &start.name, &inhibited);
+        let hold = e028_hold(start, &start.name, &inhibited, &held, &targets);
+        e020_split(
+            start,
+            start.image,
+            &format!("{} start", start.name),
+            &targets,
+        );
+        let heads = Mutex::new(BTreeMap::new());
+        two_at_a_time(&NIGHTS_PATHS, |&j| {
+            let at = format!("{} path {j} head blocks {NIGHTS_EVERY}", start.name);
+            let head = nights_run(start, start.image, NIGHTS_EVERY, &at, path_from(j));
+            heads.lock().expect("a head ended").insert(j, head);
+        });
+        let heads = heads.into_inner().expect("every head ended");
+        let chains: Vec<(usize, u64)> = (0..E029_FORMS.len())
+            .flat_map(|f| NIGHTS_PATHS.iter().map(move |&j| (f, j)))
+            .collect();
+        let kept = Mutex::new(BTreeMap::new());
+        let readings = Mutex::new(BTreeMap::new());
+        two_at_a_time(&chains, |&(f, j)| {
+            let form = E029_FORMS[f];
+            let name = format!("{} path {j} {}", start.name, form.name());
+            let (mut at, mut ends) = heads[&j].clone();
+            for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                let label = format!("{name} blocks {block}");
+                if block > NIGHTS_LAST {
+                    let (image, ends) = nights_run(start, &at, NIGHTS_ON, &label, path_from(j));
+                    e020_split(start, &image, &label, &targets);
+                    readings
+                        .lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (nights_highest(&ends), None));
+                    kept.lock()
+                        .expect("a form ended")
+                        .insert((f, j, c), (label, image));
+                    continue;
+                }
+                if block != NIGHTS_EVERY {
+                    (at, ends) = nights_run(start, &at, NIGHTS_EVERY, &label, path_from(j));
+                }
+                let before = format!("{name} gap {block} before");
+                shared_sums(start, &at, &before);
+                e020_split(start, &at, &before, &targets);
+                let gap = format!("{name} gap {block}");
+                let watch = WATCH_GAPS.contains(&block);
+                let (image, gain) = e028_night(
+                    start,
+                    &at,
+                    &gap,
+                    &first,
+                    form.tags(),
+                    watch,
+                    form.parts().map(|p| (&hold, p)),
+                    E028Free::Each,
+                );
+                e020_split(start, &image, &label, &targets);
+                readings
+                    .lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (nights_highest(&ends), Some(gain)));
+                kept.lock()
+                    .expect("a form ended")
+                    .insert((f, j, c), (label, image.clone()));
+                at = image;
+            }
+        });
+        let kept = kept.into_inner().expect("every form ended");
+        let readings = readings.into_inner().expect("every form ended");
+        let read = nights_reads(start, &kept);
+        for (f, form) in E029_FORMS.iter().enumerate() {
+            let mut rows = Vec::new();
+            for (p, &j) in NIGHTS_PATHS.iter().enumerate() {
+                for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                    let key = (f, j, c);
+                    let counts = |pair: bool| -> [u8; 16] {
+                        core::array::from_fn(|i| read[&(key, pair, i as u64)].0)
+                    };
+                    let (highest, gain) = readings[&key];
+                    let row = NightsRow {
+                        image: crc64(&kept[&key].1),
+                        first: counts(false),
+                        second: counts(true),
+                        couplings: read[&(key, false, 0)].1,
+                        highest,
+                        gain,
+                    };
+                    eprintln!(
+                        "DUMP {} {} path {j} block {block} PIN row {row:?}",
+                        start.name,
+                        form.name()
+                    );
+                    assert_eq!(nights_row(&rows, p, c), None, "rows in order");
+                    rows.push(row);
+                }
+            }
+            let beside = NIGHTS_ROWS[n][s][form.h47()];
+            assert!(!beside.is_empty(), "H-47 pinned the form's rows");
+            if form.parts().is_some() {
+                let same = rows.iter().zip(beside).filter(|(a, b)| a == b).count();
+                eprintln!(
+                    "DUMP {} {}: rows the same as H-47's {} rows {same} of {}",
+                    start.name,
+                    form.name(),
+                    NIGHTS_GAPS[form.h47()].name(),
+                    rows.len()
+                );
+            } else {
+                assert_eq!(rows.as_slice(), beside, "{}: H-47's rows", start.name);
+                eprintln!("DUMP {} {}: every row is H-47's", start.name, form.name());
+            }
+        }
+    });
+}
+
+/// Exploration 029's trial, on seed 23 from a first mapping and the assignment.
+#[test]
+#[ignore]
+fn the_harness_of_the_part_held_within_two_parts_at_a_time_explore() {
+    e029_trial();
+}
+
+/// Exploration 029 on seed 22, from the eighth image and the assignment, where A answers readout 1.
+#[test]
+#[ignore]
+fn the_part_held_within_two_parts_at_a_time_the_eighth_image_on_seed_22_from_the_assignment_explore()
+ {
+    e029_job(0, 0);
+}
+
+/// Exploration 029 on seed 22, from the eighth image and the mirrored assignment, where A answers
+/// readout 0.
+#[test]
+#[ignore]
+fn the_part_held_within_two_parts_at_a_time_the_eighth_image_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    e029_job(0, 1);
+}
+
+/// Exploration 029 on seed 22, from a first mapping and the assignment, where A answers readout 0.
+#[test]
+#[ignore]
+fn the_part_held_within_two_parts_at_a_time_a_first_mapping_on_seed_22_from_the_assignment_explore()
+{
+    e029_job(0, 2);
+}
+
+/// Exploration 029 on seed 22, from a first mapping and the mirrored assignment, where A answers
+/// readout 1.
+#[test]
+#[ignore]
+fn the_part_held_within_two_parts_at_a_time_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    e029_job(0, 3);
+}
+
+/// Exploration 029 on seed 23, from the eighth image and the assignment, where A answers readout 1.
+#[test]
+#[ignore]
+fn the_part_held_within_two_parts_at_a_time_the_eighth_image_on_seed_23_from_the_assignment_explore()
+ {
+    e029_job(1, 0);
+}
+
+/// Exploration 029 on seed 23, from the eighth image and the mirrored assignment, where A answers
+/// readout 0.
+#[test]
+#[ignore]
+fn the_part_held_within_two_parts_at_a_time_the_eighth_image_on_seed_23_from_the_mirrored_assignment_explore()
+ {
+    e029_job(1, 1);
+}
+
+/// Exploration 029 on seed 23, from a first mapping and the assignment, where A answers readout 0.
+#[test]
+#[ignore]
+fn the_part_held_within_two_parts_at_a_time_a_first_mapping_on_seed_23_from_the_assignment_explore()
+{
+    e029_job(1, 2);
+}
+
+/// Exploration 029 on seed 23, from a first mapping and the mirrored assignment, where A answers
+/// readout 1.
+#[test]
+#[ignore]
+fn the_part_held_within_two_parts_at_a_time_a_first_mapping_on_seed_23_from_the_mirrored_assignment_explore()
+ {
+    e029_job(1, 3);
+}
+
+/// Exploration 029 on seed 24, from the eighth image and the assignment, where A answers readout 1.
+#[test]
+#[ignore]
+fn the_part_held_within_two_parts_at_a_time_the_eighth_image_on_seed_24_from_the_assignment_explore()
+ {
+    e029_job(2, 0);
+}
+
+/// Exploration 029 on seed 24, from the eighth image and the mirrored assignment, where A answers
+/// readout 0.
+#[test]
+#[ignore]
+fn the_part_held_within_two_parts_at_a_time_the_eighth_image_on_seed_24_from_the_mirrored_assignment_explore()
+ {
+    e029_job(2, 1);
+}
+
+/// Exploration 029 on seed 24, from a first mapping and the assignment, where A answers readout 0.
+#[test]
+#[ignore]
+fn the_part_held_within_two_parts_at_a_time_a_first_mapping_on_seed_24_from_the_assignment_explore()
+{
+    e029_job(2, 2);
+}
+
+/// Exploration 029 on seed 24, from a first mapping and the mirrored assignment, where A answers
+/// readout 1.
+#[test]
+#[ignore]
+fn the_part_held_within_two_parts_at_a_time_a_first_mapping_on_seed_24_from_the_mirrored_assignment_explore()
+ {
+    e029_job(2, 3);
 }
