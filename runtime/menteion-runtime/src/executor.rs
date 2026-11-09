@@ -1428,6 +1428,11 @@ struct Shared {
     night_hold_part_target: Box<[AtomicU8]>,
     night_hold_part_bits: AtomicU8,
     night_hold_part: AtomicBool,
+    /// Exploration 028's split of the part held within (ADR-0243), on its branch alone and in
+    /// no image: whether each unit is inhibitory, written with the hold by
+    /// `Executor::set_night_hold_by_target_parts` from the units' flags, so that a slot onto a
+    /// target of no group is told onto an inhibitory unit or onto an excitatory one.
+    night_hold_part_inhibitory: Box<[AtomicBool]>,
     /// The units that fired this tick, one slot per unit, appended by every worker at the
     /// spike through `fired_len` and taken by the coordinator after the tick into the train
     /// (ADR-0050); empty when the executor keeps no train.
@@ -1469,7 +1474,10 @@ impl Shared {
 
     /// Whether exploration 027's hold by target holds a slot from a held source of `group` onto
     /// `target`: a slot onto a unit of another group than the source's is held across, and every
-    /// other slot within; an empty slot is in neither part.
+    /// other slot within; an empty slot is in neither part. Exploration 028 (ADR-0243) splits the
+    /// part held within in three, on its branch alone: a slot onto a unit of the source's own
+    /// group, one onto an inhibitory unit of no group, and one onto an excitatory unit of no
+    /// group; a slot within is held when the part held within is set or its own third is.
     fn is_held_in_part(&self, group: u8, target: Option<u32>) -> bool {
         let Some(target) = target else {
             return false;
@@ -1478,12 +1486,25 @@ impl Shared {
             .night_hold_part_target
             .get(target as usize)
             .map_or(0, |g| g.load(Ordering::Relaxed));
-        let part = if onto != 0 && onto != group {
-            NightHoldPart::Across
+        let bits = self.night_hold_part_bits.load(Ordering::Relaxed);
+        if onto != 0 && onto != group {
+            return bits & NightHoldPart::Across.bits() != 0;
+        }
+        if bits & NightHoldPart::Within.bits() != 0 {
+            return true;
+        }
+        let third = if onto != 0 {
+            NightHoldPart::OwnGroup
+        } else if self
+            .night_hold_part_inhibitory
+            .get(target as usize)
+            .is_some_and(|flag| flag.load(Ordering::Relaxed))
+        {
+            NightHoldPart::Inhibitory
         } else {
-            NightHoldPart::Within
+            NightHoldPart::Outside
         };
-        self.night_hold_part_bits.load(Ordering::Relaxed) & part.bits() != 0
+        bits & third.bits() != 0
     }
 
     /// `unit`'s group as a held source of the zero sum (ADR-0228), its index plus one; zero for
@@ -1812,8 +1833,10 @@ pub struct Executor<const CAP: usize> {
     night_hold_part_cleared: (u64, u64, i64, i64),
 }
 
-/// Exploration 027's part of a held source's synapses (ADR-0242), on its branch alone and in no
-/// image: which slots of a held source's chain `Executor::set_night_hold_by_target` holds.
+/// Exploration 027's part of a held source's synapses (ADR-0242), and exploration 028's three
+/// parts of its part held within (ADR-0243), on their branch alone and in no image: which slots
+/// of a held source's chain `Executor::set_night_hold_by_target` and
+/// `Executor::set_night_hold_by_target_parts` hold.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum NightHoldPart {
     /// The part held across: each slot onto a target of a group other than its source's.
@@ -1823,16 +1846,28 @@ pub enum NightHoldPart {
     Within,
     /// Both parts together, slot by slot: every slot of a held source's chain.
     Both,
+    /// Exploration 028: of the part held within, each slot onto a target of the source's own
+    /// group.
+    OwnGroup,
+    /// Exploration 028: of the part held within, each slot onto an inhibitory target of no group.
+    Inhibitory,
+    /// Exploration 028: of the part held within, each slot onto an excitatory target of no group.
+    Outside,
 }
 
 impl NightHoldPart {
     /// Its bits in `Shared::night_hold_part_bits`: one for the part held across, two for the
-    /// part held within.
+    /// part held within; exploration 028's three thirds of the part held within four, eight and
+    /// sixteen, each a bit of its own, so that a slot within is held under two or under its
+    /// third's bit.
     const fn bits(self) -> u8 {
         match self {
             Self::Across => 1,
             Self::Within => 2,
             Self::Both => 3,
+            Self::OwnGroup => 4,
+            Self::Inhibitory => 8,
+            Self::Outside => 16,
         }
     }
 }
@@ -2038,6 +2073,7 @@ impl<const CAP: usize> Executor<CAP> {
             night_hold_part_target: (0..config.units).map(|_| AtomicU8::new(0)).collect(),
             night_hold_part_bits: AtomicU8::new(0),
             night_hold_part: AtomicBool::new(false),
+            night_hold_part_inhibitory: (0..config.units).map(|_| AtomicBool::new(false)).collect(),
             fired: (0..fired_slots).map(|_| AtomicU32::new(0)).collect(),
             fired_len: AtomicUsize::new(0),
             episodes: Arena::from_vec(vec![Episode::default(); config.episodes]),
@@ -2438,9 +2474,32 @@ impl<const CAP: usize> Executor<CAP> {
         targets: &[(u32, u8)],
         part: NightHoldPart,
     ) -> bool {
+        self.set_night_hold_by_target_parts(sources, targets, &[part])
+    }
+
+    /// Exploration 028's hold of the part held within split by target (ADR-0243), on its branch
+    /// alone and in no image: `set_night_hold_by_target` with the slots of every part of `parts`
+    /// held together. Of the part held within, `NightHoldPart::OwnGroup` is each slot onto a
+    /// target of the source's own group, `NightHoldPart::Inhibitory` each slot onto an
+    /// inhibitory target of no group and `NightHoldPart::Outside` each slot onto an excitatory
+    /// target of no group, a unit's polarity read from its flags as the hold is set; the three
+    /// together are the part held within, slot for slot. Each held slot is held as
+    /// `set_night_hold_by_target` holds its part, its trace cleared at the night's last tick, and
+    /// every other slot consolidates as before and keeps its trace. Refused, and nothing changed,
+    /// as `set_night_hold_by_target` is refused, and for an empty `parts`.
+    pub fn set_night_hold_by_target_parts(
+        &mut self,
+        sources: &[(u32, u8)],
+        targets: &[(u32, u8)],
+        parts: &[NightHoldPart],
+    ) -> bool {
+        if parts.is_empty() {
+            return false;
+        }
         let units = self.shared.night_hold_part_source.len();
         let mut source_group = vec![0u8; units];
         let mut target_group = vec![0u8; units];
+        let mut inhibitory = vec![false; units];
         let mut blocks = Vec::new();
         {
             let (all, records) = (self.blocks(), self.units());
@@ -2457,6 +2516,11 @@ impl<const CAP: usize> Executor<CAP> {
                 }
                 blocks.extend(u.chain(all).map(|b| (b, group)));
             }
+            if !sources.is_empty() {
+                for (flag, u) in inhibitory.iter_mut().zip(records) {
+                    *flag = Polarity::of_flags(u.flags) == Polarity::Inhibitory;
+                }
+            }
         }
         for &(t, group) in targets {
             match target_group.get_mut(t as usize) {
@@ -2464,7 +2528,11 @@ impl<const CAP: usize> Executor<CAP> {
                 _ => return false,
             }
         }
-        let bits = if sources.is_empty() { 0 } else { part.bits() };
+        let bits = if sources.is_empty() {
+            0
+        } else {
+            parts.iter().fold(0u8, |bits, part| bits | part.bits())
+        };
         if sources.is_empty() {
             target_group.fill(0);
         }
@@ -2473,6 +2541,14 @@ impl<const CAP: usize> Executor<CAP> {
         }
         for (flag, &g) in self.shared.night_hold_part_target.iter().zip(&target_group) {
             flag.store(g, Ordering::Relaxed);
+        }
+        for (flag, &i) in self
+            .shared
+            .night_hold_part_inhibitory
+            .iter()
+            .zip(&inhibitory)
+        {
+            flag.store(i, Ordering::Relaxed);
         }
         self.shared
             .night_hold_part_bits
