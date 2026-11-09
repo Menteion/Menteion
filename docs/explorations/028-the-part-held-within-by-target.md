@@ -54,8 +54,9 @@ sixteen on each of three paths, and a difference carries its paired SE unless an
   onto the units outside the readouts, disjoint and together exploration 027's part held within, 13 772 to 13 903, in every cell, held
   inside the test synapse by synapse. In the trial the three held together ran exploration 027's night held within's row bit for bit.
 - **Less H-47's plain night**, A's count lies beyond twice exploration 018's unpaired SE at 3 of the 60 checkpoints under the night held
-  onto the own group, at 6 under the night held onto the units outside the readouts, all above, and at 13 under the night held onto the
-  inhibitory units, 7 above and 6 below, where exploration 027's night held within lay beyond at 17 and the excitatory night at 25.
+  onto the own group, 1 above and 2 below; at 6 under the night held onto the units outside the readouts, all above; and at 13 under the
+  night held onto the inhibitory units, 7 above and 6 below, where exploration 027's night held within lay beyond at 17 and the excitatory
+  night at 25.
 - **Where the excitatory night lies beyond the plain night**, 25 checkpoints, the night held onto the inhibitory units lies beyond it in the
   same direction at 12, the night held onto the units outside the readouts at 4 and the night held onto the own group at 1.
 - **Less exploration 027's night held within**, the night held onto the inhibitory units lies beyond 2 SE at 8 of the 60 checkpoints, all
@@ -241,7 +242,9 @@ three paths, a group's held units' synapses moved, in each of the twelve cells:
 | Exploration 027's night held within | 0.00, exactly | 0.00, exactly | 0.00, exactly | −6.84 to −4.80 M |
 | The excitatory night (exploration 025's and 026's jobs) | 0.00, exactly | 0.00, exactly | 0.00, exactly | 0.00, exactly |
 
-None of the 24 groups' entries is zero under the plain night or under the night held across, in any of the three parts. So each held form
+None of the 24 groups' entries is zero under the plain night or under the night held across, in any of the three parts; the plain
+night's change onto the own group nearest zero, −0.02 M, is the odd places' held units' on seed 23's first mapping from the assignment.
+So each held form
 holds synapses that the plain night and exploration 027's night held across move, and lets consolidate synapses that exploration 027's night
 held within and the excitatory night hold. Exploration 024's hold holds no excitatory synapse, and the forms in the logs without replay run
 no replay. The trial then printed each held form's row at block 6 on path 0 on seed 23's first mapping from the assignment beside H-47's
@@ -664,7 +667,7 @@ Each held night less the nights run in other jobs, with [exploration 018](018-wh
   its unpaired SE at 13 of the 60, 4 above and 9 below. Above: on seed 22's eighth image from the mirrored assignment at blocks 24 and 36,
   +5.0 ± 1.04 and +4.0 ± 0.72, and on seed 23's eighth image from the mirrored assignment at blocks 18 and 24, +3.5 ± 1.27 and +2.5 ± 1.03.
   Below: on seed 24's eighth image from the mirrored assignment from block 12 on, −3.6 ± 1.44 to −5.9 ± 2.26; on seed 24's first mapping
-  from the assignment at block 12, −2.2 ± 0.93; on seed 23's eighth image from the assignment at blocks 12, 24 and 36, −3.7 ± 1.01 to
+  from the assignment at block 12, −2.2 ± 0.93; on seed 23's eighth image from the assignment at blocks 12, 24 and 36, −3.7 ± 0.90 to
   −4.8 ± 0.75; and on seed 23's first mapping from the mirrored assignment at block 18, −1.6 ± 0.81.
 - **Less the excitatory night**, the night held onto the own group lies between −8.8 and +5.0, beyond twice its unpaired SE at 20 of the
   60, 3 above and 17 below; the night held onto the inhibitory units between −7.4 and +1.1, beyond at 11, all below; and the night held
@@ -674,13 +677,13 @@ Each held night less the nights run in other jobs, with [exploration 018](018-wh
   from the assignment, each at blocks 24 and 36, and on seed 23's eighth image from the mirrored assignment at blocks 18 and 24; all where A
   answers readout 0. Each lies below on seed 24's eighth image from the mirrored assignment, the night held onto the own
   group and the night held onto the units outside the readouts at every checkpoint and the night held onto the inhibitory units at blocks 6,
-  24 and 36, and on seed 23's and seed 24's eighth images from the assignment: the night held onto the own group on seed 23's from block 12
-  on and on seed 24's from block 12 on; the night held onto the inhibitory units on seed 23's at blocks 24 and 36 and on seed 24's from
-  block 12 on; and the night held onto the units outside the readouts on seed 23's at blocks 12, 24 and 36 and on seed 24's from block 18
-  on. The other checkpoints below are on seed 23's first mapping from the mirrored assignment, from block 18 on under the night held onto
-  the own group and at blocks 18 and 36 under the night held onto the units outside the readouts; on seed 24's first mapping from the
-  mirrored assignment at blocks 12 and 18 under the night held onto the inhibitory units; and on seed 22's eighth image from the assignment
-  at block 24 under the night held onto the own group.
+  24 and 36. Each lies below on seed 23's eighth image from the assignment, the night held onto the own group from block 12 on, the night
+  held onto the inhibitory units at blocks 24 and 36 and the night held onto the units outside the readouts at blocks 12, 24 and 36; and on
+  seed 24's eighth image from the assignment, the night held onto the own group and the night held onto the inhibitory units from block 12
+  on and the night held onto the units outside the readouts from block 18 on. The other checkpoints below are on seed 23's first mapping
+  from the mirrored assignment, from block 18 on under the night held onto the own group and at blocks 18 and 36 under the night held onto
+  the units outside the readouts; on seed 24's first mapping from the mirrored assignment at blocks 12 and 18 under the night held onto the
+  inhibitory units; and on seed 22's eighth image from the assignment at block 24 under the night held onto the own group.
 
 Each stimulus's correct trials, the mean of the 48 reads, under each form, A's and then B's:
 
@@ -1491,7 +1494,8 @@ outside the hold onto every target:
   +0.16 to +0.96 M under the night held onto the inhibitory units and −0.03 to +0.11 M under the night held onto the units outside the
   readouts, where exploration 027's night held within's was +0.33 to +1.11 M and the excitatory night's +0.69 to +1.92 M. Under each form
   with replay, in each of the twelve cells over the four nights, it rose by more onto the group A answers than onto the other: by 0.02 to
-  3.63 M, 0.21 to 3.89 M and 0.19 to 3.67 M under the three held nights, and 0.10 to 3.71 M under the plain night. Onto the inhibitory
+  3.63 M, 0.21 to 3.89 M and 0.19 to 3.67 M under the three held nights, and 0.10 to 3.71 M under the plain night, the least under each
+  on seed 24's first mapping from the mirrored assignment and the most on seed 24's first mapping from the assignment. Onto the inhibitory
   units it rose by 2.37 to 4.61 M, 2.63 to 4.85 M and 2.38 to 4.58 M, where the plain night's rose by 2.32 to 4.55 M.
 - **The excitatory units outside the hold**: the pair's own units onto all moved by −0.13 to +0.08 M under the night held onto the own
   group, −0.13 to +0.09 M under the night held onto the inhibitory units and −0.14 to +0.08 M under the night held onto the units outside
@@ -1931,20 +1935,22 @@ the 25 checkpoints where the excitatory night lies beyond 2 SE of the plain nigh
 group at 1. Less exploration 027's night held within it lies beyond 2 SE at 8 of the 60, all below, where the night held onto the units
 outside the readouts lies beyond at 13 and the night held onto the own group at 17; less the excitatory night at 11, all below, against 19
 and 20. Its side at block 36 is the excitatory night's in eleven of the twelve cells. It is the only one of the three under which the
-inhibition onto each group's excitatory units rose by more than under the plain night in every group, by 0.16 to 0.96 M, where exploration
-027's night held within's rose by 0.33 to 1.11 M more.
+inhibition onto each group's excitatory units rose by more than under the plain night in every group, by 0.16 to 0.96 M, the least onto
+the even places on seed 22's first mapping from the mirrored assignment and the most onto the odd places on seed 23's eighth image from
+the mirrored assignment, where exploration 027's night held within's rose by 0.33 to 1.11 M more.
 
 **No part alone gives exploration 027's night held within.** Of the 8 checkpoints where the night held onto the inhibitory units lies
 below it beyond 2 SE, 6 are on seed 24's eighth image from the mirrored assignment at blocks 12, 18 and 24 and on seed 23's eighth image
-from the assignment from block 18 on, and every held night here lies below the excitatory night beyond 2 SE on seed 24's eighth image from the mirrored assignment and on seed
-23's and seed 24's eighth images from the assignment, at block 36 among other checkpoints. Where exploration 027 held the three parts
-together, its count lay within 2 SE of the excitatory night's at 56 of the 60 checkpoints.
+from the assignment from block 18 on. Every held night here lies below the excitatory night beyond 2 SE on seed 24's eighth image from
+the mirrored assignment, on seed 23's eighth image from the assignment and on seed 24's eighth image from the assignment, at block 36
+among other checkpoints. Where exploration 027 held the three parts together, its count lay within 2 SE of the excitatory night's at 56
+of the 60 checkpoints.
 
 Questions this suggests for a later exploration or a round:
 - Two parts held together, the part onto the inhibitory units with each of the other two, to find whether the count of the night held
   within needs more than one of its parts held.
-- What on seed 24's eighth images from both arms and seed 23's eighth image from the assignment keeps every single part's hold below the
-  excitatory night at block 36.
+- What on seed 24's eighth image from the mirrored assignment, seed 23's eighth image from the assignment and seed 24's eighth image from
+  the assignment keeps every single part's hold below the excitatory night at block 36.
 - A read of what the next day's first consolidations do with the pending gains and losses.
 
 ## What did not run
