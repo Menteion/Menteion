@@ -1403,6 +1403,36 @@ struct Shared {
     zero_sum_source: Box<[AtomicU8]>,
     zero_sum_target: Box<[AtomicBool]>,
     zero_sum_touched: AtomicU64,
+    /// Exploration 024's night hold, on its branch alone and in no image: whether each unit is
+    /// a held target, written between ticks by `Executor::set_night_hold`; and whether this
+    /// tick holds, stored by the coordinator before the tick's first barrier: true while a hold
+    /// is set and the engine is in slow-wave sleep or REM. While it is true no slot of an
+    /// inhibitory block onto a held target consolidates in the fan-out phase.
+    night_hold_target: Box<[AtomicBool]>,
+    night_hold: AtomicBool,
+    /// Exploration 025's excitatory night hold, on its branch alone and in no image: whether
+    /// each unit is a held source, written between ticks by `Executor::set_night_hold_sources`;
+    /// and whether this tick holds, stored by the coordinator before the tick's first barrier:
+    /// true while the hold is set and the engine is in slow-wave sleep or REM. While it is true
+    /// no block of a held source consolidates in the fan-out phase.
+    night_hold_source: Box<[AtomicBool]>,
+    night_hold_sources: AtomicBool,
+    /// Exploration 027's hold by target (ADR-0242), on its branch alone and in no image: each
+    /// unit's group as a held source, zero for a unit not held, and as a target, zero for a unit
+    /// of no group, both written between ticks by `Executor::set_night_hold_by_target`; the part
+    /// it holds, `NightHoldPart::bits`; and whether this tick holds, stored by the coordinator
+    /// before the tick's first barrier: true while the hold is set and the engine is in
+    /// slow-wave sleep or REM. While it is true no slot of a held source's block that the part
+    /// names consolidates in the fan-out phase.
+    night_hold_part_source: Box<[AtomicU8]>,
+    night_hold_part_target: Box<[AtomicU8]>,
+    night_hold_part_bits: AtomicU8,
+    night_hold_part: AtomicBool,
+    /// Exploration 028's split of the part held within (ADR-0243), on its branch alone and in
+    /// no image: whether each unit is inhibitory, written with the hold by
+    /// `Executor::set_night_hold_by_target_parts` from the units' flags, so that a slot onto a
+    /// target of no group is told onto an inhibitory unit or onto an excitatory one.
+    night_hold_part_inhibitory: Box<[AtomicBool]>,
     /// The units that fired this tick, one slot per unit, appended by every worker at the
     /// spike through `fired_len` and taken by the coordinator after the tick into the train
     /// (ADR-0050); empty when the executor keeps no train.
@@ -1418,6 +1448,65 @@ struct Shared {
 }
 
 impl Shared {
+    /// Whether `unit` is a held target of exploration 024's night hold; false for one outside the
+    /// arena, which no slot names.
+    fn is_night_held(&self, unit: u32) -> bool {
+        self.night_hold_target
+            .get(unit as usize)
+            .is_some_and(|flag| flag.load(Ordering::Relaxed))
+    }
+
+    /// Whether `unit` is a held source of exploration 025's excitatory night hold; false for one
+    /// outside the arena, which no spike names.
+    fn is_night_held_source(&self, unit: u32) -> bool {
+        self.night_hold_source
+            .get(unit as usize)
+            .is_some_and(|flag| flag.load(Ordering::Relaxed))
+    }
+
+    /// `unit`'s group as a held source of exploration 027's hold by target; zero for a unit not
+    /// held, and for one outside the arena, which no spike names.
+    fn night_hold_part_group(&self, unit: u32) -> u8 {
+        self.night_hold_part_source
+            .get(unit as usize)
+            .map_or(0, |group| group.load(Ordering::Relaxed))
+    }
+
+    /// Whether exploration 027's hold by target holds a slot from a held source of `group` onto
+    /// `target`: a slot onto a unit of another group than the source's is held across, and every
+    /// other slot within; an empty slot is in neither part. Exploration 028 (ADR-0243) splits the
+    /// part held within in three, on its branch alone: a slot onto a unit of the source's own
+    /// group, one onto an inhibitory unit of no group, and one onto an excitatory unit of no
+    /// group; a slot within is held when the part held within is set or its own third is.
+    fn is_held_in_part(&self, group: u8, target: Option<u32>) -> bool {
+        let Some(target) = target else {
+            return false;
+        };
+        let onto = self
+            .night_hold_part_target
+            .get(target as usize)
+            .map_or(0, |g| g.load(Ordering::Relaxed));
+        let bits = self.night_hold_part_bits.load(Ordering::Relaxed);
+        if onto != 0 && onto != group {
+            return bits & NightHoldPart::Across.bits() != 0;
+        }
+        if bits & NightHoldPart::Within.bits() != 0 {
+            return true;
+        }
+        let third = if onto != 0 {
+            NightHoldPart::OwnGroup
+        } else if self
+            .night_hold_part_inhibitory
+            .get(target as usize)
+            .is_some_and(|flag| flag.load(Ordering::Relaxed))
+        {
+            NightHoldPart::Inhibitory
+        } else {
+            NightHoldPart::Outside
+        };
+        bits & third.bits() != 0
+    }
+
     /// `unit`'s group as a held source of the zero sum (ADR-0228), its index plus one; zero for
     /// any other unit, and for one outside the arena, which no spike names.
     fn zero_sum_group(&self, unit: u32) -> u8 {
@@ -1723,6 +1812,64 @@ pub struct Executor<const CAP: usize> {
     zero_sum_targets: Vec<bool>,
     zero_sum_fractions: Vec<u32>,
     zero_sum_at: Vec<(u32, u8)>,
+    /// Exploration 024's night hold, on its branch alone and in no image, empty while unset: the
+    /// blocks of every inhibitory unit's chain, whose slots onto a held target the hold keeps
+    /// from consolidating while the engine sleeps and whose traces it clears at the night's last
+    /// tick; and what the clearings took, in `night_hold_cleared`'s order.
+    night_hold_blocks: Vec<u32>,
+    night_hold_cleared: (u64, u64, i64, i64),
+    /// Exploration 025's excitatory night hold, on its branch alone and in no image, empty while
+    /// unset: the blocks of every held source's chain, which the hold keeps from consolidating
+    /// while the engine sleeps and whose traces it clears at the night's last tick; and what the
+    /// clearings took, in `night_hold_sources_cleared`'s order.
+    night_hold_source_blocks: Vec<u32>,
+    night_hold_source_cleared: (u64, u64, i64, i64),
+    /// Exploration 027's hold by target, on its branch alone and in no image, empty while
+    /// unset: the blocks of every held source's chain, whose slots in the part the hold keeps
+    /// from consolidating while the engine sleeps and whose traces it clears at the night's last
+    /// tick, each with its source's group; and what the clearings took, in
+    /// `night_hold_part_cleared`'s order.
+    night_hold_part_blocks: Vec<(u32, u8)>,
+    night_hold_part_cleared: (u64, u64, i64, i64),
+}
+
+/// Exploration 027's part of a held source's synapses (ADR-0242), and exploration 028's three
+/// parts of its part held within (ADR-0243), on their branch alone and in no image: which slots
+/// of a held source's chain `Executor::set_night_hold_by_target` and
+/// `Executor::set_night_hold_by_target_parts` hold.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum NightHoldPart {
+    /// The part held across: each slot onto a target of a group other than its source's.
+    Across,
+    /// The part held within: each other slot, onto a target of the source's own group or of no
+    /// group.
+    Within,
+    /// Both parts together, slot by slot: every slot of a held source's chain.
+    Both,
+    /// Exploration 028: of the part held within, each slot onto a target of the source's own
+    /// group.
+    OwnGroup,
+    /// Exploration 028: of the part held within, each slot onto an inhibitory target of no group.
+    Inhibitory,
+    /// Exploration 028: of the part held within, each slot onto an excitatory target of no group.
+    Outside,
+}
+
+impl NightHoldPart {
+    /// Its bits in `Shared::night_hold_part_bits`: one for the part held across, two for the
+    /// part held within; exploration 028's three thirds of the part held within four, eight and
+    /// sixteen, each a bit of its own, so that a slot within is held under two or under its
+    /// third's bit.
+    const fn bits(self) -> u8 {
+        match self {
+            Self::Across => 1,
+            Self::Within => 2,
+            Self::Both => 3,
+            Self::OwnGroup => 4,
+            Self::Inhibitory => 8,
+            Self::Outside => 16,
+        }
+    }
 }
 
 // The executor is not `Sync` (ADR-0224): `Executor::units` writes the asleep units' records
@@ -1918,6 +2065,15 @@ impl<const CAP: usize> Executor<CAP> {
             zero_sum_source: (0..config.units).map(|_| AtomicU8::new(0)).collect(),
             zero_sum_target: (0..config.units).map(|_| AtomicBool::new(false)).collect(),
             zero_sum_touched: AtomicU64::new(0),
+            night_hold_target: (0..config.units).map(|_| AtomicBool::new(false)).collect(),
+            night_hold: AtomicBool::new(false),
+            night_hold_source: (0..config.units).map(|_| AtomicBool::new(false)).collect(),
+            night_hold_sources: AtomicBool::new(false),
+            night_hold_part_source: (0..config.units).map(|_| AtomicU8::new(0)).collect(),
+            night_hold_part_target: (0..config.units).map(|_| AtomicU8::new(0)).collect(),
+            night_hold_part_bits: AtomicU8::new(0),
+            night_hold_part: AtomicBool::new(false),
+            night_hold_part_inhibitory: (0..config.units).map(|_| AtomicBool::new(false)).collect(),
             fired: (0..fired_slots).map(|_| AtomicU32::new(0)).collect(),
             fired_len: AtomicUsize::new(0),
             episodes: Arena::from_vec(vec![Episode::default(); config.episodes]),
@@ -2067,6 +2223,12 @@ impl<const CAP: usize> Executor<CAP> {
             zero_sum_targets: Vec::new(),
             zero_sum_fractions: Vec::new(),
             zero_sum_at: Vec::new(),
+            night_hold_blocks: Vec::new(),
+            night_hold_cleared: (0, 0, 0, 0),
+            night_hold_source_blocks: Vec::new(),
+            night_hold_source_cleared: (0, 0, 0, 0),
+            night_hold_part_blocks: Vec::new(),
+            night_hold_part_cleared: (0, 0, 0, 0),
         })
     }
 
@@ -2132,6 +2294,309 @@ impl<const CAP: usize> Executor<CAP> {
     /// How many groups the zero sum holds (ADR-0228), none while unset.
     pub fn zero_sum_groups(&self) -> usize {
         self.zero_sum_groups.len()
+    }
+
+    /// Exploration 024's night hold, on its branch alone and in no image: between ticks, holds
+    /// every inhibitory synapse onto one of `targets` through each night. While the engine is in
+    /// slow-wave sleep or REM such a synapse does not consolidate, so its weight stays where it
+    /// stood while its trace takes the night's pairings; at the tick that wakes the engine, the
+    /// night's last, its trace is cleared to zero. Every other synapse consolidates as before.
+    /// An empty `targets` unsets it, and unset (the default) every run is the run it was, bit
+    /// for bit. Refused, and nothing changed, for a target outside the arena.
+    pub fn set_night_hold(&mut self, targets: &[u32]) -> bool {
+        let units = self.shared.night_hold_target.len();
+        if targets.iter().any(|&t| t as usize >= units) {
+            return false;
+        }
+        let mut held = vec![false; units];
+        for &t in targets {
+            held[t as usize] = true;
+        }
+        let blocks: Vec<u32> = if targets.is_empty() {
+            Vec::new()
+        } else {
+            let all = self.blocks();
+            self.units()
+                .iter()
+                .filter(|u| Polarity::of_flags(u.flags) == Polarity::Inhibitory)
+                .flat_map(|u| u.chain(all))
+                .collect()
+        };
+        for (flag, &is) in self.shared.night_hold_target.iter().zip(&held) {
+            flag.store(is, Ordering::Relaxed);
+        }
+        self.night_hold_blocks = blocks;
+        self.night_hold_cleared = (0, 0, 0, 0);
+        true
+    }
+
+    /// What exploration 024's night hold cleared at the nights' last ticks, summed over them:
+    /// the held slots, the slots whose trace was not zero, and the traces cleared above zero
+    /// and below it, in Q1.15 LSB. All zero while unset.
+    pub fn night_hold_cleared(&self) -> (u64, u64, i64, i64) {
+        self.night_hold_cleared
+    }
+
+    /// Exploration 024: every held slot's trace cleared, after the night's last tick, and what
+    /// it held added to `night_hold_cleared`. Nothing while unset.
+    fn clear_night_held(&mut self) {
+        if self.night_hold_blocks.is_empty() {
+            return;
+        }
+        let chains = std::mem::take(&mut self.night_hold_blocks);
+        let (mut slots, mut nonzero, mut above, mut below) = self.night_hold_cleared;
+        // SAFETY: between ticks, every worker parked at the barrier; as in `blocks_mut`.
+        let blocks = unsafe { self.shared.blocks.as_mut_slice() };
+        for &b in &chains {
+            let Some(block) = blocks.get_mut(b as usize) else {
+                abort("a held chain names a block outside the arena");
+            };
+            for slot in 0..SYNAPSES_PER_BLOCK {
+                if !block
+                    .target(slot)
+                    .is_some_and(|t| self.shared.is_night_held(t))
+                {
+                    continue;
+                }
+                let trace = i64::from(block.eligibility_q1_15[slot]);
+                slots = slots.saturating_add(1);
+                nonzero = nonzero.saturating_add(u64::from(trace != 0));
+                if trace > 0 {
+                    above = above.saturating_add(trace);
+                } else {
+                    below = below.saturating_add(trace);
+                }
+                block.eligibility_q1_15[slot] = 0;
+            }
+        }
+        self.night_hold_cleared = (slots, nonzero, above, below);
+        self.night_hold_blocks = chains;
+    }
+
+    /// Exploration 025's excitatory night hold, on its branch alone and in no image: between
+    /// ticks, holds every synapse from one of `sources`, onto whatever target, through each
+    /// night. While the engine is in slow-wave sleep or REM no block of such a unit
+    /// consolidates, not even at modulation zero, so each of its weights stays where it stood
+    /// while its trace takes the night's pairings; at the tick that wakes the engine, the night's
+    /// last, every trace of its blocks is cleared to zero. Every other synapse consolidates as
+    /// before, and exploration 024's hold (`set_night_hold`) is set or unset apart from this one.
+    /// An empty `sources` unsets it, and unset (the default) every run is the run it was, bit for
+    /// bit. Refused, and nothing changed, for a source outside the arena, one that is not
+    /// excitatory, or one named twice.
+    pub fn set_night_hold_sources(&mut self, sources: &[u32]) -> bool {
+        let units = self.shared.night_hold_source.len();
+        let mut held = vec![false; units];
+        let mut blocks = Vec::new();
+        {
+            let (all, records) = (self.blocks(), self.units());
+            for &s in sources {
+                let Some(u) = records.get(s as usize) else {
+                    return false;
+                };
+                if Polarity::of_flags(u.flags) != Polarity::Excitatory {
+                    return false;
+                }
+                match held.get_mut(s as usize) {
+                    Some(flag @ false) => *flag = true,
+                    _ => return false,
+                }
+                blocks.extend(u.chain(all));
+            }
+        }
+        for (flag, &is) in self.shared.night_hold_source.iter().zip(&held) {
+            flag.store(is, Ordering::Relaxed);
+        }
+        self.night_hold_source_blocks = blocks;
+        self.night_hold_source_cleared = (0, 0, 0, 0);
+        true
+    }
+
+    /// What exploration 025's excitatory night hold cleared at the nights' last ticks, summed
+    /// over them: the held slots, the slots whose trace was not zero, and the traces cleared
+    /// above zero and below it, in Q1.15 LSB. All zero while unset.
+    pub fn night_hold_sources_cleared(&self) -> (u64, u64, i64, i64) {
+        self.night_hold_source_cleared
+    }
+
+    /// Exploration 025: every slot of a held source's chain cleared of its trace, after the
+    /// night's last tick, and what it held added to `night_hold_sources_cleared`. Nothing while
+    /// unset.
+    fn clear_night_held_sources(&mut self) {
+        if self.night_hold_source_blocks.is_empty() {
+            return;
+        }
+        let chains = std::mem::take(&mut self.night_hold_source_blocks);
+        let (mut slots, mut nonzero, mut above, mut below) = self.night_hold_source_cleared;
+        // SAFETY: between ticks, every worker parked at the barrier; as in `blocks_mut`.
+        let blocks = unsafe { self.shared.blocks.as_mut_slice() };
+        for &b in &chains {
+            let Some(block) = blocks.get_mut(b as usize) else {
+                abort("a held source's chain names a block outside the arena");
+            };
+            for slot in 0..SYNAPSES_PER_BLOCK {
+                if block.target(slot).is_none() {
+                    continue;
+                }
+                let trace = i64::from(block.eligibility_q1_15[slot]);
+                slots = slots.saturating_add(1);
+                nonzero = nonzero.saturating_add(u64::from(trace != 0));
+                if trace > 0 {
+                    above = above.saturating_add(trace);
+                } else {
+                    below = below.saturating_add(trace);
+                }
+                block.eligibility_q1_15[slot] = 0;
+            }
+        }
+        self.night_hold_source_cleared = (slots, nonzero, above, below);
+        self.night_hold_source_blocks = chains;
+    }
+
+    /// Exploration 027's hold by target (ADR-0242), on its branch alone and in no image: between
+    /// ticks, holds one `part` of the synapses from `sources`, each an excitatory unit and its
+    /// group, through each night. `targets` gives the groups of the targets, each a unit and its
+    /// group; a target it does not name is of no group. The part held across is each synapse
+    /// from a held source onto a target of another group than the source's; the part held
+    /// within is each other synapse from a held source; `NightHoldPart::Both` is the two
+    /// together. While the engine is in slow-wave sleep or REM no slot in the part consolidates,
+    /// not even at modulation zero, so its weight stays where it stood while its trace takes the
+    /// night's pairings, slot by slot as exploration 024's hold does; at the tick that wakes the
+    /// engine, the night's last, every slot in the part has its trace cleared to zero, and no
+    /// other. Every other synapse, the other part's among them, consolidates as before and keeps
+    /// its trace. Exploration 024's and 025's holds are set or unset apart from this one; a
+    /// source exploration 025's hold holds is held whole by that hold.
+    /// An empty `sources` unsets it, and unset (the default) every run is the run it was, bit for
+    /// bit. Refused, and nothing changed, for a source or target outside the arena or of group
+    /// zero, a source that is not excitatory, or a unit named twice in either list.
+    pub fn set_night_hold_by_target(
+        &mut self,
+        sources: &[(u32, u8)],
+        targets: &[(u32, u8)],
+        part: NightHoldPart,
+    ) -> bool {
+        self.set_night_hold_by_target_parts(sources, targets, &[part])
+    }
+
+    /// Exploration 028's hold of the part held within split by target (ADR-0243), on its branch
+    /// alone and in no image: `set_night_hold_by_target` with the slots of every part of `parts`
+    /// held together. Of the part held within, `NightHoldPart::OwnGroup` is each slot onto a
+    /// target of the source's own group, `NightHoldPart::Inhibitory` each slot onto an
+    /// inhibitory target of no group and `NightHoldPart::Outside` each slot onto an excitatory
+    /// target of no group, a unit's polarity read from its flags as the hold is set; the three
+    /// together are the part held within, slot for slot. Each held slot is held as
+    /// `set_night_hold_by_target` holds its part, its trace cleared at the night's last tick, and
+    /// every other slot consolidates as before and keeps its trace. Refused, and nothing changed,
+    /// as `set_night_hold_by_target` is refused, and for an empty `parts`.
+    pub fn set_night_hold_by_target_parts(
+        &mut self,
+        sources: &[(u32, u8)],
+        targets: &[(u32, u8)],
+        parts: &[NightHoldPart],
+    ) -> bool {
+        if parts.is_empty() {
+            return false;
+        }
+        let units = self.shared.night_hold_part_source.len();
+        let mut source_group = vec![0u8; units];
+        let mut target_group = vec![0u8; units];
+        let mut inhibitory = vec![false; units];
+        let mut blocks = Vec::new();
+        {
+            let (all, records) = (self.blocks(), self.units());
+            for &(s, group) in sources {
+                let Some(u) = records.get(s as usize) else {
+                    return false;
+                };
+                if group == 0 || Polarity::of_flags(u.flags) != Polarity::Excitatory {
+                    return false;
+                }
+                match source_group.get_mut(s as usize) {
+                    Some(g @ 0) => *g = group,
+                    _ => return false,
+                }
+                blocks.extend(u.chain(all).map(|b| (b, group)));
+            }
+            if !sources.is_empty() {
+                for (flag, u) in inhibitory.iter_mut().zip(records) {
+                    *flag = Polarity::of_flags(u.flags) == Polarity::Inhibitory;
+                }
+            }
+        }
+        for &(t, group) in targets {
+            match target_group.get_mut(t as usize) {
+                Some(g @ 0) if group != 0 => *g = group,
+                _ => return false,
+            }
+        }
+        let bits = if sources.is_empty() {
+            0
+        } else {
+            parts.iter().fold(0u8, |bits, part| bits | part.bits())
+        };
+        if sources.is_empty() {
+            target_group.fill(0);
+        }
+        for (flag, &g) in self.shared.night_hold_part_source.iter().zip(&source_group) {
+            flag.store(g, Ordering::Relaxed);
+        }
+        for (flag, &g) in self.shared.night_hold_part_target.iter().zip(&target_group) {
+            flag.store(g, Ordering::Relaxed);
+        }
+        for (flag, &i) in self
+            .shared
+            .night_hold_part_inhibitory
+            .iter()
+            .zip(&inhibitory)
+        {
+            flag.store(i, Ordering::Relaxed);
+        }
+        self.shared
+            .night_hold_part_bits
+            .store(bits, Ordering::Relaxed);
+        self.night_hold_part_blocks = blocks;
+        self.night_hold_part_cleared = (0, 0, 0, 0);
+        true
+    }
+
+    /// What exploration 027's hold by target cleared at the nights' last ticks, summed over them:
+    /// the held slots, the slots whose trace was not zero, and the traces cleared above zero and
+    /// below it, in Q1.15 LSB. All zero while unset.
+    pub fn night_hold_part_cleared(&self) -> (u64, u64, i64, i64) {
+        self.night_hold_part_cleared
+    }
+
+    /// Exploration 027: every slot in the held part cleared of its trace, after the night's last
+    /// tick, and what it held added to `night_hold_part_cleared`; no slot of the other part.
+    /// Nothing while unset.
+    fn clear_night_held_part(&mut self) {
+        if self.night_hold_part_blocks.is_empty() {
+            return;
+        }
+        let chains = std::mem::take(&mut self.night_hold_part_blocks);
+        let (mut slots, mut nonzero, mut above, mut below) = self.night_hold_part_cleared;
+        // SAFETY: between ticks, every worker parked at the barrier; as in `blocks_mut`.
+        let blocks = unsafe { self.shared.blocks.as_mut_slice() };
+        for &(b, group) in &chains {
+            let Some(block) = blocks.get_mut(b as usize) else {
+                abort("a held source's chain names a block outside the arena");
+            };
+            for slot in 0..SYNAPSES_PER_BLOCK {
+                if !self.shared.is_held_in_part(group, block.target(slot)) {
+                    continue;
+                }
+                let trace = i64::from(block.eligibility_q1_15[slot]);
+                slots = slots.saturating_add(1);
+                nonzero = nonzero.saturating_add(u64::from(trace != 0));
+                if trace > 0 {
+                    above = above.saturating_add(trace);
+                } else {
+                    below = below.saturating_add(trace);
+                }
+                block.eligibility_q1_15[slot] = 0;
+            }
+        }
+        self.night_hold_part_cleared = (slots, nonzero, above, below);
+        self.night_hold_part_blocks = chains;
     }
 
     /// The chains of `sources`, each marked `index` in `source`: none for a unit outside the
@@ -3457,6 +3922,15 @@ impl<const CAP: usize> Executor<CAP> {
                 }
                 let before = self.homeostasis.sleep_stage;
                 self.homeostasis.step_sleep();
+                // Exploration 024: the tick that woke the engine was the night's last, so every
+                // held slot's trace is cleared after it.
+                if before != STAGE_AWAKE && self.homeostasis.sleep_stage == STAGE_AWAKE {
+                    self.clear_night_held();
+                    // Exploration 025: likewise every held source's traces.
+                    self.clear_night_held_sources();
+                    // Exploration 027: likewise the held part's traces, and no other.
+                    self.clear_night_held_part();
+                }
                 // The slow-wave onset (ADR-0056): the arena's garbage is reclaimed once per
                 // entry into the stage, the reclamation §8.8's glymphatic row places there.
                 if before != STAGE_SWS && self.homeostasis.sleep_stage == STAGE_SWS {
@@ -4067,6 +4541,25 @@ impl<const CAP: usize> Executor<CAP> {
             .modulation_inhibitory
             .store(inhibitory_word(modulations.inhibitory), Ordering::Relaxed);
         self.modulator.decay_dopamine(DOPAMINE_TAU_SHIFT);
+        // Exploration 024's night hold, likewise: held this tick while a hold is set and the
+        // engine sleeps.
+        self.shared.night_hold.store(
+            !self.night_hold_blocks.is_empty()
+                && matches!(self.homeostasis.sleep_stage, STAGE_SWS | STAGE_REM),
+            Ordering::Relaxed,
+        );
+        // Exploration 025's excitatory night hold, likewise.
+        self.shared.night_hold_sources.store(
+            !self.night_hold_source_blocks.is_empty()
+                && matches!(self.homeostasis.sleep_stage, STAGE_SWS | STAGE_REM),
+            Ordering::Relaxed,
+        );
+        // Exploration 027's hold by target, likewise.
+        self.shared.night_hold_part.store(
+            !self.night_hold_part_blocks.is_empty()
+                && matches!(self.homeostasis.sleep_stage, STAGE_SWS | STAGE_REM),
+            Ordering::Relaxed,
+        );
         // The gain this tick's turns scale by (ADR-0036), likewise before the barrier: the
         // record's, or under the probe of the step the probe's of it (ADR-0202).
         self.shared
@@ -4435,6 +4928,12 @@ impl<const CAP: usize> Worker<CAP> {
         // The excitatory depression's exponent (ADR-0228), the rule's unless the configuration
         // says otherwise.
         let exponent = shared.depression_exponent;
+        // Exploration 024's night hold this tick, read once.
+        let night_hold = shared.night_hold.load(Ordering::Relaxed);
+        // Exploration 025's excitatory night hold this tick, read once.
+        let night_hold_sources = shared.night_hold_sources.load(Ordering::Relaxed);
+        // Exploration 027's hold by target this tick, read once.
+        let night_hold_part = shared.night_hold_part.load(Ordering::Relaxed);
         for k in 0..self.spiked.len() {
             let (unit, release_u, release_r) = self.spiked[k];
             // SAFETY (phase 2): every turn ended at the barrier, so no `&mut` to any unit
@@ -4451,6 +4950,17 @@ impl<const CAP: usize> Worker<CAP> {
             // The unit's group as a held source of the zero sum (ADR-0228), its index plus one,
             // zero while unset and for every other unit.
             let zero_sum_group = shared.zero_sum_group(unit);
+            // Whether exploration 025's excitatory night hold holds the unit's chain this tick:
+            // a held source is excitatory, as `set_night_hold_sources` holds.
+            let held_source = night_hold_sources && shared.is_night_held_source(unit);
+            // The unit's group as a held source of exploration 027's hold by target this tick,
+            // zero while the hold does not hold and for every other unit; a held source is
+            // excitatory, as `set_night_hold_by_target` holds.
+            let part_group = if night_hold_part {
+                shared.night_hold_part_group(unit)
+            } else {
+                0
+            };
             let mut next = pre.synapse_slab_idx;
             let mut remaining = shared.blocks.len();
             while next != CHAIN_END && remaining > 0 {
@@ -4485,7 +4995,29 @@ impl<const CAP: usize> Worker<CAP> {
                 });
                 block.step_stdp_all_shaped(now, posts, polarity, istdp_alpha, exponent);
                 let before = block.weights_q1_15;
-                consolidate_each(block, &per_slot, polarity);
+                if held_source {
+                    // Exploration 025: no slot of a held source's block consolidates, so every
+                    // weight stays where it stood and every trace keeps what it holds.
+                } else if part_group != 0 {
+                    // Exploration 027: a slot in the held part does not consolidate, so its
+                    // weight stays where it stood and its trace keeps what it holds; every other
+                    // slot consolidates as `consolidate_each` does it, slot by slot.
+                    for (slot, &modulation) in per_slot.iter().enumerate() {
+                        if !shared.is_held_in_part(part_group, block.target(slot)) {
+                            block.consolidate_signed(slot, modulation, polarity);
+                        }
+                    }
+                } else if night_hold && polarity == Polarity::Inhibitory {
+                    // Exploration 024: a slot onto a held target does not consolidate, so its
+                    // weight stays where it stood and its trace keeps what it holds.
+                    for (slot, &modulation) in per_slot.iter().enumerate() {
+                        if !block.target(slot).is_some_and(|t| shared.is_night_held(t)) {
+                            block.consolidate_signed(slot, modulation, polarity);
+                        }
+                    }
+                } else {
+                    consolidate_each(block, &per_slot, polarity);
+                }
                 // The unit's group touched where this consolidation moved one of its synapses
                 // onto a held target, for the coordinator to hold after the tick (ADR-0228).
                 if zero_sum_group != 0 && shared.moved_onto_a_target(block, &before) {

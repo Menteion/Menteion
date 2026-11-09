@@ -20,15 +20,17 @@
 
 use menteion_connectome::{MenteionFileHeader, SECTION_HOMEOSTASIS, SectionEntry, crc64};
 use menteion_core::{
-    ISTDP_ALPHA_Q1_15, MODULATION_ONE_Q16, NO_SPIKE_ON_RECORD, Polarity, STP_MAX, STP_U,
-    SynapseBlock, THRESHOLD_BASE, spike_message,
+    FLAG_INHIBITORY, ISTDP_ALPHA_Q1_15, MODULATION_ONE_Q16, NO_SPIKE_ON_RECORD, Polarity, STP_MAX,
+    STP_U, SYNAPSES_PER_BLOCK, SynapseBlock, THRESHOLD_BASE, spike_message,
 };
 use menteion_hippocampus::{Episode, HippocampalAttractorState, PATTERN_MAX, RIPPLE_SHIFT};
 use menteion_homeostasis::{
     ACTIVITY_BIN_SHIFT, ACTIVITY_WINDOW_BINS, ACTIVITY_WINDOW_SHIFT, HomeostaticDrivePool,
     NIGHT_PHASE, PRESSURE_MAX_Q16, SLEEP_SHIFT_MAX, STAGE_AWAKE, STAGE_REM, STAGE_SWS,
 };
-use menteion_runtime::{Config, ConfigError, Executor, Image, TagError, WorkerReport};
+use menteion_runtime::{
+    Config, ConfigError, Executor, Image, NightHoldPart, TagError, WorkerReport,
+};
 
 const WINDOW: u64 = 1 << ACTIVITY_BIN_SHIFT.wrapping_add(ACTIVITY_WINDOW_SHIFT);
 const RIPPLE: u64 = 1 << RIPPLE_SHIFT;
@@ -657,4 +659,348 @@ fn a_night_after_the_ledger_is_spent_replays_what_is_tagged_after_and_nothing_be
         .map(|e| e.replays)
         .collect::<Vec<_>>();
     assert_eq!(replays, [2, 2], "unspent, the two in turn");
+}
+
+// ------------------------------------------------------------ exploration 027, on its branch
+
+/// The night's longest run in windows before it wakes, for the bound of `through_the_night`.
+const FANNED_WINDOWS_MAX: u32 = 64;
+
+/// The pressure's time constant of `fanned`'s night, short so that the night wakes in a few
+/// windows.
+const FANNED_SHIFT: u8 = 1;
+
+/// A unit and its group, as exploration 027's hold by target takes them.
+type Grouped = (u32, u8);
+
+/// Exploration 027's groups (ADR-0242): unit 0 a held source of group 1, and the targets of its
+/// block: unit 1 of group 1, its own, and units 2 and 5 of group 2, the other; unit 3 of none.
+const FANNED_SOURCES: [(u32, u8); 1] = [(0, 1)];
+const FANNED_TARGETS: [(u32, u8); 3] = [(1, 1), (2, 2), (5, 2)];
+
+/// The slots of unit 0's block each part holds: across, those onto units 2 and 5; within, those
+/// onto units 1 and 3.
+const ACROSS_SLOTS: [usize; 2] = [1, 3];
+const WITHIN_SLOTS: [usize; 2] = [0, 2];
+
+/// The two rings with three more synapses in unit 0's block, onto units 2, 3 and 5, each
+/// `WEIGHT`, one tick of delay, basal: asleep in slow-wave sleep at full pressure under
+/// `FANNED_SHIFT`, so that the night runs to its end, with the first ring and unit 5 tagged.
+fn fanned() -> Executor<64> {
+    let mut exec = Executor::<64>::new(config(1, 8, 8, 2, 0)).unwrap();
+    wire_rings(&mut exec);
+    {
+        let block = &mut exec.blocks_mut()[0];
+        for (slot, target) in [(1usize, 2u32), (2, 3), (3, 5)] {
+            assert!(block.set_synapse(slot, target, WEIGHT, 1, false));
+        }
+    }
+    let mut exec = reload_with(&exec, config(1, 8, 8, 2, 0), |p| {
+        p.sleep_stage = STAGE_SWS;
+        p.sleep_pressure_q16 = PRESSURE_MAX_Q16;
+        p.sleep_shift = FANNED_SHIFT;
+    });
+    assert_eq!(exec.tag_episode(&[0, 1, 2, 3, 5], 5), Ok(0));
+    exec
+}
+
+/// What the engine holds after its night, window by window until the window that wakes it,
+/// with what exploration 025's and exploration 027's holds cleared at the night's last tick.
+fn through_the_night(mut exec: Executor<64>) -> (Held, [(u64, u64, i64, i64); 2]) {
+    for _ in 0..FANNED_WINDOWS_MAX {
+        if exec.sleep_stage() == STAGE_AWAKE {
+            break;
+        }
+        exec.run(WINDOW);
+    }
+    assert_eq!(exec.sleep_stage(), STAGE_AWAKE, "the night ended");
+    let cleared = [
+        exec.night_hold_sources_cleared(),
+        exec.night_hold_part_cleared(),
+    ];
+    let units = exec.units().iter().map(|u| u.encode()).collect();
+    let blocks = exec.blocks().to_vec();
+    let homeostasis = *exec.homeostasis();
+    let counters = (exec.replays(), exec.depotentiations());
+    let held = (
+        units,
+        blocks,
+        homeostasis,
+        counters,
+        spikes(&exec.shutdown()),
+    );
+    (held, cleared)
+}
+
+/// `fanned` with exploration 027's hold set on `part`.
+fn fanned_holding(part: NightHoldPart) -> Executor<64> {
+    let mut exec = fanned();
+    assert!(exec.set_night_hold_by_target(&FANNED_SOURCES, &FANNED_TARGETS, part));
+    exec
+}
+
+/// Exploration 027's hold by target (ADR-0242), on its branch alone. Unset, set and unset again,
+/// or refused, the night is the night as it was, bit for bit, and clears nothing; the two parts
+/// together are exploration 025's hold of the same source, bit for bit, what they cleared with
+/// them; each part alone leaves its slots at their first weights with their traces cleared, and
+/// the other part's slots move as in the night with nothing held.
+#[test]
+fn a_hold_by_target_holds_its_part_slot_by_slot_and_unset_is_the_night_as_it_was() {
+    let (plain, plain_cleared) = through_the_night(fanned());
+    assert_eq!(
+        plain_cleared,
+        [(0, 0, 0, 0); 2],
+        "nothing held, nothing cleared"
+    );
+    let moved: Vec<usize> = (0..SYNAPSES_PER_BLOCK)
+        .filter(|&slot| plain.1[0].weights_q1_15[slot] != WEIGHT)
+        .collect();
+    assert_eq!(
+        moved,
+        [0, 1, 2, 3],
+        "the night moves every slot of unit 0's block"
+    );
+
+    for part in [
+        NightHoldPart::Across,
+        NightHoldPart::Within,
+        NightHoldPart::Both,
+    ] {
+        let mut unset = fanned();
+        assert!(unset.set_night_hold_by_target(&FANNED_SOURCES, &FANNED_TARGETS, part));
+        assert!(unset.set_night_hold_by_target(&[], &FANNED_TARGETS, part));
+        assert_eq!(
+            through_the_night(unset),
+            (plain.clone(), plain_cleared),
+            "{part:?} set and unset: the night as it was"
+        );
+    }
+
+    // Each refusal changes nothing, so the night runs with nothing held.
+    let refused: [(&[Grouped], &[Grouped]); 7] = [
+        (&[(0, 0)], &FANNED_TARGETS),
+        (&[(8, 1)], &FANNED_TARGETS),
+        (&[(0, 1), (0, 1)], &FANNED_TARGETS),
+        (&[(7, 1)], &FANNED_TARGETS),
+        (&FANNED_SOURCES, &[(8, 1)]),
+        (&FANNED_SOURCES, &[(1, 0)]),
+        (&FANNED_SOURCES, &[(1, 1), (1, 2)]),
+    ];
+    for (i, &(sources, targets)) in refused.iter().enumerate() {
+        let mut exec = fanned();
+        // Unit 7 inhibitory for the fourth: an inhibitory source is refused.
+        exec.units_mut()[7].flags |= FLAG_INHIBITORY;
+        let mut beside = fanned();
+        beside.units_mut()[7].flags |= FLAG_INHIBITORY;
+        assert!(
+            !exec.set_night_hold_by_target(sources, targets, NightHoldPart::Both),
+            "refusal {i}"
+        );
+        assert_eq!(
+            through_the_night(exec),
+            through_the_night(beside),
+            "refusal {i}: nothing changed"
+        );
+    }
+
+    let (both, both_cleared) = through_the_night(fanned_holding(NightHoldPart::Both));
+    let mut whole = fanned();
+    assert!(whole.set_night_hold_sources(&[0]));
+    let (sources, sources_cleared) = through_the_night(whole);
+    assert_eq!(
+        both, sources,
+        "both parts: exploration 025's hold, bit for bit"
+    );
+    assert_eq!(
+        (both_cleared[1], both_cleared[0]),
+        (sources_cleared[0], (0, 0, 0, 0)),
+        "both parts clear what exploration 025's hold clears"
+    );
+    assert_eq!(both_cleared[1].0, 4, "every slot of unit 0's block");
+    assert_ne!(both.1[0], plain.1[0], "the hold holds something");
+
+    for (part, held, other) in [
+        (NightHoldPart::Across, ACROSS_SLOTS, WITHIN_SLOTS),
+        (NightHoldPart::Within, WITHIN_SLOTS, ACROSS_SLOTS),
+    ] {
+        let (night, cleared) = through_the_night(fanned_holding(part));
+        let block = night.1[0];
+        for slot in held {
+            assert_eq!(
+                (block.weights_q1_15[slot], block.eligibility_q1_15[slot]),
+                (WEIGHT, 0),
+                "{part:?}: slot {slot} at its first weight, its trace cleared"
+            );
+        }
+        for slot in other {
+            assert_ne!(
+                block.weights_q1_15[slot], WEIGHT,
+                "{part:?}: slot {slot} of the other part moved"
+            );
+        }
+        assert_eq!(
+            (cleared[0], cleared[1].0),
+            ((0, 0, 0, 0), 2),
+            "{part:?}: its two slots cleared, and nothing of exploration 025's"
+        );
+    }
+}
+
+// ------------------------------------------------------------ exploration 028, on its branch
+
+/// The synapses of unit 0's chain in `split`, each a block and a slot: onto unit 1, its own
+/// group; onto units 2 and 5, the other group, held across; onto unit 3, an excitatory unit of no
+/// group; and in the chain's second block, onto unit 6, an inhibitory unit of no group.
+const OWN_SYNAPSE: (usize, usize) = (0, 0);
+const OUTSIDE_SYNAPSE: (usize, usize) = (0, 2);
+const INHIBITORY_SYNAPSE: (usize, usize) = (SPLIT_BLOCK, 0);
+const SPLIT_SYNAPSES: [(usize, usize); 5] = [(0, 0), (0, 1), (0, 2), (0, 3), (SPLIT_BLOCK, 0)];
+
+/// The block chained after unit 0's first, past the rings' eight.
+const SPLIT_BLOCK: usize = 8;
+
+/// `split`'s configuration: `fanned`'s with one block more.
+fn split_config() -> Config {
+    config(1, 8, 9, 2, 0)
+}
+
+/// `fanned` with a second block in unit 0's chain, holding a fifth synapse onto unit 6, made
+/// inhibitory, `WEIGHT`, one tick of delay, basal; unit 6 tagged with the rest, so that it fires
+/// in the night.
+fn split() -> Executor<64> {
+    let mut exec = Executor::<64>::new(split_config()).unwrap();
+    wire_rings(&mut exec);
+    {
+        let blocks = exec.blocks_mut();
+        for (slot, target) in [(1usize, 2u32), (2, 3), (3, 5)] {
+            assert!(blocks[0].set_synapse(slot, target, WEIGHT, 1, false));
+        }
+        assert!(blocks[0].link(SPLIT_BLOCK as u32));
+        assert!(blocks[SPLIT_BLOCK].set_synapse(0, 6, WEIGHT, 1, false));
+    }
+    exec.units_mut()[6].flags |= FLAG_INHIBITORY;
+    let mut exec = reload_with(&exec, split_config(), |p| {
+        p.sleep_stage = STAGE_SWS;
+        p.sleep_pressure_q16 = PRESSURE_MAX_Q16;
+        p.sleep_shift = FANNED_SHIFT;
+    });
+    assert_eq!(exec.tag_episode(&[0, 1, 2, 3, 5, 6], 6), Ok(0));
+    exec
+}
+
+/// `split` with exploration 028's hold set on `parts`.
+fn split_holding(parts: &[NightHoldPart]) -> Executor<64> {
+    let mut exec = split();
+    assert!(exec.set_night_hold_by_target_parts(&FANNED_SOURCES, &FANNED_TARGETS, parts));
+    exec
+}
+
+/// A synapse's weight and trace in what `through_the_night` holds.
+fn synapse(held: &Held, (block, slot): (usize, usize)) -> (i16, i16) {
+    let b = &held.1[block];
+    (b.weights_q1_15[slot], b.eligibility_q1_15[slot])
+}
+
+/// Exploration 028's three parts of the part held within (ADR-0243), on its branch alone. Unset
+/// after any of them was set, or refused, the night is the night as it was, bit for bit; the
+/// three together are exploration 027's part held within, bit for bit, what they cleared with
+/// them, and with the part held across they are both parts; each alone leaves its synapse at its
+/// first weight with its trace cleared, while every other synapse of unit 0's chain moves.
+#[test]
+fn the_part_held_within_split_by_target_holds_each_third_and_unset_is_the_night_as_it_was() {
+    let (plain, plain_cleared) = through_the_night(split());
+    assert_eq!(
+        plain_cleared,
+        [(0, 0, 0, 0); 2],
+        "nothing held, nothing cleared"
+    );
+    for at in SPLIT_SYNAPSES {
+        assert_ne!(
+            synapse(&plain, at).0,
+            WEIGHT,
+            "the night moves synapse {at:?} of unit 0's chain"
+        );
+    }
+    let thirds = [
+        (NightHoldPart::OwnGroup, OWN_SYNAPSE),
+        (NightHoldPart::Inhibitory, INHIBITORY_SYNAPSE),
+        (NightHoldPart::Outside, OUTSIDE_SYNAPSE),
+    ];
+    let all_three = [
+        NightHoldPart::OwnGroup,
+        NightHoldPart::Inhibitory,
+        NightHoldPart::Outside,
+    ];
+
+    for parts in [
+        &[NightHoldPart::OwnGroup][..],
+        &[NightHoldPart::Inhibitory],
+        &[NightHoldPart::Outside],
+        &all_three,
+    ] {
+        let mut unset = split_holding(parts);
+        assert!(unset.set_night_hold_by_target_parts(&[], &FANNED_TARGETS, parts));
+        assert_eq!(
+            through_the_night(unset),
+            (plain.clone(), plain_cleared),
+            "{parts:?} set and unset: the night as it was"
+        );
+    }
+    let mut refused = split();
+    assert!(
+        !refused.set_night_hold_by_target_parts(&FANNED_SOURCES, &FANNED_TARGETS, &[]),
+        "no part: refused"
+    );
+    assert_eq!(
+        through_the_night(refused),
+        (plain.clone(), plain_cleared),
+        "refused: the night as it was"
+    );
+
+    let (three, three_cleared) = through_the_night(split_holding(&all_three));
+    let mut within = split();
+    assert!(within.set_night_hold_by_target(
+        &FANNED_SOURCES,
+        &FANNED_TARGETS,
+        NightHoldPart::Within
+    ));
+    let (within, within_cleared) = through_the_night(within);
+    assert_eq!(three_cleared[1].0, 3, "the three synapses within");
+    assert_ne!(three, plain, "the three together hold something");
+    assert_eq!(
+        (three, three_cleared),
+        (within, within_cleared),
+        "the three together: exploration 027's part held within, bit for bit"
+    );
+    let mut with_across = all_three.to_vec();
+    with_across.push(NightHoldPart::Across);
+    let (four, four_cleared) = through_the_night(split_holding(&with_across));
+    let (both, both_cleared) = through_the_night(split_holding(&[NightHoldPart::Both]));
+    assert_eq!(four_cleared[1].0, 5, "every synapse of unit 0's chain");
+    assert_eq!(
+        (four, four_cleared),
+        (both, both_cleared),
+        "the three with the part held across: both parts, bit for bit"
+    );
+
+    for (part, held) in thirds {
+        let (night, cleared) = through_the_night(split_holding(&[part]));
+        assert_eq!(
+            synapse(&night, held),
+            (WEIGHT, 0),
+            "{part:?}: synapse {held:?} at its first weight, its trace cleared"
+        );
+        for at in SPLIT_SYNAPSES.into_iter().filter(|&at| at != held) {
+            assert_ne!(
+                synapse(&night, at).0,
+                WEIGHT,
+                "{part:?}: synapse {at:?} outside the part moved"
+            );
+        }
+        assert_eq!(
+            (cleared[0], cleared[1].0),
+            ((0, 0, 0, 0), 1),
+            "{part:?}: its one synapse cleared, and nothing of exploration 025's"
+        );
+    }
 }
