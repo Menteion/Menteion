@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-09
 depends-on: ADR-0243
 title: The part held within, two parts at a time
