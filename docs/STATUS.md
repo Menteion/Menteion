@@ -54,6 +54,6 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 ## The next decision
 
 [ADR-0246](adr/0246-the-first-nights-replay-on-twelve-cells.md) reads exploration 030 and writes no hypothesis, and M11 stays open.
-1. M11: exploration 031 runs once ADR-0246 merges. It reads one form beside the night without replay on all twelve of H-47's cells, on a branch of its own: H-47's plain night's replay after block 6 alone, the later nights without replay, the only one of exploration 030's eight forms above the night without replay at block 36 on seed 23's first mapping from the mirrored assignment, on B's trials. Whether a hypothesis follows it is the next decision.
+1. M11: exploration 031 runs once ADR-0246 merges. It reads one form beside the night without replay on all twelve of H-47's cells, on a branch of its own: H-47's plain night's replay after block 6 alone with the later nights without replay, which on seed 23's first mapping from the mirrored assignment was the only one of exploration 030's eight forms above the night without replay beyond 2 SE at block 36, on B's trials. Whether a hypothesis follows it is the next decision.
 2. The schedule's sweep of 2026-11-11 at 20:17Z is the next to record, by the first ADR that merges after it ends.
 3. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
