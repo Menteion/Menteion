@@ -302,12 +302,12 @@ trial's rows for the form's two parts held alone on the same cell: none is the s
   A's patterns, the night without replay, each of the three held nights and the plain night with the three parts held together, all
   watched. With no hold set, the night without replay and the plain night held H-47's row at block 6 on path 0, inside the test. On the
   head's image the three parts were exploration 028's trial's, disjoint and together exactly exploration 027's trial's 13 772 synapses held
-  within, synapse by synapse, held inside the test: 6 919 onto the own group, 3 498 from the odd places and 3 421 from the even; 4 487 onto
-  the inhibitory units, 2 200 and 2 287; and 2 366 onto the units outside the readouts, 1 221 and 1 145. Each pair of parts was exactly its
-  two parts' union and exactly the part held within less the part it leaves free, synapse by synapse, held inside the test: 11 406 onto the
-  own group and the inhibitory units, 5 698 from the odd places and 5 708 from the even; 9 285 onto the own group and the units outside the
-  readouts, 4 719 and 4 566; and 6 853 onto the inhibitory units and the units outside the readouts, 3 421 and 3 432. The part held across
-  is 7 476, 3 705 and 3 771.
+  within, synapse by synapse, held inside the test with their totals: 6 919 onto the own group, 4 487 onto the inhibitory units and 2 366
+  onto the units outside the readouts. Each pair of parts was exactly its two parts' union and exactly the part held within less the part
+  it leaves free, synapse by synapse, held inside the test with its total: 11 406 onto the own group and the inhibitory units, 9 285 onto
+  the own group and the units outside the readouts and 6 853 onto the inhibitory units and the units outside the readouts. By group, as the
+  trial prints them, from the odd places and from the even: the parts 3 498 and 3 421, 2 200 and 2 287, and 1 221 and 1 145; the pairs
+  5 698 and 5 708, 4 719 and 4 566, and 3 421 and 3 432. The part held across is 7 476, 3 705 and 3 771, as the trial prints.
 - With each pair's hold set, the night held, inside the test, every synapse of both parts at its first weight with its trace cleared, a
   synapse of the part left free moved and, at the night's last tick, a synapse of the held units outside the two parts with a trace that is
   not zero. The part left free's synapses and the part held across's that moved and those with a trace at the night's last tick, and what
