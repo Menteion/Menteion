@@ -2653,7 +2653,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0240](adr/0240-synapses-from-the-readouts-excitatory-units-held.md) | Synapses from the readouts' excitatory units held through a night | accepted |
 | [ADR-0241](adr/0241-synapses-from-the-readouts-excitatory-units-on-eight-cells.md) | Synapses from the readouts' excitatory units held on H-47's other eight cells | accepted |
 | [ADR-0242](adr/0242-the-readouts-excitatory-hold-split-by-target.md) | The readouts' excitatory hold split by target | accepted |
-| [ADR-0243](adr/0243-the-part-held-within-split-by-target.md) | The part held within split by target | proposed |
+| [ADR-0243](adr/0243-the-part-held-within-split-by-target.md) | The part held within split by target | accepted |
 <!-- adr-index: end decisions -->
 
 ---
