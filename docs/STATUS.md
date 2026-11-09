@@ -1,7 +1,7 @@
 # Where the work stands
 
 Every round rewrites this page whole, and it holds no history ([ADR-0197](adr/0197-one-place-for-each-kind-of-fact.md)).
-[ADR-0242](adr/0242-the-readouts-excitatory-hold-split-by-target.md) wrote it on 2026-11-09, after exploration 026.
+[ADR-0243](adr/0243-the-part-held-within-split-by-target.md) wrote it on 2026-11-09, after exploration 027.
 
 ## The engine
 
@@ -53,7 +53,7 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 
 ## The next decision
 
-[ADR-0242](adr/0242-the-readouts-excitatory-hold-split-by-target.md) reads exploration 026 and writes no hypothesis, and M11 stays open.
-1. M11: exploration 027 runs once ADR-0242 merges. It splits exploration 025's hold on the synapses from the readouts' excitatory units by target, the part onto the other readout's excitatory units and the rest, and holds each part alone through H-47's plain nights on all twelve of H-47's cells, on a branch of its own. Whether a hypothesis follows it is the next decision.
+[ADR-0243](adr/0243-the-part-held-within-split-by-target.md) reads exploration 027 and writes no hypothesis, and M11 stays open.
+1. M11: exploration 028 runs once ADR-0243 merges. It splits exploration 027's part held within by target, the held units' synapses onto their own group's excitatory units, onto the inhibitory units, and onto A's and B's units and the other excitatory units, and holds each part alone through H-47's plain nights on all twelve of H-47's cells, on a branch of its own. Whether a hypothesis follows it is the next decision.
 2. The schedule's sweep of 2026-11-11 at 20:17Z is the next to record, by the first ADR that merges after it ends.
 3. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
