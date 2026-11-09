@@ -244,12 +244,11 @@ three paths, a group's held units' synapses moved, in each of the twelve cells:
 
 None of the 24 groups' entries is zero under the plain night or under the night held across, in any of the three parts; the plain
 night's change onto the own group nearest zero, −0.02 M, is the odd places' held units' on seed 23's first mapping from the assignment.
-So each held form
-holds synapses that the plain night and exploration 027's night held across move, and lets consolidate synapses that exploration 027's night
-held within and the excitatory night hold. Exploration 024's hold holds no excitatory synapse, and the forms in the logs without replay run
-no replay. The trial then printed each held form's row at block 6 on path 0 on seed 23's first mapping from the assignment beside H-47's
-plain night's and beside exploration 027's trial's night held within's on the same cell: none is the same, as the trial prints. So all four
-forms ran.
+So each held form holds synapses that the plain night and exploration 027's night held across move, and lets consolidate synapses that
+exploration 027's night held within and the excitatory night hold. Exploration 024's hold holds no excitatory synapse, and the forms in
+the logs without replay run no replay. The trial then printed each held form's row at block 6 on path 0 on seed 23's first mapping from
+the assignment beside H-47's plain night's and beside exploration 027's trial's night held within's on the same cell: none is the same, as
+the trial prints. So all four forms ran.
 
 ## The runs are laid out as written
 
