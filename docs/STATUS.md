@@ -1,7 +1,7 @@
 # Where the work stands
 
 Every round rewrites this page whole, and it holds no history ([ADR-0197](adr/0197-one-place-for-each-kind-of-fact.md)).
-[ADR-0244](adr/0244-the-part-held-within-two-parts-at-a-time.md) wrote it on 2026-11-09, after exploration 028.
+[ADR-0245](adr/0245-one-cell-night-by-night.md) wrote it on 2026-11-09, after exploration 029.
 
 ## The engine
 
@@ -53,7 +53,7 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 
 ## The next decision
 
-[ADR-0244](adr/0244-the-part-held-within-two-parts-at-a-time.md) reads exploration 028 and writes no hypothesis, and M11 stays open.
-1. M11: exploration 029 runs once ADR-0244 merges. It holds exploration 028's three parts of the part held within two at a time, each pair the part held within with one part left to consolidate, through H-47's plain nights on all twelve of H-47's cells, on a branch of its own. Whether a hypothesis follows it is the next decision.
+[ADR-0245](adr/0245-one-cell-night-by-night.md) reads exploration 029 and writes no hypothesis, and M11 stays open.
+1. M11: exploration 030 runs once ADR-0245 merges. On seed 23's first mapping from the mirrored assignment, the one cell where every night with replay read in H-47's layout ends below the night without replay at block 36, it replays A's patterns on one night alone and on every night but one, in two jobs, and reads what each night and each stretch after it moved, on a branch of its own. Whether a hypothesis follows it is the next decision.
 2. The schedule's sweep of 2026-11-11 at 20:17Z is the next to record, by the first ADR that merges after it ends.
 3. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
