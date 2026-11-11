@@ -54,6 +54,6 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 ## The next decision
 
 [ADR-0249](adr/0249-one-cells-readout-units-inputs.md) reads exploration 033 and writes no hypothesis, and M11 stays open.
-1. M11: exploration 034 runs on a branch of its own once ADR-0249 merges. On seed 24's eighth image from the assignment, where every replayed night lowered both readouts' spikes and A's correct trials went with which readout fell more, it reads the weights onto each readout unit by the presynaptic unit's class, across each night and stretch, under exploration 033's six forms. Whether a hypothesis follows it is the next decision.
+1. M11: exploration 034 runs on a branch of its own once ADR-0249 merges. On seed 24's eighth image from the assignment, where every replayed night lowered both readouts' spikes on both stimuli's trials, it reads the weights onto each readout unit by the presynaptic unit's class, across each night and stretch, under exploration 033's six forms. Whether a hypothesis follows it is the next decision.
 2. The schedule's sweep of 2026-11-11 at 20:17Z is the next to record, by the first ADR that merges after it ends.
 3. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
