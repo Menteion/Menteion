@@ -50129,3 +50129,139 @@ fn the_first_nights_replay_a_first_mapping_on_seed_22_from_the_mirrored_assignme
 fn the_first_nights_replay_the_eighth_image_on_seed_22_from_the_assignment_explore() {
     e030_job(0, 0, &E031_FORMS);
 }
+
+// -------- exploration 032: each later night's replay alone, on twelve cells (on its branch alone)
+
+/// Exploration 032's four forms (ADR-0247): H-47's night without replay on every night, the job's
+/// control, and exploration 030's three forms replaying after block 12, 18 or 24 alone, H-47's
+/// plain night on A's patterns after that block and its night without replay after the other
+/// three. No hold is set.
+const E032_FORMS: [E030Form; 4] = [E030_NO_REPLAY, E030_ALONE[2], E030_ALONE[3], E030_ALONE[4]];
+
+/// Exploration 032's forms as ADR-0247 writes them, and the row of H-47's that each row up to its
+/// first parting is: every row of the night without replay H-47's night without replay's, and each
+/// form's rows before its replayed night's block H-47's night without replay's, eighteen a cell over
+/// the three paths, none after.
+#[test]
+fn exploration_032_s_forms_and_the_rows_they_are_held_to() {
+    let [none, forms @ ..] = E032_FORMS;
+    assert_eq!(none, E030_NO_REPLAY);
+    let mut held_rows = 0usize;
+    for (k, form) in forms.iter().enumerate() {
+        let night = k.saturating_add(1);
+        let block = WATCH_GAPS[night];
+        assert_eq!(form.name, format!("alone-{block}"));
+        for c in 0..4usize {
+            assert_eq!(none.gap(c), NightsGap::NoReplay);
+            assert_eq!(form.replays[c], c == night, "{}", form.name);
+            assert_eq!(form.gap(c) == NightsGap::PlainFirst, c == night);
+        }
+        for (c, &at) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+            assert_eq!(
+                none.held_to(c),
+                Some(NightsGap::NoReplay),
+                "no-replay at {at}"
+            );
+            let held = (c < night).then_some(NightsGap::NoReplay);
+            assert_eq!(form.held_to(c), held, "{} at {at}", form.name);
+            held_rows = held_rows.saturating_add(usize::from(held.is_some()));
+        }
+    }
+    assert_eq!(
+        held_rows.saturating_mul(NIGHTS_PATHS.len()),
+        18,
+        "eighteen rows a cell"
+    );
+    let first: Vec<Option<NightsGap>> = E032_FORMS.iter().map(|f| f.held_to(0)).collect();
+    assert_eq!(
+        first,
+        [Some(NightsGap::NoReplay); 4],
+        "the trial's four first nights, each without replay"
+    );
+}
+
+/// Exploration 032's trial, on seed 23 from a first mapping and the assignment: the pair's head
+/// and each form's first night on path 0, each without replay.
+#[test]
+#[ignore]
+fn the_harness_of_each_later_nights_replay_alone_on_twelve_cells_explore() {
+    e030_trial(1, 2, &E032_FORMS);
+}
+
+/// Exploration 032, replay after block 12, 18 or 24 alone beside the night without replay, on
+/// seed 22 from the eighth image and the mirrored assignment.
+#[test]
+#[ignore]
+fn each_later_night_alone_the_eighth_image_on_seed_22_from_the_mirrored_assignment_explore() {
+    e030_job(0, 1, &E032_FORMS);
+}
+
+/// Exploration 032 on seed 22 from a first mapping and the assignment.
+#[test]
+#[ignore]
+fn each_later_night_alone_a_first_mapping_on_seed_22_from_the_assignment_explore() {
+    e030_job(0, 2, &E032_FORMS);
+}
+
+/// Exploration 032 on seed 23 from the eighth image and the mirrored assignment.
+#[test]
+#[ignore]
+fn each_later_night_alone_the_eighth_image_on_seed_23_from_the_mirrored_assignment_explore() {
+    e030_job(1, 1, &E032_FORMS);
+}
+
+/// Exploration 032 on seed 23 from a first mapping and the assignment.
+#[test]
+#[ignore]
+fn each_later_night_alone_a_first_mapping_on_seed_23_from_the_assignment_explore() {
+    e030_job(1, 2, &E032_FORMS);
+}
+
+/// Exploration 032 on seed 24 from the eighth image and the mirrored assignment.
+#[test]
+#[ignore]
+fn each_later_night_alone_the_eighth_image_on_seed_24_from_the_mirrored_assignment_explore() {
+    e030_job(2, 1, &E032_FORMS);
+}
+
+/// Exploration 032 on seed 24 from a first mapping and the assignment.
+#[test]
+#[ignore]
+fn each_later_night_alone_a_first_mapping_on_seed_24_from_the_assignment_explore() {
+    e030_job(2, 2, &E032_FORMS);
+}
+
+/// Exploration 032 on seed 23 from the eighth image and the assignment.
+#[test]
+#[ignore]
+fn each_later_night_alone_the_eighth_image_on_seed_23_from_the_assignment_explore() {
+    e030_job(1, 0, &E032_FORMS);
+}
+
+/// Exploration 032 on seed 24 from a first mapping and the mirrored assignment.
+#[test]
+#[ignore]
+fn each_later_night_alone_a_first_mapping_on_seed_24_from_the_mirrored_assignment_explore() {
+    e030_job(2, 3, &E032_FORMS);
+}
+
+/// Exploration 032 on seed 24 from the eighth image and the assignment.
+#[test]
+#[ignore]
+fn each_later_night_alone_the_eighth_image_on_seed_24_from_the_assignment_explore() {
+    e030_job(2, 0, &E032_FORMS);
+}
+
+/// Exploration 032 on seed 22 from a first mapping and the mirrored assignment.
+#[test]
+#[ignore]
+fn each_later_night_alone_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore() {
+    e030_job(0, 3, &E032_FORMS);
+}
+
+/// Exploration 032 on seed 22 from the eighth image and the assignment.
+#[test]
+#[ignore]
+fn each_later_night_alone_the_eighth_image_on_seed_22_from_the_assignment_explore() {
+    e030_job(0, 0, &E032_FORMS);
+}
