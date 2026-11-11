@@ -45,25 +45,27 @@ magnitude, so a + is more inhibition. No SE is claimed for an input. The spikes 
 - **Over each single replayed night the inhibitory input onto both readouts rose and the excitatory input fell**: the inhibitory by 4.18 to
   4.48 M onto a readout and all excitatory by 3.37 to 4.29, where the night without replay's same nights raised the inhibitory input by 0.24
   to 0.36 and moved each excitatory group by 0.18 or less. Each place group's excitatory units lost more onto the other readout than onto
-  their own. The gain fell by 0.061 to 0.065 over each replayed night and rose by 0.033 to 0.037 over each night without replay.
+  their own. The gain fell by 0.061 to 0.065 over each single replayed night and rose by 0.033 to 0.037 over the night without replay's same
+  nights.
 - **Readout 1's units did not lose more input from A's kinds than readout 0's.** Right after each single replayed night A's kinds' input
-  difference onto readout 1 less onto readout 0 read +0.49 to +0.69 M, and A's margin rose by 1.05 to 1.26 M over each replayed night.
-  Readout 1's excitatory input less inhibitory input difference lay below readout 0's by 0.01, 0.48, 0.46 and 0.95 M after block 6, 12, 18
-  and 24 alone, where the spikes' readout 1 less readout 0 on A's trials read +0.48, −1.46, −2.96 and −3.73 (exploration 033).
+  difference onto readout 1 less onto readout 0 read +0.49 to +0.69 M, and A's margin rose by 1.05 to 1.26 M over each single replayed
+  night. Readout 1's excitatory input less inhibitory input difference lay below readout 0's by 0.01, 0.48, 0.46 and 0.95 M after block 6,
+  12, 18 and 24 alone, where the spikes' readout 1 less readout 0 on A's trials read +0.48, −1.46, −2.96 and −3.73 (exploration 033).
 - **The units that carried half of each readout's drop lost input from the trial's stimulus's kinds, and gained less inhibitory input than
   the rest.** Right after each single replayed night, on A's trials their input difference from A's kinds read −10 330 to −7 226 a unit
   where the rest of their readout had −433 to +1 065, and on B's trials from B's kinds −11 194 to −6 365 against −434 to +1 047; their
-  inhibitory input difference read +455 to +6 269 a unit against the rest's +8 568 to +9 573. Both were so in each of the 16 sets, and in
-  each of the 20 at block 36 and the 16 under H-47's plain night at blocks 6 to 24. Over each readout's 459 units a unit's input difference
+  inhibitory input difference read +455 to +6 269 a unit against the rest's +8 568 to +9 573. Both were so in each of the 16 sets and in
+  each of the 16 under H-47's plain night at blocks 6 to 24, and in 19 of the 20 at block 36: there, after block 12 alone, readout 0's three
+  units on B's trials gained +500 a unit from B's kinds, less than the rest's +535. Over each readout's 459 units a unit's input difference
   from the trial's stimulus's kinds correlated with its spikes' difference by +0.51 to +0.72 right after, from the other stimulus's kinds by
   −0.07 to +0.12, its excitatory input less inhibitory input difference by +0.12 to +0.28 and its inhibitory input difference by +0.05 to
   +0.20.
-- **By block 36 the inhibitory difference had come back by 42 to 81 per cent; the excitatory groups' had not.** From right after each single
-  replayed night to block 36, A's and B's kinds' and each place group's difference onto each readout moved by 0.43 M or less, where each
-  stretch of blocks and each later night lowered the inhibitory difference.
-- **Under H-47's plain night on all four nights the differences grew with each night**: the inhibitory input onto readout 1 read +4.15,
-  +6.56, +8.32 and +9.49 M less the night without replay's at blocks 6, 12, 18 and 24 and +7.48 at block 36, A's kinds' onto readout 1
-  +0.34, +0.57, +0.75 and +0.97, and +1.01 at block 36.
+- **By block 36 the inhibitory difference had come back by 42 to 81 per cent.** Each stretch of blocks and each later night after each
+  single replayed night lowered it, onto both readouts, where from right after the replayed night to block 36 A's and B's kinds' and each
+  place group's difference onto each readout moved by 0.43 M or less.
+- **Under H-47's plain night on all four nights the inhibitory input's, each place group's and A's and B's kinds' differences grew with each
+  night**: the inhibitory input onto readout 1 read +4.15, +6.56, +8.32 and +9.49 M less the night without replay's at blocks 6, 12, 18 and
+  24 and +7.48 at block 36, A's kinds' onto readout 1 +0.34, +0.57, +0.75 and +0.97, and +1.01 at block 36.
 
 ## What ran
 
@@ -390,9 +392,10 @@ difference a unit read −0.27 to −0.15 and the rest's −0.01 (exploration 03
 | 24 | Plain on all four nights (H-47) | replays | 1.698 | 1.656 | −0.042 |
 | 24 | Without replay | without replay | 1.675 | 1.712 | +0.037 |
 
-Each single replayed night lowered the gain, by 0.061 to 0.065 (the least after block 18 alone, the most after block 12 alone), where each
-night without replay raised it, by 0.033 to 0.037; H-47's later plain nights lowered it by 0.042 to 0.057. The gain on the image before the
-nights after block 6, 12, 18 and 24, which each single night's replayed night started from, was 1.694, 1.690, 1.683 and 1.675.
+Each single replayed night lowered the gain, by 0.061 to 0.065 (the least after block 18 alone, the most after block 12 alone), where the
+night without replay's same nights raised it, by 0.033 to 0.037; H-47's later plain nights lowered it by 0.042 to 0.057. The gain on the
+image before the nights after block 6, 12, 18 and 24, which each single night's replayed night started from, was 1.694, 1.690, 1.683 and
+1.675.
 
 **The image each replayed night starts from**: a single night's image before its replayed night is the night without replay's image before
 the same night, in M, with its gain:
@@ -418,7 +421,7 @@ the same night, in M, with its gain:
 On the image each replayed night starts from, A's kinds' input onto readout 1 less onto readout 0 read +0.52, +0.17, +0.04 and −0.19 M
 before the nights after block 6, 12, 18 and 24, B's kinds' onto readout 0 less onto readout 1 −0.16, −0.23, −0.32 and −0.31, and A's margin
 +0.36, −0.06, −0.28 and −0.50. The inhibitory input onto readout 1 was 25.70 M before the night after block 6 and 27.31 before the night
-after block 24, onto readout 0 27.44 and 28.77; each excitatory group's input onto each readout moved by 0.35 M or less between the two.
+after block 24, onto readout 0 27.44 and 28.77; each excitatory group's input onto each readout moved by 0.36 M or less between the two.
 
 ## 3. The inputs against the spikes
 
@@ -596,7 +599,8 @@ change over each night, from the input read:
 
 A's margin rose by 1.26, 1.16, 1.05 and 1.05 M over the replayed night after block 6, 12, 18 and 24 alone, and by 0.95, 0.56 and 0.58 over
 H-47's later plain nights; the night without replay's nights moved it by 0.08 M or less. These are the changes exploration 033's section 5
-reads from the class matrices (exploration 031's and 032's), here from the input read.
+reads from the class matrices, after block 6 alone from exploration 031's job, after block 12, 18 and 24 alone from exploration 032's and
+H-47's two forms from exploration 020's, here from the input read.
 
 ## 4. The nights and blocks after the replayed night
 
@@ -866,7 +870,7 @@ toward readout 0, and the gain fell. Readout 1's units did not lose more input f
 readout 1's excitatory input less inhibitory input fell further than readout 0's by 0.48, 0.46 and 0.95 M after the later single nights and
 by 0.01 after the first. Unit by unit, right after each single replayed night the units that carried half of each drop had lost input from
 the trial's stimulus's kinds, and the inhibitory rise had landed on them less than on the rest of their readout. By block 36 the inhibitory
-difference had come back by 42 to 81 per cent and the excitatory groups' had moved by 0.43 M or less.
+difference had come back by 42 to 81 per cent and A's and B's kinds' and each place group's difference had moved by 0.43 M or less.
 
 Questions this suggests for a later exploration or a round:
 - What a unit's input change does to its drive: an input here is a sum of weights, and the presynaptic units' spikes, which weight it on
