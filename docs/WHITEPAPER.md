@@ -2659,7 +2659,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0246](adr/0246-the-first-nights-replay-on-twelve-cells.md) | The first night's replay alone, on twelve cells | accepted |
 | [ADR-0247](adr/0247-each-later-nights-replay-alone-on-twelve-cells.md) | Each later night's replay alone, on twelve cells | accepted |
 | [ADR-0248](adr/0248-one-cells-readouts-unit-by-unit.md) | One cell's readouts, unit by unit | accepted |
-| [ADR-0249](adr/0249-one-cells-readout-units-inputs.md) | One cell's readout units' inputs | proposed |
+| [ADR-0249](adr/0249-one-cells-readout-units-inputs.md) | One cell's readout units' inputs | accepted |
 <!-- adr-index: end decisions -->
 
 ---

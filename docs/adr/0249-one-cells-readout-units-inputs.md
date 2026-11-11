@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-11
 depends-on: ADR-0248
 title: One cell's readout units' inputs
