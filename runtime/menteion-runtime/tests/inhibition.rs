@@ -47699,6 +47699,19 @@ fn e020_targets(patterns: &[Vec<u32>]) -> Vec<u32> {
 /// and the targets, the targets, D's own. The first three add up to the kind's sum onto readout 0
 /// and the last three onto readout 1, held here.
 fn e020_split(start: &NightsStart, image: &[u8], label: &str, targets: &[u32]) {
+    e020_split_reading(start, image, label, targets, None);
+}
+
+/// `e020_split`, and on the same image the readouts' units' inputs by presynaptic class
+/// (`e034_inputs`) where `inputs` names the readouts' units (exploration 034), dumped after the
+/// class matrix and held to it.
+fn e020_split_reading(
+    start: &NightsStart,
+    image: &[u8],
+    label: &str,
+    targets: &[u32],
+    inputs: Option<&E033Units>,
+) {
     let exec = zero_from(image, SCAN_UNITS, ZERO_ARM);
     let sets = start.site.sets;
     let kinds = &start.pair.kinds;
@@ -47746,7 +47759,10 @@ fn e020_split(start: &NightsStart, image: &[u8], label: &str, targets: &[u32]) {
         "DUMP {label} split {sums:?} parts {:?}",
         parts.iter().map(Vec::len).collect::<Vec<usize>>()
     );
-    e020_classes(start, &exec, label, targets);
+    let (class, m) = e020_classes(start, &exec, label, targets);
+    if let Some(units) = inputs {
+        e034_inputs(&exec, &class, units, &m, label);
+    }
     undropped(exec, label);
 }
 
@@ -47774,18 +47790,15 @@ const E020_CLASSES: [&str; 14] = [
 /// Each class's weights onto each class (exploration 020): the sum of the weights of the synapses
 /// a unit of one class sends to a unit of another, an inhibitory unit's as a magnitude. The
 /// excitatory rows and the inhibitory rows add up to `weights_by_polarity`'s two sums, held here.
-fn e020_classes(start: &NightsStart, exec: &Engine, label: &str, targets: &[u32]) {
+/// Each unit's class and the matrix are returned, the matrix's rows the presynaptic classes.
+fn e020_classes(
+    start: &NightsStart,
+    exec: &Engine,
+    label: &str,
+    targets: &[u32],
+) -> (Vec<u8>, [[i64; 14]; 14]) {
     let class = e020_class(start, exec, label, targets);
-    let mut m = [[0i64; 14]; 14];
-    for unit in exec.units() {
-        let from = usize::from(class[unit.id as usize]);
-        let inhibitory = unit.flags & FLAG_INHIBITORY != 0;
-        for s in unit.fan_out(exec.blocks()) {
-            let w = i64::from(s.weight_q1_15);
-            let cell = &mut m[from][usize::from(class[s.target as usize])];
-            *cell = cell.saturating_add(if inhibitory { w.saturating_neg() } else { w });
-        }
-    }
+    let m = e020_matrix(&class, e034_synapses(exec));
     let total = |rows: core::ops::Range<usize>| {
         m[rows]
             .iter()
@@ -47798,6 +47811,23 @@ fn e020_classes(start: &NightsStart, exec: &Engine, label: &str, targets: &[u32]
         "{label}: the classes add up to the two sums"
     );
     eprintln!("DUMP {label} classes {m:?} of {E020_CLASSES:?}");
+    (class, m)
+}
+
+/// Exploration 020's class matrix over `synapses`, each a presynaptic unit's id, whether it is
+/// inhibitory, its target's id and its weight: each class's weights onto each class, an
+/// inhibitory unit's as a magnitude.
+fn e020_matrix(
+    class: &[u8],
+    synapses: impl Iterator<Item = (u32, bool, u32, i16)>,
+) -> [[i64; 14]; 14] {
+    let mut m = [[0i64; 14]; 14];
+    for (from, inhibitory, target, weight) in synapses {
+        let w = i64::from(weight);
+        let cell = &mut m[usize::from(class[from as usize])][usize::from(class[target as usize])];
+        *cell = cell.saturating_add(if inhibitory { w.saturating_neg() } else { w });
+    }
+    m
 }
 
 /// Each unit's class in exploration 020's matrix, by its id (`E020_CLASSES`'s index).
@@ -49761,16 +49791,34 @@ fn e030_night(
 /// and of the pair. Each image, those two reads, A's couplings, their highest over the head and
 /// the gain are held to H-47's row at block 6 on path 0 of the form whose first night it is.
 fn e030_trial(n: usize, s: usize, forms: &[E030Form]) {
-    e030_trial_reading(n, s, forms, false);
+    e030_trial_reading(n, s, forms, E030_ROWS);
 }
 
-/// `e030_trial`, each image's read of A counted unit by unit (`e033_read`) where `units` says,
-/// the readouts' units and their classes dumped first (exploration 033).
-fn e030_trial_reading(n: usize, s: usize, forms: &[E030Form], units: bool) {
+/// What exploration 030's trial and job read beside the rows: each of A's reads counted unit by
+/// unit (`e033_read`, exploration 033) where `units` says, and on each image split the readouts'
+/// units' inputs by presynaptic class (`e034_inputs`, exploration 034) where `inputs` says.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct E030Reading {
+    units: bool,
+    inputs: bool,
+}
+
+/// Exploration 030's own reading: the rows, the splits and the class matrices alone.
+const E030_ROWS: E030Reading = E030Reading {
+    units: false,
+    inputs: false,
+};
+
+/// `e030_trial`, each image's read of A counted unit by unit where `reading.units` says and each
+/// image's readouts' units' inputs read where `reading.inputs` says, the readouts' units and their
+/// classes dumped first where either does (explorations 033 and 034).
+fn e030_trial_reading(n: usize, s: usize, forms: &[E030Form], reading: E030Reading) {
     with_nights(n, s, "e030 trial", |start| {
         let first = mapping_patterns(&start.site, start.image);
         let targets = e020_targets(&first);
-        let units = units.then(|| E033Units::of(start, &targets));
+        let readouts = (reading.units || reading.inputs).then(|| E033Units::of(start, &targets));
+        let units = readouts.as_ref().filter(|_| reading.units);
+        let inputs = readouts.as_ref().filter(|_| reading.inputs);
         let label = format!("{} path 0 head blocks {NIGHTS_EVERY}", start.name);
         let (head, ends) = nights_run(start, start.image, NIGHTS_EVERY, &label, path_from(0));
         two_at_a_time(forms, |form| {
@@ -49779,8 +49827,8 @@ fn e030_trial_reading(n: usize, s: usize, forms: &[E030Form], units: bool) {
             let replay = form.gap(0) == NightsGap::PlainFirst;
             let (image, gain) = e030_night(start, &head, &first, &gap, replay);
             let blocks = format!("{at} blocks {NIGHTS_EVERY}");
-            e020_split(start, &image, &blocks, &targets);
-            let (a, couplings) = match &units {
+            e020_split_reading(start, &image, &blocks, &targets, inputs);
+            let (a, couplings) = match units {
                 Some(units) => e033_read(
                     &start.site,
                     &image,
@@ -49843,23 +49891,28 @@ fn e030_trial_reading(n: usize, s: usize, forms: &[E030Form], units: bool) {
 /// H-47's row of that form on the same path at the same block, so the night without replay's
 /// fifteen are. Beside each form, how many of its rows are each of H-47's two forms'.
 fn e030_job(n: usize, s: usize, forms: &[E030Form]) {
-    e030_job_reading(n, s, forms, false);
+    e030_job_reading(n, s, forms, E030_ROWS);
 }
 
-/// `e030_job`, each of A's reads counted unit by unit (`e033_read`) where `units` says, the
-/// readouts' units and their classes dumped first (exploration 033). The pair's reads, the rows
-/// and what is held are `e030_job`'s.
-fn e030_job_reading(n: usize, s: usize, forms: &[E030Form], units: bool) {
+/// `e030_job`, each of A's reads counted unit by unit (`e033_read`) where `reading.units` says,
+/// and on each image split, the start image, the image before each night and after it and block
+/// 36's, the readouts' units' inputs read (`e034_inputs`) where `reading.inputs` says; the
+/// readouts' units and their classes dumped first where either does (explorations 033 and 034).
+/// The pair's reads, the rows and what is held are `e030_job`'s.
+fn e030_job_reading(n: usize, s: usize, forms: &[E030Form], reading: E030Reading) {
     with_nights(n, s, "e030", |start| {
         let first = mapping_patterns(&start.site, start.image);
         e020_patterns(start, &first);
         let targets = e020_targets(&first);
-        let units = units.then(|| E033Units::of(start, &targets));
-        e020_split(
+        let readouts = (reading.units || reading.inputs).then(|| E033Units::of(start, &targets));
+        let units = readouts.as_ref().filter(|_| reading.units);
+        let inputs = readouts.as_ref().filter(|_| reading.inputs);
+        e020_split_reading(
             start,
             start.image,
             &format!("{} start", start.name),
             &targets,
+            inputs,
         );
         let heads = Mutex::new(BTreeMap::new());
         two_at_a_time(&NIGHTS_PATHS, |&j| {
@@ -49881,7 +49934,7 @@ fn e030_job_reading(n: usize, s: usize, forms: &[E030Form], units: bool) {
                 let label = format!("{name} blocks {block}");
                 if block > NIGHTS_LAST {
                     let (image, ends) = nights_run(start, &at, NIGHTS_ON, &label, path_from(j));
-                    e020_split(start, &image, &label, &targets);
+                    e020_split_reading(start, &image, &label, &targets, inputs);
                     readings
                         .lock()
                         .expect("a form ended")
@@ -49896,11 +49949,11 @@ fn e030_job_reading(n: usize, s: usize, forms: &[E030Form], units: bool) {
                 }
                 let before = format!("{name} gap {block} before");
                 shared_sums(start, &at, &before);
-                e020_split(start, &at, &before, &targets);
+                e020_split_reading(start, &at, &before, &targets, inputs);
                 let gap = format!("{name} gap {block}");
                 let replay = form.gap(c) == NightsGap::PlainFirst;
                 let (image, gain) = e030_night(start, &at, &first, &gap, replay);
-                e020_split(start, &image, &label, &targets);
+                e020_split_reading(start, &image, &label, &targets, inputs);
                 readings
                     .lock()
                     .expect("a form ended")
@@ -49913,7 +49966,7 @@ fn e030_job_reading(n: usize, s: usize, forms: &[E030Form], units: bool) {
         });
         let kept = kept.into_inner().expect("every form ended");
         let readings = readings.into_inner().expect("every form ended");
-        let read = nights_reads_units(start, &kept, units.as_ref());
+        let read = nights_reads_units(start, &kept, units);
         let theirs = [NightsGap::NoReplay, NightsGap::PlainFirst];
         for (f, form) in forms.iter().enumerate() {
             let mut rows = Vec::new();
@@ -50338,6 +50391,12 @@ const E033_FIRST: [E030Form; 3] = [E030_NO_REPLAY, E030_ALONE[1], E033_PLAIN];
 /// four forms. No hold is set.
 const E033_SECOND: [E030Form; 4] = E032_FORMS;
 
+/// Exploration 033's reading: each of A's reads counted unit by unit, no input read.
+const E033_READING: E030Reading = E030Reading {
+    units: true,
+    inputs: false,
+};
+
 /// The units of A's two readout sets (exploration 033): readout 0's, then readout 1's, each in
 /// `Set::units`' order; each one's class in exploration 020's matrix (`E020_CLASSES`'s index); and
 /// a unit's place among them by its id.
@@ -50627,7 +50686,7 @@ fn the_harness_of_one_cells_readouts_unit_by_unit_explore() {
         .chain(E033_SECOND.iter().skip(1))
         .copied()
         .collect();
-    e030_trial_reading(2, 0, &six, true);
+    e030_trial_reading(2, 0, &six, E033_READING);
 }
 
 /// Exploration 033's first job, on seed 24 from the eighth image and the assignment: the night
@@ -50636,7 +50695,7 @@ fn the_harness_of_one_cells_readouts_unit_by_unit_explore() {
 #[test]
 #[ignore]
 fn one_cells_readouts_after_block_6_alone_and_on_every_night_explore() {
-    e030_job_reading(2, 0, &E033_FIRST, true);
+    e030_job_reading(2, 0, &E033_FIRST, E033_READING);
 }
 
 /// Exploration 033's second job, on the same cell: the night without replay and after block 12, 18
@@ -50644,5 +50703,261 @@ fn one_cells_readouts_after_block_6_alone_and_on_every_night_explore() {
 #[test]
 #[ignore]
 fn one_cells_readouts_after_each_later_night_alone_explore() {
-    e030_job_reading(2, 0, &E033_SECOND, true);
+    e030_job_reading(2, 0, &E033_SECOND, E033_READING);
+}
+
+// ---------------- exploration 034: one cell's readout units' inputs (on its branch alone)
+
+/// Exploration 034's reading: each of A's reads counted unit by unit as exploration 033 counts
+/// them, and on each image split the readouts' units' inputs by presynaptic class.
+const E034_READING: E030Reading = E030Reading {
+    units: true,
+    inputs: true,
+};
+
+/// The classes the two readouts' units make up (ADR-0249), `E020_CLASSES`' indices: C's own, D's
+/// own, readout 0's pattern targets and other excitatory units, the same of readout 1, and the
+/// inhibitory units in readout 0 and in readout 1.
+const E034_TARGETS: [u8; 8] = [4, 5, 6, 7, 8, 9, 11, 12];
+
+/// Every synapse of `exec`'s arena, by its presynaptic unit in the arena's order and then in its
+/// fan-out's order (`e020_classes`' walk): the presynaptic unit's id, whether it is inhibitory,
+/// the synapse's target and its weight.
+fn e034_synapses(exec: &Engine) -> impl Iterator<Item = (u32, bool, u32, i16)> + '_ {
+    let blocks = exec.blocks();
+    exec.units().iter().flat_map(move |unit| {
+        let id = unit.id as u32;
+        let inhibitory = unit.flags & FLAG_INHIBITORY != 0;
+        unit.fan_out(blocks)
+            .map(move |s| (id, inhibitory, s.target, s.weight_q1_15))
+    })
+}
+
+/// Each readout unit's inputs (exploration 034), in `units`' order: the weights of the synapses
+/// of `synapses` onto it summed by the class of the presynaptic unit (`class`, by id), an
+/// inhibitory unit's negated, so a + is more inhibition, as in the class matrix.
+fn e034_walk(
+    units: &E033Units,
+    class: &[u8],
+    synapses: impl Iterator<Item = (u32, bool, u32, i16)>,
+) -> Vec<[i64; 14]> {
+    let mut inputs = vec![[0i64; 14]; units.units.len()];
+    for (from, inhibitory, target, weight) in synapses {
+        if let Some(&Some(k)) = units.slot.get(target as usize) {
+            let w = i64::from(weight);
+            let cell = &mut inputs[k][usize::from(class[from as usize])];
+            *cell = cell.saturating_add(if inhibitory { w.saturating_neg() } else { w });
+        }
+    }
+    inputs
+}
+
+/// The readout units' inputs summed over the units of each class they make up, by presynaptic
+/// class: each class's column of the class matrix where `units` are all of that class's units.
+fn e034_by_class(units: &E033Units, inputs: &[[i64; 14]]) -> BTreeMap<u8, [i64; 14]> {
+    let mut by = BTreeMap::new();
+    for (&c, unit) in units.classes.iter().zip(inputs) {
+        let sums: &mut [i64; 14] = by.entry(c).or_insert([0i64; 14]);
+        for (total, &v) in sums.iter_mut().zip(unit) {
+            *total = total.saturating_add(v);
+        }
+    }
+    by
+}
+
+/// Whether the readout units' inputs are the class matrix `m`'s entries (ADR-0249): the units
+/// make up exactly `E034_TARGETS`' eight classes, and summed over each class's units each
+/// presynaptic class's sums are that class matrix's entry, 112 entries. The classes, or the first
+/// entry that differs.
+fn e034_held(
+    units: &E033Units,
+    inputs: &[[i64; 14]],
+    m: &[[i64; 14]; 14],
+) -> Result<Vec<u8>, String> {
+    let by = e034_by_class(units, inputs);
+    let classes: Vec<u8> = by.keys().copied().collect();
+    if classes != E034_TARGETS {
+        return Err(format!(
+            "the readouts' units make up the classes {classes:?}, not {E034_TARGETS:?}"
+        ));
+    }
+    for (&t, sums) in &by {
+        for (c, &v) in sums.iter().enumerate() {
+            let entry = m[c][usize::from(t)];
+            if v != entry {
+                return Err(format!(
+                    "onto class {t} from class {c} the units' inputs sum to {v}, the class matrix {entry}"
+                ));
+            }
+        }
+    }
+    Ok(classes)
+}
+
+/// The readout units' inputs as the job dumps them: each unit's fourteen sums by presynaptic
+/// class, comma-separated, the units in `E033Units`' order, separated by `;`.
+fn e034_line(inputs: &[[i64; 14]]) -> String {
+    inputs
+        .iter()
+        .map(|unit| {
+            unit.iter()
+                .map(i64::to_string)
+                .collect::<Vec<String>>()
+                .join(",")
+        })
+        .collect::<Vec<String>>()
+        .join(";")
+}
+
+/// Exploration 034's input read on one image (ADR-0249), on the executor whose class matrix `m`
+/// and classes `class` exploration 020's split has just dumped. Held here: each readout unit keeps
+/// the class it had on the start image, and the units' inputs are the class matrix's entries
+/// (`e034_held`). Dumped: the inputs (`e034_line`), then what was held.
+fn e034_inputs(exec: &Engine, class: &[u8], units: &E033Units, m: &[[i64; 14]; 14], label: &str) {
+    for (&u, &c) in units.units.iter().zip(&units.classes) {
+        assert_eq!(
+            class[u as usize], c,
+            "{label}: unit {u} keeps its class from the start image"
+        );
+    }
+    let inputs = e034_walk(units, class, e034_synapses(exec));
+    let held = e034_held(units, &inputs, m).unwrap_or_else(|e| panic!("{label}: {e}"));
+    eprintln!("DUMP {label} inputs {}", e034_line(&inputs));
+    eprintln!(
+        "DUMP {label} inputs of {} units sum to the class matrix's entries onto the classes {held:?}, {} entries",
+        inputs.len(),
+        held.len().saturating_mul(14)
+    );
+}
+
+/// Exploration 034's input read: each readout unit's inputs by presynaptic class sum, over each of
+/// the eight classes the readouts' units make up, to the class matrix's column of that class, an
+/// inhibitory unit's weight negated; a unit outside the readouts adds nothing, and a sum that is
+/// not the matrix's is found.
+#[test]
+fn exploration_034_s_input_read_is_the_class_matrix() {
+    let sets = geometry(SCAN_UNITS, rotation(SCAN_UNITS));
+    let arena = SCAN_UNITS as usize;
+    let mut class = vec![u8::MAX; arena];
+    let rest = [0u8, 1, 2, 3, 10, 13];
+    for (k, slot) in class.iter_mut().enumerate() {
+        *slot = rest[k % 6];
+    }
+    for (r, cycle) in [(2usize, [4u8, 6, 7, 11]), (3, [5, 8, 9, 12])] {
+        for (k, u) in sets[r].units().enumerate() {
+            class[u as usize] = cycle[k % 4];
+        }
+    }
+    let units = E033Units::over(&sets, arena, &class);
+    let inhibitory = |u: u32| matches!(class[u as usize], 11..=13);
+    let mut synapses: Vec<(u32, bool, u32, i16)> = Vec::new();
+    let mut x = 7u32;
+    for _ in 0..20_000u32 {
+        x = x.wrapping_mul(1_103_515_245).wrapping_add(12_345);
+        let from = x.wrapping_shr(8) % 1024;
+        let target = x.wrapping_shr(18) % 1024;
+        let magnitude = (x.wrapping_shr(3) % 4096) as i16;
+        let inh = inhibitory(from);
+        synapses.push((
+            from,
+            inh,
+            target,
+            if inh {
+                magnitude.saturating_neg()
+            } else {
+                magnitude
+            },
+        ));
+    }
+    let m = e020_matrix(&class, synapses.iter().copied());
+    let inputs = e034_walk(&units, &class, synapses.iter().copied());
+    assert_eq!(e034_held(&units, &inputs, &m), Ok(E034_TARGETS.to_vec()));
+
+    let u0 = units.units[0];
+    let u1 = units.units[units.first];
+    let excitatory = sets[0].units().next().expect("a unit of stimulus A");
+    let inh = sets[2]
+        .units()
+        .find(|&u| inhibitory(u))
+        .expect("an inhibitory unit of readout 0");
+    let own: Vec<(u32, bool, u32, i16)> = vec![
+        (excitatory, false, u0, 300),
+        (excitatory, false, u0, 20),
+        (inh, true, u0, -200),
+        (inh, true, u1, -7),
+        (
+            excitatory,
+            false,
+            sets[0].units().nth(1).expect("a second unit"),
+            999,
+        ),
+    ];
+    let one = e034_walk(&units, &class, own.iter().copied());
+    let mut want0 = [0i64; 14];
+    want0[usize::from(class[excitatory as usize])] = 320;
+    want0[usize::from(class[inh as usize])] = 200;
+    let mut want1 = [0i64; 14];
+    want1[usize::from(class[inh as usize])] = 7;
+    assert_eq!(one[0], want0);
+    assert_eq!(one[units.first], want1);
+    assert_eq!(
+        one.iter().flatten().fold(0i64, |t, &v| t.saturating_add(v)),
+        527,
+        "a synapse onto a unit outside the readouts adds nothing"
+    );
+    assert_eq!(e034_line(&one[..2]).split(';').count(), 2);
+    assert_eq!(
+        e034_line(&one[..1]),
+        want0
+            .iter()
+            .map(i64::to_string)
+            .collect::<Vec<String>>()
+            .join(",")
+    );
+
+    let mut twice = inputs.clone();
+    twice[3][0] = twice[3][0].saturating_add(1);
+    assert!(e034_held(&units, &twice, &m).is_err());
+    let mut moved = units.classes.clone();
+    moved[0] = 10;
+    let other = E033Units {
+        units: units.units.clone(),
+        classes: moved,
+        first: units.first,
+        slot: units.slot.clone(),
+    };
+    assert!(e034_held(&other, &inputs, &m).is_err());
+}
+
+/// Exploration 034's trial, on seed 24 from the eighth image and the assignment: exploration 033's
+/// trial, the pair's head and the first night of each of its six forms on path 0, each image's
+/// read of A counted unit by unit, and each image's readout units' inputs read and held to its
+/// class matrix.
+#[test]
+#[ignore]
+fn the_harness_of_one_cells_readout_units_inputs_explore() {
+    let six: Vec<E030Form> = E033_FIRST
+        .iter()
+        .chain(E033_SECOND.iter().skip(1))
+        .copied()
+        .collect();
+    e030_trial_reading(2, 0, &six, E034_READING);
+}
+
+/// Exploration 034's first job, on seed 24 from the eighth image and the assignment: exploration
+/// 033's first job, the night without replay, after block 6 alone and H-47's plain night on all
+/// four nights, with the readout units' inputs read on each image split.
+#[test]
+#[ignore]
+fn one_cells_readout_units_inputs_after_block_6_alone_and_on_every_night_explore() {
+    e030_job_reading(2, 0, &E033_FIRST, E034_READING);
+}
+
+/// Exploration 034's second job, on the same cell: exploration 033's second job, the night without
+/// replay and after block 12, 18 or 24 alone, with the readout units' inputs read on each image
+/// split.
+#[test]
+#[ignore]
+fn one_cells_readout_units_inputs_after_each_later_night_alone_explore() {
+    e030_job_reading(2, 0, &E033_SECOND, E034_READING);
 }
