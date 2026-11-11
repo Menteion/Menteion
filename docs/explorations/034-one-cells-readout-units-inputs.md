@@ -421,7 +421,8 @@ the same night, in M, with its gain:
 On the image each replayed night starts from, A's kinds' input onto readout 1 less onto readout 0 read +0.52, +0.17, +0.04 and −0.19 M
 before the nights after block 6, 12, 18 and 24, B's kinds' onto readout 0 less onto readout 1 −0.16, −0.23, −0.32 and −0.31, and A's margin
 +0.36, −0.06, −0.28 and −0.50. The inhibitory input onto readout 1 was 25.70 M before the night after block 6 and 27.31 before the night
-after block 24, onto readout 0 27.44 and 28.77; each excitatory group's input onto each readout moved by 0.36 M or less between the two.
+after block 24, onto readout 0 27.44 and 28.77; of A's and B's kinds' and each place group's input onto each readout, A's kinds' onto
+readout 1 moved the most between the two: it fell by 0.35 M.
 
 ## 3. The inputs against the spikes
 
