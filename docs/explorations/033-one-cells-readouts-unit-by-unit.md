@@ -52,9 +52,10 @@ alone.
   SE. In every comparison of sections 3 and 4, on each stimulus's trials, its sign is the sign of that stimulus's correct trials as the
   notes give them.
 - **Many units moved, and few carry half the change.** Right after each single replayed night 95 to 136 of a readout's 459 units moved down
-  beyond twice their own SE and 0 to 5 up, where about 23 would by chance; 13 to 19 units carry half of each readout's drop, about as many
-  as carry half of the night without replay's spikes, 14 to 19, and 3 to 9 of them are among those. Six units of readout 1 and four of
-  readout 0 on A's trials, and six of readout 1 and one of readout 0 on B's, are among the fewest under all four single nights.
+  beyond twice their own SE and 0 to 5 up, where about 23 would by chance in the two directions together, 11 or 12 each way; 13 to 19 units
+  carry half of each readout's drop, about as many as carry half of the night without replay's spikes, 14 to 19, and 3 to 9 of them are
+  among those. Six units of readout 1 and four of readout 0 on A's trials, and six of readout 1 and one of readout 0 on B's, are among the
+  fewest under all four single nights.
 - **By class, on A's trials**, after block 12, 18 or 24 alone readout 1's pattern targets fired 4.63 to 5.14 less a trial and its inhibitory
   units 3.75 to 4.12 less, where after block 6 alone 3.70 and 2.86 less; readout 0's pattern targets fired 4.80, 4.27 and 3.37 less, where
   after block 6 alone 5.47 less.
@@ -128,7 +129,8 @@ variances)/16 + (the paths' differences' SD)²/3), a negative variance as zero. 
 way from that unit's 48 values.
 
 **What moved.** A unit **moved** where its difference lies beyond twice its own SE, up or down. About one unit in twenty would lie there by
-chance in each comparison, some 23 of a readout's 459, and a count of units moved is read against that. Where a readout's own
+chance in each comparison, some 23 of a readout's 459 in the two directions together, 11 or 12 each way, and a count of units
+moved is read against that. Where a readout's own
 difference lies beyond 2 SE: **the fewest units** carrying half of it, the units ranked by their difference in the direction of the
 readout's net change, taken until their differences reach half the net change; **the gross change**, the sum of the units' differences'
 magnitudes; and **the units moved against** the net change, with their differences' sum. A readout's difference is the sum of its units'
@@ -151,7 +153,7 @@ the logs' here.
   read once as it was, of A and of the pair, A's read counted unit by unit. Inside the test each image, those two reads, A's couplings,
   their highest over the head and the gain held H-47's row at block 6 on path 0 of the form whose first night it ran:
 
-| Form | Its first night | H-47's row at block 6 on path 0 it holds, inside the test | A's read as it was | The pair's | Replays | Depotentiations | Watch: wrong | Its night's lines that are exploration 020's job's same night on path 0, label aside | Trials of A, of B | A's trials: readout 1's units' spikes summed over them, readout 0's | B's trials: readout 1's, readout 0's | Those sums are |
+| Form | Its first night | H-47's row at block 6 on path 0 it holds, inside the test | A's read as it was | The pair's | Replays | Depotentiations | Watch: wrong | Its night's lines that are exploration 020's job's same night on path 0, label and its notice aside | Trials of A, of B | A's trials: readout 1's units' spikes summed over them, readout 0's | B's trials: readout 1's, readout 0's | Those sums are |
 | :--- | :--- | :--- | ---: | ---: | ---: | ---: | ---: | :--- | :--- | ---: | ---: | :--- |
 | Without replay | without replay | the night without replay's | 43 | 60 | 0 | 0 | 0 | 89 of 89 | 34, 30 | 953, 846 | 735, 798 | the read's |
 | After block 6 alone | replays | the plain night's | 42 | 63 | 1 329 | 640 | 0 | 395 of 395 | 34, 30 | 656, 564 | 572, 640 | the read's |
@@ -162,10 +164,11 @@ the logs' here.
 
 - Each night's lines, its start, its windows, its watch and its end, are the lines of exploration 020's job's night after block 6 on path 0
   of the same cell, the night without replay's for the four forms whose first night is without replay and the plain night's for the two
-  whose first night replays, label and form aside: 89 of 89 for each of the four and 395 of 395 for each of the two. So is the head's line,
-  1 of 1. Each night without replay read 0 replays and 0 depotentiations and each replayed night 1 329 and 640, as the trial prints, and the
-  watch read `wrong 0` in all six. Each unit read's trials of each stimulus are its read's, and its units' spikes summed by readout are the
-  read's own spikes on each stimulus's trials, the sums in the table.
+  whose first night replays, label and form aside, each night's notice that it read what its form asks left out, which exploration 020's job
+  did not print: 89 of 89 for each of the four and 395 of 395 for each of the two. So is the head's line, 1 of 1. Each night without replay
+  read 0 replays and 0 depotentiations and each replayed night 1 329 and 640, as the trial prints, and the watch read `wrong 0` in all six.
+  Each unit read's trials of each stimulus are its read's, and its units' spikes summed by readout are the read's own spikes on each
+  stimulus's trials, the sums in the table.
 
 - **The two jobs** ran to the end, each form on the three paths. Inside each test every row of the night without replay and of H-47's plain
   night held H-47's row of that form, fifteen each; after block 6 alone's row at block 6 held the plain night's; and after block 12, 18 or
@@ -390,9 +393,10 @@ their own SE, the fewest units carrying half the difference, the gross change, a
 | Plain on all four nights less without replay, block 24 | B's trials | readout 0, the odd places | 20.44 | 31.07 | −10.63 ± 0.58 | 47 | 75 | 11 | 13.07 | 47, +0.85 |
 
 Right after each single night's replayed night both readouts lay below the night without replay on both stimuli's trials, each beyond 2 SE:
-95 to 136 of a readout's 459 units moved down beyond twice their own SE and 0 to 5 up, against about 23 by chance. The gross change exceeds
-each readout's drop by 0.06 to 0.81, and the 0 to 5 units moved against it sum to 0.23 or less. Under H-47's plain night the drop grew with
-each night, to 10.20 to 14.75 at block 24, with 75 to 121 units moved down and 3 to 47 up at blocks 12 to 24.
+95 to 136 of a readout's 459 units moved down beyond twice their own SE and 0 to 5 up, against about 23 by chance in the two directions
+together. The gross change exceeds each readout's drop by 0.06 to 0.81, and the 0 to 5 units moved against it sum to 0.23 or less. Under
+H-47's plain night the drop grew with each night, to 10.20 to 14.75 at block 24, with 75 to 121 units moved down and 3 to 47 up at blocks 12
+to 24.
 
 **The answer's readout less the other**: on A's trials readout 1 less readout 0, on B's trials readout 0 less readout 1, under each form,
 and the difference with its SE:
@@ -903,9 +907,10 @@ block 36 and not right after; and the correlation of the units' differences righ
 | Plain on all four nights (H-47) | 24 → 36 | B's trials | readout 0, the odd places | −10.63 ± 0.58 | −7.23 ± 0.26 | +3.40 | 75, 47 | 45, 28 | 83 | 0.98 |
 
 From right after its replayed night to block 36 each single night's readouts came back by 3.10 to 5.84 spikes a trial, and H-47's plain
-night's by 2.32 to 4.49 from block 24. Of the units moved down right after, 26 to 51 still lay below beyond 2 SE at block 36, and 15 to 41
-units moved at block 36 that had not right after. The units' differences at block 36 correlate with theirs right after by 0.34 to 0.98, the
-least on B's trials' readout 1 after block 12 alone and the most there after block 24 alone; under H-47's plain night by 0.98 to 0.99.
+night's by 2.32 to 4.49 from block 24. Under each single night, of the units moved down right after, 26 to 51 still lay below beyond 2 SE at
+block 36, and 15 to 41 units moved at block 36 that had not moved either way right after. The units' differences at block 36 correlate with
+theirs right after by 0.34 to 0.98, the least on B's trials' readout 1 after block 12 alone and the most there after block 24 alone; under
+H-47's plain night by 0.98 to 0.99.
 
 **Each single night's fewest units right after its replayed night**, unit by unit, beside the same unit at block 36:
 
@@ -1177,8 +1182,8 @@ least on B's trials' readout 1 after block 12 alone and the most there after blo
 | After block 24 alone | B's trials | readout 0, the odd places | 1017 | 17 | readout 0's pattern targets | −0.16 ± 0.02 | −0.08 ± 0.04 | +0.08 |
 | After block 24 alone | B's trials | readout 0, the odd places | 325 | 5 | readout 0's pattern targets | −0.16 ± 0.01 | −0.11 ± 0.02 | +0.05 |
 
-Of these 265 rows, 232 lie nearer the night without replay at block 36 than right after and 33 further from it; 24 changed sign, and 196
-still lie below beyond 2 SE.
+On the unrounded values, 232 of these 265 rows lie nearer the night without replay at block 36 than right after and 33 further from it, and
+seven rows read alike at two decimals; 24 changed sign, and 196 still lie below beyond 2 SE.
 
 ## 5. Beside each: the class matrix over the replayed night
 
@@ -1223,8 +1228,8 @@ watched, and every read of A counted unit by unit. The two logs are 6.6 and 7.8 
 **On this cell each replayed night lowered both readouts' spikes on both stimuli's trials at once**, by 18 to 33 per cent right after a
 single night, every class of unit in both readouts with them, and 13 to 19 units carried half of each drop, about as many as carry half of a
 readout's spikes. Whether a stimulus's correct trials rose or fell went with which readout fell more on its trials: on A's trials readout 0
-fell more after block 6 alone and readout 1 more after each later single night. By block 36 both readouts had come part of the way back
-under every single night, and less of it under H-47's plain night on all four nights.
+fell more after block 6 alone and readout 1 more after each later single night. By block 36 both readouts had come back by 50 to 77 per cent
+of their drop under each single night, and by 21 to 32 per cent of theirs at block 24 under H-47's plain night on all four nights.
 
 Questions this suggests for a later exploration or a round:
 - What a replayed night changes in the inputs of the units that carry each readout's drop, which this note does not read: the weights onto
