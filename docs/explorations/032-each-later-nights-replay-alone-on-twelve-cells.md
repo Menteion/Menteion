@@ -228,7 +228,7 @@ form's rows from its replayed night's block are in no log there, and the eleven 
 - **The night without replay's lines** are 1 659 to 1 707 a job. Of them 1 647 to 1 695 are the lines of H-47's night without replay in
   exploration 020's or 021's job on the same cell, label aside, all of that job's; the other 12 are the job's notices that each night read
   what its form asks. The pair's heads, three lines a job, are that job's. So the night without replay's class matrices, splits and night
-  lines are those jobs', and sections 5 and 6 list H-47's night without replay from them.
+  lines are those jobs': section 5 lists H-47's night without replay from them, and section 6 this job's, line for line the same.
 - **Each form's nights before its replayed night**, six a cell on each path, three of after block 24 alone, two of after block 18 alone and
   one of after block 12 alone, print on the three paths the lines of that job's night without replay after the same block, label and form
   aside, its start, windows, watch and end: 1 566 to 1 638 lines a cell, all of them. Each form's images before its replayed night, 45 a
@@ -909,9 +909,9 @@ night's against its night without replay, H-47's job's:
 | Seed 22, eighth, assignment | After block 24 alone | 24 | +0.8 ± 0.56 | +0.1 ± 0.57 | +0.7 ± 0.74 | A, the even places (within 2 SE) | B, the odd places (within 2 SE) |
 | Seed 22, eighth, assignment | After block 24 alone | 36 | −1.3 ± 0.44 | +0.2 ± 0.62 | −1.6 ± 0.86 | B, the odd places (within 2 SE) | B, the odd places |
 
-- **At block 36** the side falls on the stimulus of H-47's side under after block 12 alone in ten cells: not on seed 24's first mapping
-  from the assignment, where it lies on B, the even places, within 2 SE, A's less B's −1.5 ± 1.82, nor on seed 22's first mapping from the
-  mirrored assignment, where it lies on A, the even places, within 2 SE, 0.0 ± 0.31, H-47's lying on A, the odd places, within 2 SE, and on
+- **At block 36** the side falls on the stimulus of H-47's side under after block 12 alone in ten cells: not on seed 24's first mapping from
+  the assignment, where it lies on B, the even places, within 2 SE, A's less B's −1.5 ± 1.82, and H-47's on A, the odd places, within 2 SE,
+  nor on seed 22's first mapping from the mirrored assignment, where it lies on A, the even places, within 2 SE, 0.0 ± 0.31, and H-47's on
   B, the odd places, beyond 2 SE. Under after block 18 alone in ten: not on seed 24's first mapping from the assignment, B, the even places,
   −2.9 ± 0.82, nor on seed 24's first mapping from the mirrored assignment, B, the odd places, −2.6 ± 0.83, both beyond 2 SE where H-47's
   lies on A within 2 SE. Under after block 24 alone in nine: not on seed 23's eighth image from the assignment, B, the odd places,
@@ -993,9 +993,9 @@ on the cell's seed, in any image read and at any block's end of the form's 36, a
 
 - **The pair at block 36** stands at 62.3 to 63.5 under after block 12 alone, the lowest on seed 24's first mapping from the assignment and
   the highest on seed 23's eighth image from the assignment; at 61.8 to 63.4 under after block 18 alone and at 62.5 to 63.4 under after
-  block 24 alone, the lowest on seed 24's first mapping from the assignment and the highest on seed 23's first mapping from the mirrored
-  assignment under both; above clause 2's floor of 56 in every cell. It stands at 62.1 to 63.5 under the night without replay and at 61.8
-  to 63.4 under H-47's plain night.
+  block 24 alone, the lowest on seed 24's first mapping from the assignment under both and the highest on seed 23's first mapping from the
+  mirrored assignment under both, shared under after block 18 alone with seed 23's eighth image from the assignment; above clause 2's floor
+  of 56 in every cell. It stands at 62.1 to 63.5 under the night without replay and at 61.8 to 63.4 under H-47's plain night.
 - **A's highest coupling** reads 1.078 to 1.179 of H-42's under each of the three forms, the lowest on seed 24's eighth image from the
   mirrored assignment and the highest on seed 24's eighth image from the assignment; none passes clause 3's 1.30. Under after block 24 alone
   it is the night without replay's in all twelve cells; under after block 18 alone in eleven, above it on seed 22's first mapping from the
@@ -1863,7 +1863,7 @@ and each other column a ripple's mean:
 | Seed 23, eighth, assignment | 24 | After block 24 alone | B | 1 923 | 3.0 | 22.1 | 0.4 | 0.6 | 11.0 | 12.1 | 1.8 | 0.1 |
 | Seed 23, eighth, assignment | 6 | H-47's first plain night (021's job) | A | 2 046 | 3.1 | 22.0 | 0.4 | 0.6 | 10.8 | 13.5 | 1.8 | 0.1 |
 | Seed 23, eighth, assignment | 6 | H-47's first plain night (021's job) | B | 1 941 | 3.0 | 22.4 | 0.5 | 0.6 | 10.7 | 12.5 | 1.7 | 0.1 |
-| Seed 24, first mapping, mirrored | 12 | After block 12 alone | A | 2 100 | 3.0 | 22.1 | 0.4 | 0.6 | 11.1 | 12.8 | 1.9 | 0.1 |
+| Seed 24, first mapping, mirrored | 12 | After block 12 alone | A | 2 100 | 3.0 | 22.1 | 0.4 | 0.6 | 11.1 | 12.8 | 1.9 | 0.2 |
 | Seed 24, first mapping, mirrored | 12 | After block 12 alone | B | 1 923 | 3.0 | 21.8 | 0.4 | 0.4 | 10.8 | 12.3 | 2.1 | 0.1 |
 | Seed 24, first mapping, mirrored | 18 | After block 18 alone | A | 2 100 | 3.0 | 22.0 | 0.3 | 0.7 | 11.4 | 12.9 | 2.0 | 0.2 |
 | Seed 24, first mapping, mirrored | 18 | After block 18 alone | B | 1 923 | 3.0 | 21.7 | 0.4 | 0.4 | 10.9 | 12.2 | 2.1 | 0.2 |
