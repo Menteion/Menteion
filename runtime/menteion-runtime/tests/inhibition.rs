@@ -45710,6 +45710,20 @@ fn spread_read(
     what: &str,
     from: ReadFrom,
 ) -> (u8, [i64; 4]) {
+    spread_read_observed(site, image, label, what, from, &mut |_, _, _, _| {})
+}
+
+/// `spread_read`, `observe` called after each trial as the run's own observer is (exploration
+/// 033): with the executor, the trial's index in the read, its first tick and its outcome. It reads
+/// and acts on nothing, so the read is `spread_read`'s, line for line.
+fn spread_read_observed(
+    site: &NightSite,
+    image: &[u8],
+    label: &str,
+    what: &str,
+    from: ReadFrom,
+    observe: &mut dyn FnMut(&mut Engine, usize, u32, &Outcome),
+) -> (u8, [i64; 4]) {
     let mut exec = night_engine(image, 0, Some(site.groups), |_| {});
     let state = night_state(&exec, &site.sets);
     let mut task = task_over(
@@ -45731,7 +45745,7 @@ fn spread_read(
         SCAN_UNITS,
         BLOCK,
         &[],
-        &mut |_, trial, _, outcome| {
+        &mut |exec, trial, start, outcome| {
             let bit = 1u64.wrapping_shl(trial as u32);
             for (word, set) in words.iter_mut().zip([
                 outcome.stimulus == 1,
@@ -45742,6 +45756,7 @@ fn spread_read(
                     *word |= bit;
                 }
             }
+            observe(exec, trial, start, outcome);
         },
     );
     eprintln!(
@@ -45918,6 +45933,16 @@ fn nights_reads<K: Copy + Ord + Send + Sync>(
     start: &NightsStart,
     kept: &BTreeMap<K, (String, Vec<u8>)>,
 ) -> BTreeMap<(K, bool, u64), (u8, [i64; 4])> {
+    nights_reads_units(start, kept, None)
+}
+
+/// `nights_reads`, each of A's reads counted unit by unit (`e033_read`) where `units` is given;
+/// the pair's reads are read as before, and every read's line and result are `nights_reads`'.
+fn nights_reads_units<K: Copy + Ord + Send + Sync>(
+    start: &NightsStart,
+    kept: &BTreeMap<K, (String, Vec<u8>)>,
+    units: Option<&E033Units>,
+) -> BTreeMap<(K, bool, u64), (u8, [i64; 4])> {
     let mut reads = Vec::new();
     for (&key, (label, image)) in kept {
         nights_state(start, image, label);
@@ -45938,13 +45963,12 @@ fn nights_reads<K: Copy + Ord + Send + Sync>(
     }
     let read = Mutex::new(BTreeMap::new());
     two_at_a_time(&reads, |r| {
-        let got = spread_read(
-            r.site,
-            r.image,
-            &r.label,
-            &nights_what(r.i),
-            nights_read_from(r.i),
-        );
+        let what = nights_what(r.i);
+        let from = nights_read_from(r.i);
+        let got = match units.filter(|_| !r.key.1) {
+            Some(units) => e033_read(r.site, r.image, &r.label, &what, from, units),
+            None => spread_read(r.site, r.image, &r.label, &what, from),
+        };
         read.lock().expect("a read ended").insert(r.key, got);
     });
     read.into_inner().expect("every read ended")
@@ -47751,6 +47775,33 @@ const E020_CLASSES: [&str; 14] = [
 /// a unit of one class sends to a unit of another, an inhibitory unit's as a magnitude. The
 /// excitatory rows and the inhibitory rows add up to `weights_by_polarity`'s two sums, held here.
 fn e020_classes(start: &NightsStart, exec: &Engine, label: &str, targets: &[u32]) {
+    let class = e020_class(start, exec, label, targets);
+    let mut m = [[0i64; 14]; 14];
+    for unit in exec.units() {
+        let from = usize::from(class[unit.id as usize]);
+        let inhibitory = unit.flags & FLAG_INHIBITORY != 0;
+        for s in unit.fan_out(exec.blocks()) {
+            let w = i64::from(s.weight_q1_15);
+            let cell = &mut m[from][usize::from(class[s.target as usize])];
+            *cell = cell.saturating_add(if inhibitory { w.saturating_neg() } else { w });
+        }
+    }
+    let total = |rows: core::ops::Range<usize>| {
+        m[rows]
+            .iter()
+            .flatten()
+            .fold(0i64, |t, &v| t.saturating_add(v))
+    };
+    assert_eq!(
+        (total(11..14), total(0..11)),
+        weights_by_polarity(exec),
+        "{label}: the classes add up to the two sums"
+    );
+    eprintln!("DUMP {label} classes {m:?} of {E020_CLASSES:?}");
+}
+
+/// Each unit's class in exploration 020's matrix, by its id (`E020_CLASSES`'s index).
+fn e020_class(start: &NightsStart, exec: &Engine, label: &str, targets: &[u32]) -> Vec<u8> {
     let sets = start.site.sets;
     let mut class = vec![u8::MAX; exec.units().len()];
     for (c, kind) in [(0u8, 0usize), (1, 1), (2, 3), (3, 4), (4, 2), (5, 5)] {
@@ -47777,28 +47828,7 @@ fn e020_classes(start: &NightsStart, exec: &Engine, label: &str, targets: &[u32]
             (true, _) => 13,
         };
     }
-    let mut m = [[0i64; 14]; 14];
-    for unit in exec.units() {
-        let from = usize::from(class[unit.id as usize]);
-        let inhibitory = unit.flags & FLAG_INHIBITORY != 0;
-        for s in unit.fan_out(exec.blocks()) {
-            let w = i64::from(s.weight_q1_15);
-            let cell = &mut m[from][usize::from(class[s.target as usize])];
-            *cell = cell.saturating_add(if inhibitory { w.saturating_neg() } else { w });
-        }
-    }
-    let total = |rows: core::ops::Range<usize>| {
-        m[rows]
-            .iter()
-            .flatten()
-            .fold(0i64, |t, &v| t.saturating_add(v))
-    };
-    assert_eq!(
-        (total(11..14), total(0..11)),
-        weights_by_polarity(exec),
-        "{label}: the classes add up to the two sums"
-    );
-    eprintln!("DUMP {label} classes {m:?} of {E020_CLASSES:?}");
+    class
 }
 
 /// A's patterns (exploration 020): each one's stimulus, its first unit and its kind (exploration
@@ -49731,9 +49761,16 @@ fn e030_night(
 /// and of the pair. Each image, those two reads, A's couplings, their highest over the head and
 /// the gain are held to H-47's row at block 6 on path 0 of the form whose first night it is.
 fn e030_trial(n: usize, s: usize, forms: &[E030Form]) {
+    e030_trial_reading(n, s, forms, false);
+}
+
+/// `e030_trial`, each image's read of A counted unit by unit (`e033_read`) where `units` says,
+/// the readouts' units and their classes dumped first (exploration 033).
+fn e030_trial_reading(n: usize, s: usize, forms: &[E030Form], units: bool) {
     with_nights(n, s, "e030 trial", |start| {
         let first = mapping_patterns(&start.site, start.image);
         let targets = e020_targets(&first);
+        let units = units.then(|| E033Units::of(start, &targets));
         let label = format!("{} path 0 head blocks {NIGHTS_EVERY}", start.name);
         let (head, ends) = nights_run(start, start.image, NIGHTS_EVERY, &label, path_from(0));
         two_at_a_time(forms, |form| {
@@ -49743,13 +49780,23 @@ fn e030_trial(n: usize, s: usize, forms: &[E030Form]) {
             let (image, gain) = e030_night(start, &head, &first, &gap, replay);
             let blocks = format!("{at} blocks {NIGHTS_EVERY}");
             e020_split(start, &image, &blocks, &targets);
-            let (a, couplings) = spread_read(
-                &start.site,
-                &image,
-                &blocks,
-                "as-it-was 0",
-                nights_read_from(0),
-            );
+            let (a, couplings) = match &units {
+                Some(units) => e033_read(
+                    &start.site,
+                    &image,
+                    &blocks,
+                    "as-it-was 0",
+                    nights_read_from(0),
+                    units,
+                ),
+                None => spread_read(
+                    &start.site,
+                    &image,
+                    &blocks,
+                    "as-it-was 0",
+                    nights_read_from(0),
+                ),
+            };
             let (pair, _) = spread_read(
                 &start.theirs,
                 &image,
@@ -49796,10 +49843,18 @@ fn e030_trial(n: usize, s: usize, forms: &[E030Form]) {
 /// H-47's row of that form on the same path at the same block, so the night without replay's
 /// fifteen are. Beside each form, how many of its rows are each of H-47's two forms'.
 fn e030_job(n: usize, s: usize, forms: &[E030Form]) {
+    e030_job_reading(n, s, forms, false);
+}
+
+/// `e030_job`, each of A's reads counted unit by unit (`e033_read`) where `units` says, the
+/// readouts' units and their classes dumped first (exploration 033). The pair's reads, the rows
+/// and what is held are `e030_job`'s.
+fn e030_job_reading(n: usize, s: usize, forms: &[E030Form], units: bool) {
     with_nights(n, s, "e030", |start| {
         let first = mapping_patterns(&start.site, start.image);
         e020_patterns(start, &first);
         let targets = e020_targets(&first);
+        let units = units.then(|| E033Units::of(start, &targets));
         e020_split(
             start,
             start.image,
@@ -49858,7 +49913,7 @@ fn e030_job(n: usize, s: usize, forms: &[E030Form]) {
         });
         let kept = kept.into_inner().expect("every form ended");
         let readings = readings.into_inner().expect("every form ended");
-        let read = nights_reads(start, &kept);
+        let read = nights_reads_units(start, &kept, units.as_ref());
         let theirs = [NightsGap::NoReplay, NightsGap::PlainFirst];
         for (f, form) in forms.iter().enumerate() {
             let mut rows = Vec::new();
@@ -50264,4 +50319,330 @@ fn each_later_night_alone_a_first_mapping_on_seed_22_from_the_mirrored_assignmen
 #[ignore]
 fn each_later_night_alone_the_eighth_image_on_seed_22_from_the_assignment_explore() {
     e030_job(0, 0, &E032_FORMS);
+}
+
+// ---------------- exploration 033: one cell's readouts, unit by unit (on its branch alone)
+
+/// H-47's plain night on A's patterns on all four nights (ADR-0248), an `E030Form` that replays
+/// on every night, so that its rows are H-47's plain night's at every checkpoint.
+const E033_PLAIN: E030Form = E030Form {
+    name: "plain-first",
+    replays: [true; 4],
+};
+
+/// Exploration 033's first job: the night without replay, the job's control, after block 6 alone,
+/// and H-47's plain night on all four nights. No hold is set.
+const E033_FIRST: [E030Form; 3] = [E030_NO_REPLAY, E030_ALONE[1], E033_PLAIN];
+
+/// Its second job: the night without replay and after block 12, 18 or 24 alone, exploration 032's
+/// four forms. No hold is set.
+const E033_SECOND: [E030Form; 4] = E032_FORMS;
+
+/// The units of A's two readout sets (exploration 033): readout 0's, then readout 1's, each in
+/// `Set::units`' order; each one's class in exploration 020's matrix (`E020_CLASSES`'s index); and
+/// a unit's place among them by its id.
+struct E033Units {
+    units: Vec<u32>,
+    classes: Vec<u8>,
+    first: usize,
+    slot: Vec<Option<usize>>,
+}
+
+impl E033Units {
+    /// The readouts of `sets` in an arena of `arena` units, each unit's class `class`'s, by its id.
+    fn over(sets: &[Set; 4], arena: usize, class: &[u8]) -> Self {
+        let mut units: Vec<u32> = sets[2].units().collect();
+        let first = units.len();
+        units.extend(sets[3].units());
+        let mut slot = vec![None; arena];
+        for (k, &unit) in units.iter().enumerate() {
+            let at = slot
+                .get_mut(unit as usize)
+                .expect("a readout's unit lies in the arena");
+            assert!(at.is_none(), "the two readouts' sets are disjoint");
+            *at = Some(k);
+        }
+        let classes = units
+            .iter()
+            .map(|&u| class.get(u as usize).copied().unwrap_or(u8::MAX))
+            .collect();
+        Self {
+            units,
+            classes,
+            first,
+            slot,
+        }
+    }
+
+    /// A start's readouts, each unit's class from the start image with `targets` as A's patterns'
+    /// targets (`e020_class`), dumped once: the units, how many are readout 0's, and the classes.
+    fn of(start: &NightsStart, targets: &[u32]) -> Self {
+        let exec = zero_from(start.image, SCAN_UNITS, ZERO_ARM);
+        let class = e020_class(start, &exec, &start.name, targets);
+        let units = Self::over(&start.site.sets, exec.units().len(), &class);
+        eprintln!(
+            "DUMP {} readout units {:?} first {} classes {:?} of {E020_CLASSES:?}",
+            start.name, units.units, units.first, units.classes
+        );
+        undropped(exec, &start.name);
+        units
+    }
+
+    /// Each readout unit's spikes among the entries of `train` whose tick is within `ticks` of
+    /// `opens`, by `Readout::count_window`'s rule: from the newest entry back, past the entries
+    /// after the window, to the first one before it, a wrapping difference read as `i32`.
+    fn count(&self, train: &[(u32, u32)], opens: u32, ticks: u32) -> Vec<u32> {
+        let mut counts = vec![0u32; self.units.len()];
+        for &(tick, unit) in train.iter().rev() {
+            let distance = tick.wrapping_sub(opens);
+            if (distance as i32) < 0 {
+                break;
+            }
+            if distance >= ticks {
+                continue;
+            }
+            if let Some(&Some(k)) = self.slot.get(unit as usize) {
+                counts[k] = counts[k].saturating_add(1);
+            }
+        }
+        counts
+    }
+}
+
+/// Whether a train read at a trial's end holds the whole window that opens at `opens`
+/// (exploration 033): the ring has let go no spike, or its oldest spike is from a tick before the
+/// window opens, a wrapping difference read as `i32` as `Readout::count_window` reads it. The ring
+/// drops its oldest spike first, so then every spike of the window is in it.
+fn e033_whole(overwritten: u64, train: &[(u32, u32)], opens: u32) -> bool {
+    overwritten == 0
+        || train
+            .first()
+            .is_some_and(|&(tick, _)| (tick.wrapping_sub(opens) as i32) < 0)
+}
+
+/// A read of A's mapping as `spread_read` makes it (exploration 033), its line the same, each
+/// trial's readout units counted in the trial's window from the executor's train. Held on each
+/// trial: the train holds the whole window (`e033_whole`), and each readout's units' spikes sum to
+/// that readout's count of the trial (`Outcome::counts`). Dumped after the read: each stimulus's
+/// trials in it, and each readout unit's spikes summed over that stimulus's trials, readout 0's
+/// units then readout 1's, in `E033Units`' order.
+fn e033_read(
+    site: &NightSite,
+    image: &[u8],
+    label: &str,
+    what: &str,
+    from: ReadFrom,
+    units: &E033Units,
+) -> (u8, [i64; 4]) {
+    let size = units.units.len();
+    let mut sums = [vec![0u32; size], vec![0u32; size]];
+    let mut trials = [0u32; 2];
+    let got = spread_read_observed(
+        site,
+        image,
+        label,
+        what,
+        from,
+        &mut |exec, trial, start, outcome| {
+            let opens = start.wrapping_add(WINDOW.from);
+            let overwritten = exec.train_overwritten();
+            let train = exec.train();
+            assert!(
+                e033_whole(overwritten, train, opens),
+                "{label} {what} trial {trial}: the train holds the whole window"
+            );
+            let counts = units.count(train, opens, WINDOW.ticks);
+            let (r0, r1) = counts.split_at(units.first);
+            let sum = |r: &[u32]| r.iter().fold(0u32, |t, &c| t.saturating_add(c));
+            assert_eq!(
+                [sum(r0), sum(r1)],
+                outcome.counts,
+                "{label} {what} trial {trial}: each readout's units sum to its count"
+            );
+            let s = usize::from(outcome.stimulus);
+            trials[s] = trials[s].saturating_add(1);
+            for (total, &c) in sums[s].iter_mut().zip(&counts) {
+                *total = total.saturating_add(c);
+            }
+        },
+    );
+    let line = |v: &[u32]| {
+        v.iter()
+            .map(u32::to_string)
+            .collect::<Vec<String>>()
+            .join(",")
+    };
+    eprintln!(
+        "DUMP {label} units spread {what} {from:?} trials {trials:?} A {} B {}",
+        line(&sums[0]),
+        line(&sums[1])
+    );
+    got
+}
+
+/// Exploration 033's forms as ADR-0248 writes them, and the row of H-47's that each row up to its
+/// first parting is: the night without replay H-47's night without replay's and H-47's plain night
+/// its plain night's at every checkpoint, after block 6 alone the plain night's at block 6, and
+/// after block 12, 18 or 24 alone the night without replay's before its replayed night's block.
+#[test]
+fn exploration_033_s_forms_and_the_rows_they_are_held_to() {
+    let [none, alone, plain] = E033_FIRST;
+    assert_eq!(none, E030_NO_REPLAY);
+    assert_eq!(
+        (alone.name, alone.replays),
+        ("alone-6", [true, false, false, false])
+    );
+    assert_eq!(
+        (plain.name, plain.replays),
+        (NightsGap::PlainFirst.name(), [true; 4])
+    );
+    assert_eq!(E033_SECOND, E032_FORMS);
+    let six: Vec<E030Form> = E033_FIRST
+        .iter()
+        .chain(E033_SECOND.iter().skip(1))
+        .copied()
+        .collect();
+    let names: Vec<&str> = six.iter().map(|f| f.name).collect();
+    assert_eq!(
+        names,
+        [
+            "no-replay",
+            "alone-6",
+            "plain-first",
+            "alone-12",
+            "alone-18",
+            "alone-24"
+        ]
+    );
+    let (n, p) = (Some(NightsGap::NoReplay), Some(NightsGap::PlainFirst));
+    let held: Vec<Vec<Option<NightsGap>>> = six
+        .iter()
+        .map(|form| {
+            (0..NIGHTS_CHECKPOINTS.len())
+                .map(|c| form.held_to(c))
+                .collect()
+        })
+        .collect();
+    assert_eq!(
+        held,
+        [
+            vec![n, n, n, n, n],
+            vec![p, None, None, None, None],
+            vec![p, p, p, p, p],
+            vec![n, None, None, None, None],
+            vec![n, n, None, None, None],
+            vec![n, n, n, None, None],
+        ]
+    );
+    for form in &six {
+        for c in 0..4usize {
+            assert_eq!(form.gap(c) == NightsGap::PlainFirst, form.replays[c]);
+        }
+    }
+}
+
+/// Exploration 033's unit read: each unit's spikes in a window are `Readout::count_window`'s rule
+/// unit by unit, so each readout's units sum to its count, at the train's wrap too; each unit keeps
+/// its class; and the guard on the train holds where the window is whole and fails where it may
+/// not be.
+#[test]
+fn exploration_033_s_unit_read_is_the_readouts_count() {
+    let sets = geometry(SCAN_UNITS, rotation(SCAN_UNITS));
+    let arena = SCAN_UNITS as usize;
+    let class: Vec<u8> = (0..arena).map(|i| (i % 14) as u8).collect();
+    let units = E033Units::over(&sets, arena, &class);
+    assert_eq!(units.first, sets[2].len() as usize);
+    assert_eq!(
+        units.units.len(),
+        sets[2].len().saturating_add(sets[3].len()) as usize
+    );
+    for (&u, &c) in units.units.iter().zip(&units.classes) {
+        assert_eq!(c, class[u as usize]);
+    }
+    let a = sets[2].units().nth(3).expect("a unit of readout 0");
+    let b = sets[3].units().nth(5).expect("a unit of readout 1");
+    let outside = sets[0].units().next().expect("a unit of stimulus A");
+    let readout = Readout::new([sets[2], sets[3]]);
+    let at = |v: &[u32], unit: u32| {
+        let k = units
+            .units
+            .iter()
+            .position(|&x| x == unit)
+            .expect("a readout unit");
+        v[k]
+    };
+    let late = u32::MAX.wrapping_sub(10);
+    for (opens, train, want) in [
+        (
+            1_000u32,
+            vec![
+                (900u32, a),
+                (999, b),
+                (1_000, a),
+                (1_000, b),
+                (1_200, a),
+                (1_200, outside),
+                (1_499, b),
+                (1_500, a),
+                (1_600, b),
+            ],
+            (2u32, 2u32),
+        ),
+        (
+            late,
+            vec![
+                (u32::MAX.wrapping_sub(20), a),
+                (u32::MAX.wrapping_sub(5), a),
+                (3, b),
+                (600, b),
+            ],
+            (1, 1),
+        ),
+    ] {
+        let counts = units.count(&train, opens, 500);
+        let (r0, r1) = counts.split_at(units.first);
+        let sum = |r: &[u32]| r.iter().fold(0u32, |t, &c| t.saturating_add(c));
+        assert_eq!([sum(r0), sum(r1)], readout.count_window(&train, opens, 500));
+        assert_eq!((at(&counts, a), at(&counts, b)), want);
+        assert_eq!(sum(&counts), want.0.saturating_add(want.1));
+    }
+    assert!(e033_whole(0, &[], 5));
+    assert!(e033_whole(0, &[(9, 0)], 5));
+    assert!(e033_whole(1, &[(4, 0), (9, 0)], 5));
+    assert!(!e033_whole(1, &[(5, 0), (9, 0)], 5));
+    assert!(!e033_whole(1, &[(6, 0)], 5));
+    assert!(!e033_whole(1, &[], 5));
+    assert!(e033_whole(1, &[(u32::MAX, 0)], 2));
+    assert!(!e033_whole(1, &[(3, 0)], u32::MAX));
+}
+
+/// Exploration 033's trial, on seed 24 from the eighth image and the assignment: the pair's head
+/// and the first night of each of its six forms on path 0, each image's read of A counted unit by
+/// unit.
+#[test]
+#[ignore]
+fn the_harness_of_one_cells_readouts_unit_by_unit_explore() {
+    let six: Vec<E030Form> = E033_FIRST
+        .iter()
+        .chain(E033_SECOND.iter().skip(1))
+        .copied()
+        .collect();
+    e030_trial_reading(2, 0, &six, true);
+}
+
+/// Exploration 033's first job, on seed 24 from the eighth image and the assignment: the night
+/// without replay, after block 6 alone and H-47's plain night on all four nights, each of A's reads
+/// counted unit by unit.
+#[test]
+#[ignore]
+fn one_cells_readouts_after_block_6_alone_and_on_every_night_explore() {
+    e030_job_reading(2, 0, &E033_FIRST, true);
+}
+
+/// Exploration 033's second job, on the same cell: the night without replay and after block 12, 18
+/// or 24 alone, each of A's reads counted unit by unit.
+#[test]
+#[ignore]
+fn one_cells_readouts_after_each_later_night_alone_explore() {
+    e030_job_reading(2, 0, &E033_SECOND, true);
 }
