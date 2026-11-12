@@ -2,7 +2,7 @@
 title: Menteion Architecture Whitepaper
 version: 5.47.0
 status: active
-date: 2026-11-12
+date: 2026-11-13
 ---
 
 # Menteion Architecture Whitepaper
@@ -13,7 +13,7 @@ date: 2026-11-12
 | :--- | :--- |
 | Version | 5.47.0 |
 | Status | Active (living document; amended by ADR) |
-| Date | 2026-11-12 |
+| Date | 2026-11-13 |
 | Supersedes | Whitepaper 4.134.0 (2026-10-19), whose §6.5 and §11.1 told the rounds now in [docs/research/](research/README.md). It superseded 3.0.0 (2026-09-10, eighteen crates), which superseded Specification 2.8.0 |
 | Canonical language | English (this file). A [Traditional Chinese reader's guide](zh-TW/README.md) points into it and carries no layouts or figures of its own. |
 | Structure | [arc42](https://arc42.org) template v8 with [C4](https://c4model.com) views |
