@@ -1,7 +1,7 @@
 # Where the work stands
 
 Every round rewrites this page whole, and it holds no history ([ADR-0197](adr/0197-one-place-for-each-kind-of-fact.md)).
-[ADR-0252](adr/0252-what-the-night-writes-on-both-cells.md) wrote it on 2026-11-12, after exploration 036.
+[ADR-0253](adr/0253-what-the-night-writes-on-the-other-ten-cells.md) wrote it on 2026-11-13, after exploration 037.
 
 ## The engine
 
@@ -53,7 +53,7 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 
 ## The next decision
 
-[ADR-0252](adr/0252-what-the-night-writes-on-both-cells.md) reads exploration 036 and writes no hypothesis, and M11 stays open.
-1. M11: exploration 037 runs on a branch of its own once ADR-0252 merges. On seed 24's two eighth images, where the volley's drive from A's kinds onto A's answer's readout less the other, carried by the weights, parted the cells by +187.7 to +197.0 k after the three later single nights, it runs the nights alone and reads, unit by unit, each readout unit's spikes in the replays of A's patterns and what consolidation and the zero sum move onto it from each of A's and B's kinds. Whether a hypothesis follows it is the next decision.
+[ADR-0253](adr/0253-what-the-night-writes-on-the-other-ten-cells.md) reads exploration 037 and writes no hypothesis, and M11 stays open.
+1. M11: exploration 038 runs on a branch of its own after ADR-0253 merges, when the maintainers start it. On H-47's other ten cells it runs exploration 037's read, the nights alone with each readout unit's spikes in the replays of A's patterns and what consolidation and the zero sum move onto it, and sets each cell's writing beside A's count right after the same night from explorations 031 and 032. Whether a hypothesis follows it is the next decision.
 2. The schedule's sweep of 2026-11-18 at 20:17Z is the next to record, by the first ADR that merges after it ends; ADR-0251 recorded 2026-11-11's.
 3. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
