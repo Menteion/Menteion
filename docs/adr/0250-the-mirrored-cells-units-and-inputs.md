@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-12
 depends-on: ADR-0249
 title: The mirrored cell's units and inputs
