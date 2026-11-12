@@ -92,11 +92,11 @@ worked from the unrounded values and rounded once, an exact half away from zero.
   excitatory less inhibitory, the window's fall came back by 30 to 83 per cent on the image from the assignment and
   37 to 71 on the image from the mirrored assignment, and the volley's change by −35 to +28 and
   −8 to +22; A's kinds' drive onto each readout on A's trials by −23 to +15 and 0 to +14.
-- **The units that carried half of each readout's change lost the most drive.** Right after each single night the 13 to 19
-  such units of a readout on the image from the assignment and 13 to 22 on the image from the mirrored assignment lost 11.48 to 26.13
-  and 9.30 to 32.69 k a trial each, both spans, excitatory less inhibitory, against the rest's 1.44 to 2.86 and
-  1.40 to 2.69. Over each readout's units a unit's drive difference, both spans, lines up with its spikes' difference at a correlation of
-  0.40 to 0.56 and 0.28 to 0.67, its input's at 0.12 to 0.28 and 0.00 to +0.35.
+- **The units that carried half of each readout's change lost far more drive a unit than the rest.** Right after each single night the 13 to
+  19 such units of a readout on the image from the assignment and 13 to 22 on the image from the mirrored assignment lost 11.48 to 26.13 and
+  9.30 to 32.69 k a trial each, both spans, excitatory less inhibitory, against the rest's 1.44 to 2.86 and 1.40 to 2.69. Over each
+  readout's units a unit's drive difference, both spans, lines up with its spikes' difference at a correlation of 0.40 to 0.56 and 0.28 to
+  0.67, its input's at 0.12 to 0.28 and 0.00 to +0.35.
 
 ## What ran
 
@@ -340,11 +340,10 @@ Label aside, each `DUMP` line of the jobs set beside them is among the job's `DU
 | From the mirrored assignment | Job one | exploration 035's job, run 43134386489 | 10 645 | 10 645 of 10 645 |
 | From the mirrored assignment | Job two | exploration 035's job, run 43134386489 | 10 826 | 10 826 of 10 826 |
 
-Each job's other `DUMP` lines, 2 971 and 3 961 on each cell for job one and job two, are exploration 036's own and of no
-other kind,
-by this note's parser: one line naming every unit's class; after each of A's reads, every unit's spikes and the drive by readout in each
-span, four lines; and each image's unit drive in each span, two lines. A's count under each form, less the night without replay, is
-therefore explorations 033's and 035's:
+Each job's other `DUMP` lines, 2 971 and 3 961 on each cell for job one and job two, are exploration 036's own and of no other kind, by this
+note's parser: one line naming every unit's class; after each of A's reads, every unit's spikes and the drive by readout in each span, four
+lines; and each image's unit drive in each span, two lines. A's count under each form, less the night without replay, is therefore
+explorations 033's and 035's:
 
 | Form | Block | From the assignment: A's count less without replay | on A's trials | on B's trials | From the mirrored assignment: A's count less without replay | on A's trials | on B's trials |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -801,8 +800,8 @@ image from the mirrored assignment. In the volley the trial's stimulus's kinds' 
 the image from the assignment and 271.3 to 412.6 k on the image from the mirrored assignment, and fell onto the other by 236.9 to 335.5 k
 and 253.9 to 399.4 k, each beyond 2 SE; the largest move of any other group's volley drive was 35.4 k.
 
-**Times the gain.** The gain at the trial's end, the window's excitatory drive times the gain over that drive, a readout's on a
-stimulus's trials at a checkpoint, read 1.666 to 1.707 on the night
+**Times the gain.** The gain at the trial's end, read as a readout's window excitatory drive times the gain, a trial, the mean over
+the 48 reads at a checkpoint on a stimulus's trials, over the mean of that drive without the gain, read 1.666 to 1.707 on the night
 without replay on the image from the assignment and 1.637 to 1.660 right after the single replayed nights, and
 1.666 to 1.706 and 1.628 to 1.653 on the image from the mirrored assignment. Excitatory less inhibitory, with and without it:
 
