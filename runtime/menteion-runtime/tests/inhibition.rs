@@ -47174,6 +47174,28 @@ fn pair_absorbed(trace: i16, weight: i16, modulation: i32) -> i32 {
         .saturating_sub(before)
 }
 
+/// What consolidation moves of `trace` into `weight` at `modulation` below zero, as
+/// `SynapseBlock::consolidate_against` does for an excitatory synapse (exploration 037): the
+/// magnitude moved, against the trace's sign and at most the trace in size, a rail keeping the
+/// magnitude within $[0, 1)$. The trace is spent toward zero by as much, so what it loses is the
+/// negation of what the weight moved.
+fn pair_against(trace: i16, weight: i16, modulation: i32) -> i32 {
+    let m = i64::from(modulation.max(ONE.saturating_neg()).unsigned_abs());
+    let amount = (i64::from(trace)
+        .abs()
+        .saturating_mul(m)
+        .saturating_add(0x8000)
+        >> 16) as i32;
+    let transfer = amount
+        .saturating_mul(i32::from(trace).signum())
+        .saturating_neg();
+    let before = i32::from(weight).max(0);
+    before
+        .saturating_add(transfer)
+        .clamp(0, i32::from(i16::MAX))
+        .saturating_sub(before)
+}
+
 /// A pairing's ordinal (exploration 015): the first, second, third and later spikes of its
 /// presynaptic unit in its own replay; the unit's next spike after that replay, which reads the
 /// replay's last; and any other in slow-wave sleep, and in any other stage.
@@ -47258,9 +47280,19 @@ struct ReplayWatch {
     /// then the pairing's kind (`WATCH_PRE`), its bin of ordinals (`e037_bin`) and the target's
     /// class as the watch classed the pairing (`WATCH_POST`).
     unit_absorbed: Vec<[[[i64; 7]; 4]; 4]>,
-    /// Exploration 037: the pairings read at a modulation below zero, where the watch checks
-    /// nothing and `absorbed` would carry the weight's move with the other sign.
+    /// Exploration 037: what consolidation moved each kind's weights onto each unit by, by the
+    /// unit's id, then the kind and the bin (`E037_MOVED`): the four bins of ordinals at a
+    /// modulation at or above zero, where the weight moves by what the trace loses, then every
+    /// pairing below zero, where it moves by the negation of that (`pair_against`).
+    unit_moved: Vec<[[i64; 5]; 4]>,
+    /// Exploration 037: the engine's tick when the watch was built; the pairings read at a
+    /// modulation below zero; the watched ticks read below zero, by stage; the first and the last
+    /// such tick, counted from the watch's start; and the lowest modulation read.
+    began: u64,
     below_zero: u64,
+    below_ticks: [u64; 4],
+    below_span: Option<(u64, u64)>,
+    below_least: Option<i32>,
     /// Exploration 037: each kind's weights onto each unit, by the unit's id, when the watch was
     /// built and after its last tick (`finish`), before the quiet ticks.
     unit_weights: [Vec<[i64; 4]>; 2],
@@ -47366,7 +47398,12 @@ impl ReplayWatch {
             wrong: 0,
             unit_spikes: core::array::from_fn(|_| core::array::from_fn(|_| vec![0u32; n])),
             unit_absorbed: vec![[[[0i64; 7]; 4]; 4]; n],
+            unit_moved: vec![[[0i64; 5]; 4]; n],
+            began: exec.ticks(),
             below_zero: 0,
+            below_ticks: [0; 4],
+            below_span: None,
+            below_least: None,
             unit_weights: [weights.clone(), weights],
         }
     }
@@ -47405,6 +47442,20 @@ impl ReplayWatch {
             _ => self.baseline,
         };
         self.modulation = exec.modulator().signed_modulation(baseline);
+        if self.modulation < 0 {
+            let now = exec.ticks().saturating_sub(self.began);
+            if let Some(n) = self.below_ticks.get_mut(usize::from(self.stage)) {
+                *n = n.saturating_add(1);
+            }
+            self.below_span = Some(
+                self.below_span
+                    .map_or((now, now), |(first, _)| (first, now)),
+            );
+            self.below_least = Some(
+                self.below_least
+                    .map_or(self.modulation, |m| m.min(self.modulation)),
+            );
+        }
         let blocks = exec.blocks();
         for &b in &self.held_blocks {
             self.shadow[b as usize].weights_q1_15 = blocks[b as usize].weights_q1_15;
@@ -47512,6 +47563,13 @@ impl ReplayWatch {
                     let cell = &mut self.unit_absorbed[post as usize][usize::from(k)]
                         [e037_bin(ordinal)][usize::from(to)];
                     *cell = cell.saturating_add(i64::from(read.absorbed));
+                    let (bin, moved) = if self.modulation < 0 {
+                        (4, i64::from(read.absorbed).saturating_neg())
+                    } else {
+                        (e037_bin(ordinal), i64::from(read.absorbed))
+                    };
+                    let cell = &mut self.unit_moved[post as usize][usize::from(k)][bin];
+                    *cell = cell.saturating_add(moved);
                 }
                 self.pending.push((class, to, ordinal, unit, read));
             }
@@ -47559,11 +47617,16 @@ impl ReplayWatch {
             }
         }
         read.absorbed = i32::from(trace).saturating_sub(i32::from(new.eligibility_q1_15[slot]));
-        let by_the_rule = pair_absorbed(trace, weight, self.modulation);
+        let (by_the_rule, weight_moves) = if self.modulation < 0 {
+            let against = pair_against(trace, weight, self.modulation);
+            (against.saturating_neg(), against)
+        } else {
+            let absorbed = pair_absorbed(trace, weight, self.modulation);
+            (absorbed, absorbed)
+        };
         let moved = i32::from(new.weights_q1_15[slot]).saturating_sub(i32::from(weight));
-        let right = self.modulation < 0
-            || read.absorbed == by_the_rule
-                && (self.held_unit[unit as usize] || moved == read.absorbed);
+        let right = read.absorbed == by_the_rule
+            && (self.held_unit[unit as usize] || moved == weight_moves);
         if !right && self.wrong < 8 {
             eprintln!(
                 "DUMP {} wrong pre {unit} post {post} at {now} previous {previous} post last {post_last} weight {weight} modulation {} trace {trace} {read:?} by the rule {by_the_rule} {old:?} {new:?}",
@@ -47646,36 +47709,33 @@ impl ReplayWatch {
 
     /// Each kind's rounds of the zero sum onto each unit, by the unit's id (exploration 037): its
     /// weights onto the unit after the watch's last tick less its weights when the watch was built,
-    /// less what consolidation took into them.
+    /// less what consolidation moved them by, at and below zero (`unit_moved`).
     fn e037_rounds(&self) -> Vec<[i64; 4]> {
         let [built, ended] = &self.unit_weights;
         built
             .iter()
             .zip(ended)
-            .zip(&self.unit_absorbed)
+            .zip(&self.unit_moved)
             .map(|((b, e), a)| {
                 core::array::from_fn(|k| {
-                    let consolidated = a[k]
-                        .iter()
-                        .flatten()
-                        .fold(0i64, |t, &v| t.saturating_add(v));
+                    let consolidated = a[k].iter().fold(0i64, |t, &v| t.saturating_add(v));
                     e[k].saturating_sub(b[k]).saturating_sub(consolidated)
                 })
             })
             .collect()
     }
 
-    /// Held on a night (exploration 037): the watch's misses and the pairings read below zero are
-    /// none; the rounds onto every unit outside the two readouts are zero; every unit's spikes in
-    /// the replays, summed over the arena by the pattern's stimulus and the spike's class, are the
-    /// ripple spikes lines'; and what consolidation took onto every unit, summed over the arena by
-    /// kind, bin of ordinals and target class, is the pairings lines' `absorbed` summed over the
-    /// ordinals of each bin and over their `spikes`. Dumped: what was held.
+    /// Held on a night (exploration 037): the watch misses nothing, below zero as above it; the
+    /// rounds onto every unit outside the two readouts are zero; every unit's spikes in the
+    /// replays, summed over the arena by the pattern's stimulus and the spike's class, are the
+    /// ripple spikes lines'; and what each pairing took from the trace onto every unit, summed over
+    /// the arena by kind, bin of ordinals and target class, is the pairings lines' `absorbed`
+    /// summed over the ordinals of each bin and over their `spikes`. Dumped: what was held, and
+    /// the pairings and ticks read below zero.
     fn e037_held(&self, label: &str) {
         assert_eq!(
-            (self.wrong, self.below_zero),
-            (0, 0),
-            "{label}: the watch misses nothing and reads no pairing below zero"
+            self.wrong, 0,
+            "{label}: the watch misses nothing, below zero as above it"
         );
         let mut outside = 0usize;
         for (u, rounds) in self.e037_rounds().iter().enumerate() {
@@ -47718,15 +47778,25 @@ impl ReplayWatch {
             "{label}: every unit's consolidation sums to the pairings lines' absorbed"
         );
         eprintln!(
-            "DUMP {label} e037 held: wrong 0, pairings below zero 0; rounds 0 onto each of the {outside} units outside the readouts; every unit's replay spikes by stimulus and class sum to the ripple spikes lines' {spikes:?}; every unit's consolidation by kind {WATCH_PRE:?}, bin {E037_BINS:?} and target class sums to the pairings lines' absorbed {lines:?}"
+            "DUMP {label} e037 held: wrong 0; rounds 0 onto each of the {outside} units outside the readouts; every unit's replay spikes by stimulus and class sum to the ripple spikes lines' {spikes:?}; what every unit's pairings took from the trace by kind {WATCH_PRE:?}, bin {E037_BINS:?} and target class sums to the pairings lines' absorbed {lines:?}"
+        );
+        eprintln!(
+            "DUMP {label} e037 below zero: pairings {}; watched ticks {} by stage {:?}; the first and the last from the watch's start {:?}; the lowest modulation {:?}",
+            self.below_zero,
+            self.below_ticks
+                .iter()
+                .fold(0u64, |t, &n| t.saturating_add(n)),
+            self.below_ticks,
+            self.below_span,
+            self.below_least
         );
     }
 
     /// Dumped for the readout units of `units`, in their order (exploration 037), a unit's values
     /// comma-separated and the units separated by `;`: each one's spikes in the ripples that
     /// replay A's patterns of stimulus A, as one of the pattern's units and outside it, then of
-    /// stimulus B; what consolidation took onto it from each kind (`WATCH_PRE`) in each bin
-    /// (`E037_BINS`), kind by kind; each kind's rounds onto it; and each kind's weights onto it
+    /// stimulus B; what consolidation moved each kind's (`WATCH_PRE`) weights onto it by in each
+    /// bin of `E037_MOVED`, kind by kind; each kind's rounds onto it; and each kind's weights onto it
     /// when the watch was built and after its last tick. Then each of those summed over each
     /// readout's units, readout 0's then readout 1's.
     fn e037_dump(&self, label: &str, units: &E033Units) {
@@ -47746,16 +47816,12 @@ impl ReplayWatch {
                 [a, a_out, b, b_out]
             })
             .collect();
-        let consolidated: Vec<[i64; 16]> = units
+        let consolidated: Vec<[i64; 20]> = units
             .units
             .iter()
             .map(|&u| {
-                let by = &self.unit_absorbed[u as usize];
-                core::array::from_fn(|i| {
-                    by[i >> 2][i & 3]
-                        .iter()
-                        .fold(0i64, |t, &v| t.saturating_add(v))
-                })
+                let by = &self.unit_moved[u as usize];
+                core::array::from_fn(|i| by[i / 5][i % 5])
             })
             .collect();
         let pick = |of: &[[i64; 4]]| -> Vec<[i64; 4]> {
@@ -47771,7 +47837,7 @@ impl ReplayWatch {
             e037_line(&spikes)
         );
         eprintln!(
-            "DUMP {label} e037 consolidation onto the readout units by kind {WATCH_PRE:?} and bin {E037_BINS:?} {}",
+            "DUMP {label} e037 consolidation onto the readout units by kind {WATCH_PRE:?} and bin {E037_MOVED:?} {}",
             e037_line(&consolidated)
         );
         eprintln!(
@@ -47806,6 +47872,16 @@ const E037_BINS: [&str; 4] = [
     "its next spike after it",
     "another in slow-wave sleep",
     "another",
+];
+
+/// The bins exploration 037 dumps what consolidation moved a weight by in: `E037_BINS` at a
+/// modulation at or above zero, then every pairing read below zero, whatever its ordinal.
+const E037_MOVED: [&str; 5] = [
+    "its own replay",
+    "its next spike after it",
+    "another in slow-wave sleep",
+    "another",
+    "below zero",
 ];
 
 /// The bin of a pairing's ordinal (`E037_BINS`' index).
@@ -52535,6 +52611,51 @@ fn exploration_037_s_nights_and_rows() {
     let bins: Vec<usize> = (0u8..=PAIR_ELSE).map(e037_bin).collect();
     assert_eq!(bins, [0, 0, 0, 0, 1, 2, 3]);
     assert_eq!((PAIR_AFTER, PAIR_ELSE_SWS, PAIR_ELSE), (4, 5, 6));
+}
+
+/// Exploration 037's rule below zero: `pair_against` is what `SynapseBlock::consolidate_signed`
+/// moves an excitatory weight by at a modulation below zero, and the trace loses the negation of
+/// it, over traces of both signs, weights at and between the rails and modulations down to and
+/// past -1; at or above zero `pair_absorbed` is what it moves, the trace losing as much.
+#[test]
+fn exploration_037_s_rule_below_zero_is_the_engine_s() {
+    let mut checked = 0u32;
+    for trace in [-32_768i16, -9_000, -1_200, -1, 0, 1, 777, 3_000, 32_767] {
+        for weight in [0i16, 1, 9_000, 30_000, i16::MAX, -50] {
+            for modulation in [
+                ONE.saturating_mul(-2),
+                ONE.saturating_neg(),
+                -ONE / 2,
+                -ONE / 3,
+                -1,
+                0,
+                ONE / 2,
+                ONE,
+            ] {
+                let mut block = SynapseBlock::new();
+                assert!(block.set_synapse(0, 5, weight, 100, false));
+                block.eligibility_q1_15[0] = trace;
+                block.consolidate_signed(0, modulation, Polarity::Excitatory);
+                let moved =
+                    i32::from(block.weights_q1_15[0]).saturating_sub(i32::from(weight.max(0)));
+                let lost = i32::from(trace).saturating_sub(i32::from(block.eligibility_q1_15[0]));
+                let (rule, spent) = if modulation < 0 {
+                    let against = pair_against(trace, weight, modulation);
+                    (against, against.saturating_neg())
+                } else {
+                    let absorbed = pair_absorbed(trace, weight, modulation);
+                    (absorbed, absorbed)
+                };
+                assert_eq!(
+                    (moved, lost),
+                    (rule, spent),
+                    "trace {trace} weight {weight} modulation {modulation}"
+                );
+                checked = checked.saturating_add(1);
+            }
+        }
+    }
+    assert_eq!(checked, 432);
 }
 
 /// Exploration 037's trial (ADR-0252): path 0 of each of the two cells run whole, as a job runs a
