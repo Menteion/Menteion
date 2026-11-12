@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-12
 depends-on: ADR-0251
 title: What the night writes, on both cells

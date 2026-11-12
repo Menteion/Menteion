@@ -2662,7 +2662,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0249](adr/0249-one-cells-readout-units-inputs.md) | One cell's readout units' inputs | accepted |
 | [ADR-0250](adr/0250-the-mirrored-cells-units-and-inputs.md) | The mirrored cell's units and inputs | accepted |
 | [ADR-0251](adr/0251-what-reaches-the-readout-units-on-both-cells.md) | What reaches the readout units, on both cells | accepted |
-| [ADR-0252](adr/0252-what-the-night-writes-on-both-cells.md) | What the night writes, on both cells | proposed |
+| [ADR-0252](adr/0252-what-the-night-writes-on-both-cells.md) | What the night writes, on both cells | accepted |
 <!-- adr-index: end decisions -->
 
 ---
