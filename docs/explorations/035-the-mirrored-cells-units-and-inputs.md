@@ -63,11 +63,12 @@ difference, ratio and per cent is worked from the unrounded values and rounded o
   beyond 2 SE after no single night, right after or at block 36.
 - **Over each single replayed night the inputs moved as on the image from the assignment.** Of the inhibitory, all excitatory and A's and
   B's kinds' changes onto each readout, 32 of 32 carry the same sign on both cells: the inhibitory input onto the readouts rose by 4.16 to
-  5.36 M and all excitatory input fell by 3.02 to 4.18, A's kinds' input onto A's answer's readout rose by 0.35 to 0.42 M and B's onto B's
-  by 0.28 to 0.34, and each place group's excitatory units lost more onto the other readout than onto their own, 8 of 8 here and 8 of 8
-  there. The gain fell by 0.073 to 0.074 here and 0.061 to 0.065 there, and A's margin rose by 1.28 to 1.43 M here and 1.05 to 1.26 there.
-  Here the inhibitory rise onto A's answer's readout, readout 0, was 5.25 to 5.36 M and onto B's 4.16 to 4.31; on the image from the
-  assignment 4.32 to 4.48 and 4.18 to 4.43.
+  5.36 M here and 4.18 to 4.48 there and all excitatory input fell by 3.02 to 4.18 here and 3.37 to 4.29 there, A's kinds' input onto A's
+  answer's readout rose by 0.35 to 0.42 M here and 0.23 to 0.31 there and B's onto B's by 0.28 to 0.34 here and 0.28 to 0.32 there, and each
+  place group's excitatory units lost more onto the other readout than onto their own, 8 of 8 here and 8 of 8 there. The gain fell by 0.073
+  to 0.074 here and 0.061 to 0.065 there, and A's margin rose by 1.28 to 1.43 M here and 1.05 to 1.26 there. Here the inhibitory rise onto
+  A's answer's readout, readout 0, was 5.25 to 5.36 M and onto B's 4.16 to 4.31; on the image from the assignment 4.32 to 4.48 and 4.18 to
+  4.43.
 - **On both cells A's answer's readout lost more of its excitatory input less inhibitory input than the other over each single replayed
   night, more here.** Right after the nights after block 6, 12, 18 and 24 alone its difference less the other's read −1.76, −1.21, −1.42 and
   −1.86 M here and −0.01, −0.48, −0.46 and −0.95 there, while A's kinds' input difference onto A's answer's readout less onto the other read
@@ -80,10 +81,12 @@ difference, ratio and per cent is worked from the unrounded values and rounded o
   the class matrix's units. Their inhibitory input difference lay below the rest's in 15 of 16 sets here, all but readout 1's on A's trials
   after block 24 alone, +11 621 a unit against the rest's +8 381, and in 16 of 16 there. Over each readout's 459 units a unit's input
   difference from the trial's stimulus's kinds correlated with its spikes' difference by +0.43 to +0.83 here and +0.51 to +0.72 there.
-- **By block 36 the inhibitory difference had come back by 39 to 78 per cent here and 42 to 81 on the image from the assignment.** All
-  excitatory input's difference had come back by 1 to 13 per cent in 7 of 8 cases, and after block 24 alone onto readout 0 it lay 1 per cent
-  further from the night without replay. Each readout's spikes' difference lay nearer the night without replay at block 36 than right after
-  the replayed night in 16 of 16 and below it beyond 2 SE in 16 of 16.
+- **By block 36 the inhibitory difference had come back by 39 to 78 per cent here and 42 to 81 on the image from the assignment.** Of all
+  excitatory input's difference, here it had come back by 1 to 13 per cent in 7 of 8 cases, and it lay further from the night without replay
+  after block 24 alone onto A's answer's readout, by 1 per cent; on the image from the assignment it had come back by 1 to 13 per cent in 6
+  of 8 cases, and it lay further from the night without replay after block 18 alone onto B's answer's readout and after block 24 alone onto
+  B's answer's readout, by 2 and 1 per cent. Here each readout's spikes' difference lay nearer the night without replay at block 36 than
+  right after the replayed night in 16 of 16 and below it beyond 2 SE in 16 of 16.
 - **Under H-47's plain night on all four nights each input's difference grew with each night**: of the inhibitory input's, each place
   group's and A's and B's kinds' differences onto the two readouts, 10 of 10 grew in magnitude from block 6 to block 24. The inhibitory
   input onto A's answer's readout read +4.96, +7.99, +10.44 and +12.38 M less the night without replay's at blocks 6, 12, 18 and 24 here and
@@ -269,9 +272,9 @@ this cell's units one by one or their inputs**, so each form ran again, and its 
 | Job one | exploration 021's job, run 41591077514 | its plain night's lines | 5 306 of 5 306 |
 | Job two | exploration 032's job, run 42971972683 | every line | 9 647 of 9 647 |
 
-- Of job one's 10 645 lines, 898 are lines of neither exploration 031's job nor exploration 021's plain night, label aside: 721 unit reads
-  and the readouts' line, 164 input read lines, 12 notices that a night read what its form asks and 1 of the rows held. Of job two's 10 826,
-  1 179 are not lines of exploration 032's job: 961 unit reads and the readouts' line and 218 input read lines.
+- Of job one's 10 645 lines, 898 are lines of neither exploration 031's job nor exploration 021's plain night, label aside: 720 unit reads
+  and the readouts' line, 721, 164 input read lines, 12 notices that a night read what its form asks and 1 of the rows held. Of job two's
+  10 826, 1 179 are not lines of exploration 032's job: 960 unit reads and the readouts' line, 961, and 218 input read lines.
 
 ## 1. The rows and reads against the logs
 
@@ -641,7 +644,8 @@ beyond 2 SE and 1 within 2 SE; of H-47's plain night's 64 at blocks 6 to 24, 61 
 1's pattern targets fired less by 3.02 to 4.07 (after block 6 alone −3.02, after block 12, 18 and 24 alone −3.86, −4.07 and −3.90); readout
 1's inhibitory units fired less by 2.71 to 3.45 (after block 6 alone −2.71, after block 12, 18 and 24 alone −3.40, −3.45 and −3.00).
 
-**The fewest units carrying half of each readout's difference**, all of them beyond 2 SE here, named by their id and class: T a pattern
+**The fewest units carrying half of each readout's difference**, where that difference lies beyond 2 SE, as each readout's here does, a unit
+among them within twice its own SE or beyond it, named by their id and class: T a pattern
 target, E another excitatory unit, I an inhibitory unit, C C's own, D D's own. Beside each, how many of them are among the night without
 replay's units carrying half its spikes at the same checkpoint:
 
@@ -690,9 +694,9 @@ replay's units carrying half its spikes at the same checkpoint:
 | B's trials | readout 1, the even places | 14 | 15 | 22 | 17 | 9 | 29 | 566 T, 6 T, 794 I, 658 T, 134 I, 494 I, 118 T, 268 T, 918 T |
 
 The fewest units carrying half of each single night's readout difference beyond 2 SE are 13 to 22, in 16 of its 16 sets. On A's trials
-readout 0's are 9 to 11 pattern targets and 3 to 6 inhibitory units, readout 1's 6 to 8 pattern targets and 7 to 9 inhibitory units. Of the
-27 to 29 units among any of the four single nights' fewest of a readout on a stimulus's trials, 6 to 9 are among all four's. Under H-47's
-plain night the fewest are 8 to 18 at blocks 6 to 24.
+readout 0's are 9 to 11 pattern targets, 3 to 6 inhibitory units and 0 or 1 of C's own, readout 1's 6 to 8 pattern targets, 7 to 9
+inhibitory units and 2 to 4 other excitatory units. Of the 27 to 29 units among any of the four single nights' fewest of a readout on a
+stimulus's trials, 6 to 9 are among all four's. Under H-47's plain night the fewest are 8 to 18 at blocks 6 to 24.
 
 ## 4. At block 36
 
@@ -1316,7 +1320,7 @@ onto readout 1 fell by 2.30 to 2.62, the even places' onto readout 1 fell by 0.6
 other excitatory units' fell by 0.01 to 0.04: of the eight place groups' changes, 8 lie lower onto the other readout than onto the group's
 own. A's kinds' input onto readout 0, A's answer, rose by 0.35 to 0.42 M and onto readout 1 fell by 0.35 to 0.42; B's kinds' input onto
 readout 1, B's answer, rose by 0.28 to 0.34 M and onto readout 0 fell by 0.28 to 0.34; of their sums onto the two readouts together, means
-over the paths, the largest move was A's kinds' after block 18 alone, −42 in the class matrix's units. All excitatory input onto readout 0
+over the paths, in the class matrix's units, the largest move was A's kinds' after block 18 alone, −42. All excitatory input onto readout 0
 changed by −4.18, −3.60, −3.63 and −3.76 M over the night after block 6, 12, 18 and 24 alone, and onto readout 1 by −3.44, −3.40, −3.18 and
 −3.02. Over the night without replay's same nights the largest move of an excitatory group was the odd places' excitatory units' onto
 readout 1 over its night after block 12, +0.21 M, and its inhibitory input onto the readouts rose by 0.25 to 0.40. H-47's plain nights after
@@ -1357,8 +1361,8 @@ targets in 8 of the 8 cases. Readout 0's pattern targets' input onto readout 1 f
 by 1.85 to 2.08, where readout 1's own pattern targets' input onto readout 1 fell by 0.36 to 0.54 and readout 0's onto readout 0 fell by
 0.76 to 0.97. The inhibitory units in readout 0 moved their input onto a readout by +2.06 to +2.80 M and those in readout 1 by +2.10 to
 +2.62. Each of A's and B's four kinds, C's own and D's own moved onto one readout about what it moved the other way onto the other: of their
-sums onto the two readouts, the largest move was class 0's, A alone, after block 18 alone, −29 in the class matrix's units (as much,
-rounded: class 0's after block 12 alone, +29).
+sums onto the two readouts, in the class matrix's units, the largest moves, equal in size, were class 0's, A alone, after block 18 alone,
+−29 and class 0's, A alone, after block 12 alone, +29.
 
 **By the readouts' classes**, each single night's replayed night and the night without replay's same night, by group, in M:
 
