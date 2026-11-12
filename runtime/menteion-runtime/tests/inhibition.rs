@@ -45950,7 +45950,8 @@ fn nights_reads_units<K: Copy + Ord + Send + Sync>(
 /// the drive onto each readout unit by presynaptic class (`e036_read`, exploration 036) where
 /// `arena` is given, which needs `units`. Each image's unit heads are held to the start image's
 /// first (`E036Arena::held`). After every read, the drive onto each readout unit on each
-/// stimulus's trials, summed over each image's `NIGHTS_READS` reads of A, dumped image by image.
+/// stimulus's trials, the window's and the volley's, summed over each image's `NIGHTS_READS`
+/// reads of A, dumped image by image.
 /// Every read's line and result are `nights_reads`'.
 fn nights_reads_reading<K: Copy + Ord + Send + Sync>(
     start: &NightsStart,
@@ -45983,7 +45984,7 @@ fn nights_reads_reading<K: Copy + Ord + Send + Sync>(
         }
     }
     let read = Mutex::new(BTreeMap::new());
-    let summed: Mutex<BTreeMap<K, E036Drive>> = Mutex::new(BTreeMap::new());
+    let summed: Mutex<BTreeMap<K, [E036Drive; 2]>> = Mutex::new(BTreeMap::new());
     two_at_a_time(&reads, |r| {
         let what = nights_what(r.i);
         let from = nights_read_from(r.i);
@@ -45992,10 +45993,15 @@ fn nights_reads_reading<K: Copy + Ord + Send + Sync>(
                 let (got, by_unit, _) =
                     e036_read(r.site, r.image, &r.label, &what, from, units, arena);
                 let mut summed = summed.lock().expect("a read ended");
-                let total = summed
-                    .entry(r.key.0)
-                    .or_insert_with(|| E036Drive::zero(units.units.len()));
-                total.add(&by_unit);
+                let totals = summed.entry(r.key.0).or_insert_with(|| {
+                    [
+                        E036Drive::zero(units.units.len()),
+                        E036Drive::zero(units.units.len()),
+                    ]
+                });
+                for (total, read) in totals.iter_mut().zip(&by_unit) {
+                    total.add(read);
+                }
                 got
             }
             (Some(units), None) => e033_read(r.site, r.image, &r.label, &what, from, units),
@@ -46003,13 +46009,15 @@ fn nights_reads_reading<K: Copy + Ord + Send + Sync>(
         };
         read.lock().expect("a read ended").insert(r.key, got);
     });
-    for (key, total) in summed.into_inner().expect("every read ended") {
+    for (key, totals) in summed.into_inner().expect("every read ended") {
         let (label, _) = &kept[&key];
-        assert_eq!(
-            total.reads, NIGHTS_READS,
-            "{label}: each of A's reads of the image adds its drive"
-        );
-        total.dump(&format!("{label} first"));
+        for (total, span) in totals.iter().zip(E036_SPANS) {
+            assert_eq!(
+                total.reads, NIGHTS_READS,
+                "{label}: each of A's reads of the image adds its {span}drive"
+            );
+            total.dump(&format!("{label} first"), span);
+        }
     }
     read.into_inner().expect("every read ended")
 }
@@ -50556,8 +50564,8 @@ fn e033_read(
 type E033Beside<'a> = dyn FnMut(&mut Engine, usize, u32, usize, &[u32]) + 'a;
 
 /// `e033_read`, `beside` called at the end of each trial's count (exploration 036) with the
-/// executor, the trial's index in the read, the window's first tick, the trial's stimulus and the
-/// readout units' spikes in `E033Units`' order. The read, its line and what is held are
+/// executor, the trial's index in the read, the trial's first tick, the trial's stimulus and the
+/// readout units' spikes in its window, in `E033Units`' order. The read, its line and what is held are
 /// `e033_read`'s.
 fn e033_read_with(
     site: &NightSite,
@@ -50598,7 +50606,7 @@ fn e033_read_with(
             for (total, &c) in sums[s].iter_mut().zip(&counts) {
                 *total = total.saturating_add(c);
             }
-            beside(exec, trial, opens, s, &counts);
+            beside(exec, trial, start, s, &counts);
         },
     );
     let line = |v: &[u32]| {
@@ -51310,10 +51318,11 @@ impl E036Drive {
         self.reads = self.reads.saturating_add(1);
     }
 
-    /// Dumped: how many reads, then each stimulus's drive unit by unit (`e034_line`).
-    fn dump(&self, label: &str) {
+    /// Dumped: how many reads, then each stimulus's drive unit by unit (`e034_line`), the span
+    /// (`E036_SPANS`) named before `drive`.
+    fn dump(&self, label: &str, span: &str) {
         eprintln!(
-            "DUMP {label} drive of units over {} reads A {} B {}",
+            "DUMP {label} {span}drive of units over {} reads A {} B {}",
             self.reads,
             e034_line(&self.units[0]),
             e034_line(&self.units[1])
@@ -51321,19 +51330,66 @@ impl E036Drive {
     }
 }
 
+/// The two spans of a trial exploration 036 reads, as its dumps name them: the trial's readout
+/// window, ticks `WINDOW.from` to `WINDOW.from + WINDOW.ticks - 1` of the trial (ADR-0251), and
+/// the volley before it, ticks 0 to `WINDOW.from - 1`, where the trial's own stimulus's units
+/// spike, as the trial found.
+const E036_SPANS: [&str; 2] = ["", "volley "];
+
+/// One span's reading over a read (exploration 036): every unit's spikes, the drive onto each
+/// readout unit by presynaptic class, and the drive summed over each readout's units without and
+/// with each trial's end gain, each summed over each stimulus's trials.
+struct E036Span {
+    spikes: [Vec<u32>; 2],
+    by_unit: E036ByUnit,
+    by_readout: [[[i64; 14]; 2]; 2],
+    gained: [[[i64; 14]; 2]; 2],
+}
+
+impl E036Span {
+    /// Nothing yet, for an arena of `n` units and `size` readout units.
+    fn zero(n: usize, size: usize) -> Self {
+        Self {
+            spikes: [vec![0u32; n], vec![0u32; n]],
+            by_unit: [vec![[0i64; 14]; size], vec![[0i64; 14]; size]],
+            by_readout: [[[0i64; 14]; 2]; 2],
+            gained: [[[0i64; 14]; 2]; 2],
+        }
+    }
+
+    /// One trial of stimulus `s` added: every unit's `counts`, the readout units' `drive` (the
+    /// first `first` of them readout 0's), and the drive times `gain`.
+    fn add(&mut self, s: usize, counts: &[u32], drive: &[[i64; 14]], first: usize, gain: i64) {
+        for (total, &c) in self.spikes[s].iter_mut().zip(counts) {
+            *total = total.saturating_add(c);
+        }
+        for (k, unit) in drive.iter().enumerate() {
+            let r = usize::from(k >= first);
+            for (c, &v) in unit.iter().enumerate() {
+                self.by_unit[s][k][c] = self.by_unit[s][k][c].saturating_add(v);
+                self.by_readout[s][r][c] = self.by_readout[s][r][c].saturating_add(v);
+                self.gained[s][r][c] = self.gained[s][r][c].saturating_add(v.saturating_mul(gain));
+            }
+        }
+    }
+}
+
 /// Exploration 033's unit read (`e033_read_with`), and on each trial every unit of the arena
-/// counted in the trial's window (`e036_count`) and the drive onto each readout unit by
-/// presynaptic class (`e036_drive`), the weights the executor's blocks hold at the trial's end
-/// walked from the start image's heads of the units that spiked (`e036_synapses`). Held on each
-/// trial: the readout units' counts among every unit's are the unit read's; on the read's first
-/// trial, a walk over every unit gives the same drive. Dumped after the read, beside the unit
-/// read's line: each stimulus's trials and every unit's spikes summed over them, by id; and the
-/// drive summed over each readout's units by class on each stimulus's trials, readout 0's then
-/// readout 1's, without the gain, then each trial's times its end gain (`synaptic_gain_q16`),
-/// then the readouts' inputs by class at the read's last trial's end, every count one, as the
-/// input read sums them over each readout's units.
-/// Returns the read's result, the drive unit by unit on each stimulus's trials, and the time the
-/// count and the walk took.
+/// counted in each of `E036_SPANS`, the trial's window and its volley (`e036_count`), and in
+/// each the drive onto each readout unit by presynaptic class (`e036_drive`), the weights the
+/// executor's blocks hold at the trial's end walked from the start image's heads of the units that
+/// spiked in the span (`e036_synapses`). Held on each trial: the train holds the whole volley,
+/// as `e033_whole` holds the window, since the ring keeps a trial's bound of spikes
+/// (`train_capacity`); and the readout units' window counts among every unit's are the unit
+/// read's. On the read's first trial, in each span a walk over every unit gives the same drive.
+/// Dumped after the read, beside the unit read's line: for the window, each stimulus's trials and
+/// every unit's spikes summed over them, by id; the drive summed over each readout's units by class
+/// on each stimulus's trials, readout 0's then readout 1's, without the gain, then each trial's
+/// times its end gain (`synaptic_gain_q16`), then the readouts' inputs by class at the read's last
+/// trial's end, every count one, as the input read sums them over each readout's units; then the
+/// same of the volley, its dumps named `volley`, without the inputs. Returns the read's result,
+/// the drive unit by unit on each stimulus's trials in each span, and the time the counts and the
+/// walks took.
 fn e036_read(
     site: &NightSite,
     image: &[u8],
@@ -51342,13 +51398,10 @@ fn e036_read(
     from: ReadFrom,
     units: &E033Units,
     arena: &E036Arena,
-) -> ((u8, [i64; 4]), E036ByUnit, std::time::Duration) {
+) -> ((u8, [i64; 4]), [E036ByUnit; 2], std::time::Duration) {
     let size = units.units.len();
     let n = arena.records.len();
-    let mut spikes = [vec![0u32; n], vec![0u32; n]];
-    let mut by_unit = [vec![[0i64; 14]; size], vec![[0i64; 14]; size]];
-    let mut by_readout = [[[0i64; 14]; 2]; 2];
-    let mut gained = [[[0i64; 14]; 2]; 2];
+    let mut spans = [E036Span::zero(n, size), E036Span::zero(n, size)];
     let mut trials = [0u32; 2];
     let mut walked = std::time::Duration::ZERO;
     let mut compared = false;
@@ -51360,34 +51413,46 @@ fn e036_read(
         what,
         from,
         units,
-        &mut |exec, trial, opens, s, counts| {
+        &mut |exec, trial, start, s, counts| {
             let clock = std::time::Instant::now();
-            let all = e036_count(exec.train(), opens, WINDOW.ticks, n);
-            let readouts: Vec<u32> = units.units.iter().map(|&u| all[u as usize]).collect();
+            let overwritten = exec.train_overwritten();
+            let train = exec.train();
+            assert!(
+                e033_whole(overwritten, train, start),
+                "{label} {what} trial {trial}: the train holds the whole volley"
+            );
+            let window = e036_count(train, start.wrapping_add(WINDOW.from), WINDOW.ticks, n);
+            let volley = e036_count(train, start, WINDOW.from, n);
+            let readouts: Vec<u32> = units.units.iter().map(|&u| window[u as usize]).collect();
             assert_eq!(
                 readouts.as_slice(),
                 counts,
                 "{label} {what}: the readout units' counts among every unit's are the unit read's"
             );
             let blocks = exec.blocks();
-            let drive = e036_drive(
-                units,
-                &arena.class,
-                &all,
-                e036_synapses(&arena.records, blocks, &all),
-            );
-            if trial == 0 {
-                let every = e036_drive(
+            let gain = i64::from(exec.homeostasis().synaptic_gain_q16);
+            trials[s] = trials[s].saturating_add(1);
+            for (span, all) in spans.iter_mut().zip([&window, &volley]) {
+                let drive = e036_drive(
                     units,
                     &arena.class,
-                    &all,
-                    e036_synapses(&arena.records, blocks, &arena.ones),
+                    all,
+                    e036_synapses(&arena.records, blocks, all),
                 );
-                assert_eq!(
-                    drive, every,
-                    "{label} {what}: a unit with no spike adds no drive"
-                );
-                compared = true;
+                if trial == 0 {
+                    let every = e036_drive(
+                        units,
+                        &arena.class,
+                        all,
+                        e036_synapses(&arena.records, blocks, &arena.ones),
+                    );
+                    assert_eq!(
+                        drive, every,
+                        "{label} {what}: a unit with no spike adds no drive"
+                    );
+                    compared = true;
+                }
+                span.add(s, all, &drive, units.first, gain);
             }
             if trial.wrapping_add(1) == BLOCK {
                 let inputs = e036_drive(
@@ -51405,19 +51470,6 @@ fn e036_read(
                 }
                 ended = Some(sums);
             }
-            let gain = i64::from(exec.homeostasis().synaptic_gain_q16);
-            trials[s] = trials[s].saturating_add(1);
-            for (total, &c) in spikes[s].iter_mut().zip(&all) {
-                *total = total.saturating_add(c);
-            }
-            for (k, unit) in drive.iter().enumerate() {
-                let r = usize::from(k >= units.first);
-                for (c, &v) in unit.iter().enumerate() {
-                    by_unit[s][k][c] = by_unit[s][k][c].saturating_add(v);
-                    by_readout[s][r][c] = by_readout[s][r][c].saturating_add(v);
-                    gained[s][r][c] = gained[s][r][c].saturating_add(v.saturating_mul(gain));
-                }
-            }
             walked = walked.saturating_add(clock.elapsed());
         },
     );
@@ -51426,26 +51478,39 @@ fn e036_read(
         "{label} {what}: the read's first trial was compared"
     );
     let ended = ended.expect("the read ran its last trial");
+    let [window, volley] = spans;
     eprintln!(
         "DUMP {label} every unit spread {what} {from:?} trials {trials:?} A {} B {}",
-        e036_line(&spikes[0]),
-        e036_line(&spikes[1])
+        e036_line(&window.spikes[0]),
+        e036_line(&window.spikes[1])
     );
     eprintln!(
         "DUMP {label} drive spread {what} {from:?} trials {trials:?} by readout A {} B {} times the gain A {} B {} inputs at the end {}",
-        e034_line(&by_readout[0]),
-        e034_line(&by_readout[1]),
-        e034_line(&gained[0]),
-        e034_line(&gained[1]),
+        e034_line(&window.by_readout[0]),
+        e034_line(&window.by_readout[1]),
+        e034_line(&window.gained[0]),
+        e034_line(&window.gained[1]),
         e034_line(&ended)
     );
-    (got, by_unit, walked)
+    eprintln!(
+        "DUMP {label} every unit volley spread {what} {from:?} trials {trials:?} A {} B {}",
+        e036_line(&volley.spikes[0]),
+        e036_line(&volley.spikes[1])
+    );
+    eprintln!(
+        "DUMP {label} volley drive spread {what} {from:?} trials {trials:?} by readout A {} B {} times the gain A {} B {}",
+        e034_line(&volley.by_readout[0]),
+        e034_line(&volley.by_readout[1]),
+        e034_line(&volley.gained[0]),
+        e034_line(&volley.gained[1])
+    );
+    (got, [window.by_unit, volley.by_unit], walked)
 }
 
 /// Exploration 036's trial's read of A on one image as it was: exploration 033's unit read alone,
 /// timed, then the same read with every unit counted and the drive (`e036_read`), timed. Held:
-/// both give the read's result. Dumped: the drive unit by unit over the one read, and the two
-/// times with the count's and the walk's part.
+/// both give the read's result. Dumped: the drive unit by unit over the one read, the window's and
+/// the volley's, and the two times with the counts' and the walks' part.
 fn e036_timed(
     start: &NightsStart,
     image: &[u8],
@@ -51473,11 +51538,13 @@ fn e036_timed(
         got, alone,
         "{at}: the read with the drive is the unit read's"
     );
-    let mut total = E036Drive::zero(units.units.len());
-    total.add(&by_unit);
-    total.dump(blocks);
+    for (read, span) in by_unit.iter().zip(E036_SPANS) {
+        let mut total = E036Drive::zero(units.units.len());
+        total.add(read);
+        total.dump(blocks, span);
+    }
     eprintln!(
-        "DUMP {at} timed: A's read as it was {} ms with the unit read alone, {} ms with every unit counted and the drive, of which the count and the walk {} ms",
+        "DUMP {at} timed: A's read as it was {} ms with the unit read alone, {} ms with every unit counted and the drive, of which the counts and the walks {} ms",
         without.as_millis(),
         with.as_millis(),
         walked.as_millis()
@@ -51619,7 +51686,8 @@ fn exploration_036_s_drive_with_every_count_one_is_the_input_read() {
 
 /// Exploration 036's count of every unit: `Readout::count_window`'s rule unit by unit over the
 /// whole arena, at the train's wrap too, so the readout units' counts among every unit's are
-/// exploration 033's unit read's, and a unit outside the readouts is counted as well.
+/// exploration 033's unit read's, and a unit outside the readouts is counted as well; and the same
+/// rule over the volley's span, the ticks before the window.
 #[test]
 fn exploration_036_s_count_of_every_unit_holds_the_unit_read() {
     let sets = geometry(SCAN_UNITS, rotation(SCAN_UNITS));
@@ -51630,7 +51698,7 @@ fn exploration_036_s_count_of_every_unit_holds_the_unit_read() {
     let b = sets[3].units().nth(5).expect("a unit of readout 1");
     let outside = sets[0].units().next().expect("a unit of stimulus A");
     let late = u32::MAX.wrapping_sub(10);
-    for (opens, train, want) in [
+    for (opens, train, want, want_volley) in [
         (
             1_000u32,
             vec![
@@ -51646,6 +51714,7 @@ fn exploration_036_s_count_of_every_unit_holds_the_unit_read() {
                 (1_600, b),
             ],
             (2u32, 2u32, 2u32),
+            (1u32, 1u32, 0u32),
         ),
         (
             late,
@@ -51657,9 +51726,19 @@ fn exploration_036_s_count_of_every_unit_holds_the_unit_read() {
                 (600, b),
             ],
             (1, 1, 1),
+            (1, 0, 0),
         ),
     ] {
         let every = e036_count(&train, opens, 500, arena);
+        let volley = e036_count(&train, opens.wrapping_sub(100), 100, arena);
+        assert_eq!(
+            (
+                volley[a as usize],
+                volley[b as usize],
+                volley[outside as usize]
+            ),
+            want_volley
+        );
         let readouts: Vec<u32> = units.units.iter().map(|&u| every[u as usize]).collect();
         assert_eq!(readouts, units.count(&train, opens, 500));
         assert_eq!(
