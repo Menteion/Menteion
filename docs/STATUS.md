@@ -1,7 +1,7 @@
 # Where the work stands
 
 Every round rewrites this page whole, and it holds no history ([ADR-0197](adr/0197-one-place-for-each-kind-of-fact.md)).
-[ADR-0249](adr/0249-one-cells-readout-units-inputs.md) wrote it on 2026-11-11, after exploration 033.
+[ADR-0250](adr/0250-the-mirrored-cells-units-and-inputs.md) wrote it on 2026-11-12, after exploration 034.
 
 ## The engine
 
@@ -53,7 +53,7 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 
 ## The next decision
 
-[ADR-0249](adr/0249-one-cells-readout-units-inputs.md) reads exploration 033 and writes no hypothesis, and M11 stays open.
-1. M11: exploration 034 runs on a branch of its own once ADR-0249 merges. On seed 24's eighth image from the assignment, where every replayed night lowered both readouts' spikes on both stimuli's trials, it reads the weights onto each readout unit by the presynaptic unit's class, across each night and stretch, under exploration 033's six forms. Whether a hypothesis follows it is the next decision.
+[ADR-0250](adr/0250-the-mirrored-cells-units-and-inputs.md) reads exploration 034 and writes no hypothesis, and M11 stays open.
+1. M11: exploration 035 runs on a branch of its own once ADR-0250 merges. On seed 24's eighth image from the mirrored assignment, where A's count lay above the night without replay right after the nights after block 18 and 24 alone, it counts each readout unit's spikes and reads the weights onto it by presynaptic class, under exploration 033's six forms, beside explorations 033 and 034 on the image from the assignment. Whether a hypothesis follows it is the next decision.
 2. The schedule's sweep of 2026-11-11 at 20:17Z is the next to record, by the first ADR that merges after it ends.
 3. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
