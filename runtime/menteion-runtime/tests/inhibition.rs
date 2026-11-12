@@ -45943,9 +45943,30 @@ fn nights_reads_units<K: Copy + Ord + Send + Sync>(
     kept: &BTreeMap<K, (String, Vec<u8>)>,
     units: Option<&E033Units>,
 ) -> BTreeMap<(K, bool, u64), (u8, [i64; 4])> {
+    nights_reads_reading(start, kept, units, None)
+}
+
+/// `nights_reads_units`, each of A's reads also counted over every unit of the arena and read for
+/// the drive onto each readout unit by presynaptic class (`e036_read`, exploration 036) where
+/// `arena` is given, which needs `units`. Each image's unit heads are held to the start image's
+/// first (`E036Arena::held`). After every read, the drive onto each readout unit on each
+/// stimulus's trials, summed over each image's `NIGHTS_READS` reads of A, dumped image by image.
+/// Every read's line and result are `nights_reads`'.
+fn nights_reads_reading<K: Copy + Ord + Send + Sync>(
+    start: &NightsStart,
+    kept: &BTreeMap<K, (String, Vec<u8>)>,
+    units: Option<&E033Units>,
+    arena: Option<&E036Arena>,
+) -> BTreeMap<(K, bool, u64), (u8, [i64; 4])> {
+    let drive = arena.map(|a| (units.expect("the drive is read beside the unit read"), a));
     let mut reads = Vec::new();
     for (&key, (label, image)) in kept {
         nights_state(start, image, label);
+        if let Some((_, arena)) = drive {
+            let exec = zero_from(image, SCAN_UNITS, ZERO_ARM);
+            arena.held(&exec, label);
+            undropped(exec, label);
+        }
         for (pair, site, which) in [
             (false, &start.site, "first"),
             (true, &start.theirs, "second"),
@@ -45962,15 +45983,34 @@ fn nights_reads_units<K: Copy + Ord + Send + Sync>(
         }
     }
     let read = Mutex::new(BTreeMap::new());
+    let summed: Mutex<BTreeMap<K, E036Drive>> = Mutex::new(BTreeMap::new());
     two_at_a_time(&reads, |r| {
         let what = nights_what(r.i);
         let from = nights_read_from(r.i);
-        let got = match units.filter(|_| !r.key.1) {
-            Some(units) => e033_read(r.site, r.image, &r.label, &what, from, units),
-            None => spread_read(r.site, r.image, &r.label, &what, from),
+        let got = match (units.filter(|_| !r.key.1), drive.filter(|_| !r.key.1)) {
+            (Some(units), Some((_, arena))) => {
+                let (got, by_unit, _) =
+                    e036_read(r.site, r.image, &r.label, &what, from, units, arena);
+                let mut summed = summed.lock().expect("a read ended");
+                let total = summed
+                    .entry(r.key.0)
+                    .or_insert_with(|| E036Drive::zero(units.units.len()));
+                total.add(&by_unit);
+                got
+            }
+            (Some(units), None) => e033_read(r.site, r.image, &r.label, &what, from, units),
+            (None, _) => spread_read(r.site, r.image, &r.label, &what, from),
         };
         read.lock().expect("a read ended").insert(r.key, got);
     });
+    for (key, total) in summed.into_inner().expect("every read ended") {
+        let (label, _) = &kept[&key];
+        assert_eq!(
+            total.reads, NIGHTS_READS,
+            "{label}: each of A's reads of the image adds its drive"
+        );
+        total.dump(&format!("{label} first"));
+    }
     read.into_inner().expect("every read ended")
 }
 
@@ -49795,18 +49835,22 @@ fn e030_trial(n: usize, s: usize, forms: &[E030Form]) {
 }
 
 /// What exploration 030's trial and job read beside the rows: each of A's reads counted unit by
-/// unit (`e033_read`, exploration 033) where `units` says, and on each image split the readouts'
-/// units' inputs by presynaptic class (`e034_inputs`, exploration 034) where `inputs` says.
+/// unit (`e033_read`, exploration 033) where `units` says, on each image split the readouts'
+/// units' inputs by presynaptic class (`e034_inputs`, exploration 034) where `inputs` says, and
+/// on each of A's reads every unit counted and the drive onto each readout unit by presynaptic
+/// class (`e036_read`, exploration 036) where `drive` says.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct E030Reading {
     units: bool,
     inputs: bool,
+    drive: bool,
 }
 
 /// Exploration 030's own reading: the rows, the splits and the class matrices alone.
 const E030_ROWS: E030Reading = E030Reading {
     units: false,
     inputs: false,
+    drive: false,
 };
 
 /// `e030_trial`, each image's read of A counted unit by unit where `reading.units` says and each
@@ -49819,6 +49863,7 @@ fn e030_trial_reading(n: usize, s: usize, forms: &[E030Form], reading: E030Readi
         let readouts = (reading.units || reading.inputs).then(|| E033Units::of(start, &targets));
         let units = readouts.as_ref().filter(|_| reading.units);
         let inputs = readouts.as_ref().filter(|_| reading.inputs);
+        let arena = reading.drive.then(|| E036Arena::of(start, &targets));
         let label = format!("{} path 0 head blocks {NIGHTS_EVERY}", start.name);
         let (head, ends) = nights_run(start, start.image, NIGHTS_EVERY, &label, path_from(0));
         two_at_a_time(forms, |form| {
@@ -49828,8 +49873,9 @@ fn e030_trial_reading(n: usize, s: usize, forms: &[E030Form], reading: E030Readi
             let (image, gain) = e030_night(start, &head, &first, &gap, replay);
             let blocks = format!("{at} blocks {NIGHTS_EVERY}");
             e020_split_reading(start, &image, &blocks, &targets, inputs);
-            let (a, couplings) = match units {
-                Some(units) => e033_read(
+            let (a, couplings) = match (units, arena.as_ref()) {
+                (Some(units), Some(arena)) => e036_timed(start, &image, &blocks, &at, units, arena),
+                (Some(units), None) => e033_read(
                     &start.site,
                     &image,
                     &blocks,
@@ -49837,7 +49883,7 @@ fn e030_trial_reading(n: usize, s: usize, forms: &[E030Form], reading: E030Readi
                     nights_read_from(0),
                     units,
                 ),
-                None => spread_read(
+                (None, _) => spread_read(
                     &start.site,
                     &image,
                     &blocks,
@@ -49907,6 +49953,7 @@ fn e030_job_reading(n: usize, s: usize, forms: &[E030Form], reading: E030Reading
         let readouts = (reading.units || reading.inputs).then(|| E033Units::of(start, &targets));
         let units = readouts.as_ref().filter(|_| reading.units);
         let inputs = readouts.as_ref().filter(|_| reading.inputs);
+        let arena = reading.drive.then(|| E036Arena::of(start, &targets));
         e020_split_reading(
             start,
             start.image,
@@ -49966,7 +50013,7 @@ fn e030_job_reading(n: usize, s: usize, forms: &[E030Form], reading: E030Reading
         });
         let kept = kept.into_inner().expect("every form ended");
         let readings = readings.into_inner().expect("every form ended");
-        let read = nights_reads_units(start, &kept, units);
+        let read = nights_reads_reading(start, &kept, units, arena.as_ref());
         let theirs = [NightsGap::NoReplay, NightsGap::PlainFirst];
         for (f, form) in forms.iter().enumerate() {
             let mut rows = Vec::new();
@@ -50395,6 +50442,7 @@ const E033_SECOND: [E030Form; 4] = E032_FORMS;
 const E033_READING: E030Reading = E030Reading {
     units: true,
     inputs: false,
+    drive: false,
 };
 
 /// The units of A's two readout sets (exploration 033): readout 0's, then readout 1's, each in
@@ -50493,6 +50541,33 @@ fn e033_read(
     from: ReadFrom,
     units: &E033Units,
 ) -> (u8, [i64; 4]) {
+    e033_read_with(
+        site,
+        image,
+        label,
+        what,
+        from,
+        units,
+        &mut |_, _, _, _, _| {},
+    )
+}
+
+/// What `e033_read_with` calls beside each trial's count (exploration 036).
+type E033Beside<'a> = dyn FnMut(&mut Engine, usize, u32, usize, &[u32]) + 'a;
+
+/// `e033_read`, `beside` called at the end of each trial's count (exploration 036) with the
+/// executor, the trial's index in the read, the window's first tick, the trial's stimulus and the
+/// readout units' spikes in `E033Units`' order. The read, its line and what is held are
+/// `e033_read`'s.
+fn e033_read_with(
+    site: &NightSite,
+    image: &[u8],
+    label: &str,
+    what: &str,
+    from: ReadFrom,
+    units: &E033Units,
+    beside: &mut E033Beside<'_>,
+) -> (u8, [i64; 4]) {
     let size = units.units.len();
     let mut sums = [vec![0u32; size], vec![0u32; size]];
     let mut trials = [0u32; 2];
@@ -50523,6 +50598,7 @@ fn e033_read(
             for (total, &c) in sums[s].iter_mut().zip(&counts) {
                 *total = total.saturating_add(c);
             }
+            beside(exec, trial, opens, s, &counts);
         },
     );
     let line = |v: &[u32]| {
@@ -50713,6 +50789,7 @@ fn one_cells_readouts_after_each_later_night_alone_explore() {
 const E034_READING: E030Reading = E030Reading {
     units: true,
     inputs: true,
+    drive: false,
 };
 
 /// The classes the two readouts' units make up (ADR-0249), `E020_CLASSES`' indices: C's own, D's
@@ -51030,4 +51107,673 @@ fn the_mirrored_cells_units_and_inputs_after_block_6_alone_and_on_every_night_ex
 fn the_mirrored_cells_units_and_inputs_after_each_later_night_alone_explore() {
     let (n, s) = E035_CELL;
     e030_job_reading(n, s, &E033_SECOND, E034_READING);
+}
+
+// ---------------- exploration 036: what reaches the readout units (on its branch alone)
+
+/// Exploration 036's reading (ADR-0251): exploration 035's, each of A's reads counted unit by unit
+/// and each split image's readout units' inputs read, and on each of A's reads every unit of the
+/// arena counted and the drive onto each readout unit by presynaptic class (`e036_read`).
+const E036_READING: E030Reading = E030Reading {
+    units: true,
+    inputs: true,
+    drive: true,
+};
+
+/// Exploration 036's two cells (ADR-0251), the network and start indices of `with_nights`: seed
+/// 24's eighth image from the assignment, explorations 033's and 034's, and from the mirrored
+/// assignment, exploration 035's.
+const E036_CELLS: [(usize, usize); 2] = [(2, 0), E035_CELL];
+
+/// The arena as exploration 036 reads it: each unit's class from the start image (`e020_class`);
+/// each unit's id, whether it is inhibitory and the head of its fan-out (`synapse_slab_idx`) from
+/// the start image, held on every image read (`held`); and a count of one for every unit.
+struct E036Arena {
+    class: Vec<u8>,
+    records: Vec<E036Unit>,
+    ones: Vec<u32>,
+}
+
+/// A unit as exploration 036's walk reads it: its id, whether it is inhibitory, and the head of its
+/// fan-out as the unit's record encodes it (`SynapseBlock::fan_out`'s `head`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct E036Unit {
+    id: u32,
+    inhibitory: bool,
+    head: u32,
+}
+
+impl E036Unit {
+    /// The unit of the record `unit`.
+    fn of(unit: &DendriticSuperNeuron) -> Self {
+        Self {
+            id: u32::try_from(unit.id).expect("a unit's id fits the train's"),
+            inhibitory: unit.flags & FLAG_INHIBITORY != 0,
+            head: unit.synapse_slab_idx,
+        }
+    }
+}
+
+impl E036Arena {
+    /// The arena of `records`, in id order, each unit's class `class`'s, every unit with one.
+    fn over(class: Vec<u8>, records: Vec<E036Unit>) -> Self {
+        assert_eq!(class.len(), records.len(), "a class for every unit");
+        for (k, (unit, &c)) in records.iter().zip(&class).enumerate() {
+            assert_eq!(unit.id as usize, k, "the arena is in id order");
+            assert!(usize::from(c) < E020_CLASSES.len(), "unit {k} has a class");
+        }
+        let ones = vec![1u32; records.len()];
+        Self {
+            class,
+            records,
+            ones,
+        }
+    }
+
+    /// A start's arena, each unit's class from the start image with `targets` as A's patterns'
+    /// targets (`e020_class`), dumped once by id.
+    fn of(start: &NightsStart, targets: &[u32]) -> Self {
+        let exec = zero_from(start.image, SCAN_UNITS, ZERO_ARM);
+        let class = e020_class(start, &exec, &start.name, targets);
+        let arena = Self::over(class, exec.units().iter().map(E036Unit::of).collect());
+        eprintln!(
+            "DUMP {} every unit's class {} of {E020_CLASSES:?}",
+            start.name,
+            e036_line(&arena.class)
+        );
+        undropped(exec, &start.name);
+        arena
+    }
+
+    /// Held on an image's executor: every unit keeps its id, the head of its fan-out and whether
+    /// it is inhibitory from the start image, so that a read's walk from the start image's heads
+    /// over the image's blocks is the image's fan-out (`e036_synapses`).
+    fn held(&self, exec: &Engine, label: &str) {
+        let units = exec.units();
+        assert_eq!(
+            units.len(),
+            self.records.len(),
+            "{label}: the arena keeps its size"
+        );
+        for (unit, was) in units.iter().zip(&self.records) {
+            assert_eq!(
+                &E036Unit::of(unit),
+                was,
+                "{label}: unit {} keeps its fan-out's head and its sign",
+                was.id
+            );
+        }
+    }
+}
+
+/// Values as the job dumps them, comma-separated.
+fn e036_line<T: ToString>(values: &[T]) -> String {
+    values
+        .iter()
+        .map(T::to_string)
+        .collect::<Vec<String>>()
+        .join(",")
+}
+
+/// Every unit's spikes in an arena of `arena` units among the entries of `train` whose tick is
+/// within `ticks` of `opens`, by id: `E033Units::count`'s rule, `Readout::count_window`'s, over
+/// every unit.
+fn e036_count(train: &[(u32, u32)], opens: u32, ticks: u32, arena: usize) -> Vec<u32> {
+    let mut counts = vec![0u32; arena];
+    for &(tick, unit) in train.iter().rev() {
+        let distance = tick.wrapping_sub(opens);
+        if (distance as i32) < 0 {
+            break;
+        }
+        if distance >= ticks {
+            continue;
+        }
+        let count = counts
+            .get_mut(unit as usize)
+            .expect("a spike's unit lies in the arena");
+        *count = count.saturating_add(1);
+    }
+    counts
+}
+
+/// The synapses of `blocks` from each unit of `records` whose count in `spikes` is not zero, from
+/// the unit's head (`SynapseBlock::fan_out`, the walk `DendriticSuperNeuron::fan_out` makes): the
+/// presynaptic unit's id, whether it is inhibitory, the synapse's target and its weight, as
+/// `e034_synapses` gives them. With every count one, every synapse of the arena in
+/// `e034_synapses`' order.
+fn e036_synapses<'a>(
+    records: &'a [E036Unit],
+    blocks: &'a [SynapseBlock],
+    spikes: &'a [u32],
+) -> impl Iterator<Item = (u32, bool, u32, i16)> + 'a {
+    records
+        .iter()
+        .zip(spikes)
+        .filter(|&(_, &count)| count > 0)
+        .flat_map(move |(&unit, _)| {
+            SynapseBlock::fan_out(blocks, unit.head)
+                .map(move |s| (unit.id, unit.inhibitory, s.target, s.weight_q1_15))
+        })
+}
+
+/// The drive onto each readout unit (exploration 036), in `units`' order: over the synapses of
+/// `synapses` onto it, each one's weight times its presynaptic unit's count in `spikes`, summed by
+/// the presynaptic unit's class (`class`, by id), an inhibitory unit's negated, so a + is more
+/// inhibition, as in the class matrix. With every count one it is the input read (`e034_walk`).
+fn e036_drive(
+    units: &E033Units,
+    class: &[u8],
+    spikes: &[u32],
+    synapses: impl Iterator<Item = (u32, bool, u32, i16)>,
+) -> Vec<[i64; 14]> {
+    let mut drive = vec![[0i64; 14]; units.units.len()];
+    for (from, inhibitory, target, weight) in synapses {
+        if let Some(&Some(k)) = units.slot.get(target as usize) {
+            let w = i64::from(weight).saturating_mul(i64::from(spikes[from as usize]));
+            let cell = &mut drive[k][usize::from(class[from as usize])];
+            *cell = cell.saturating_add(if inhibitory { w.saturating_neg() } else { w });
+        }
+    }
+    drive
+}
+
+/// The drive onto each readout unit by presynaptic class on each stimulus's trials, A's first, in
+/// `E033Units`' order.
+type E036ByUnit = [Vec<[i64; 14]>; 2];
+
+/// The drive onto each readout unit by presynaptic class on each stimulus's trials, summed over
+/// `reads` reads, A's trials first.
+struct E036Drive {
+    units: [Vec<[i64; 14]>; 2],
+    reads: u64,
+}
+
+impl E036Drive {
+    /// No read yet, for `size` readout units.
+    fn zero(size: usize) -> Self {
+        Self {
+            units: [vec![[0i64; 14]; size], vec![[0i64; 14]; size]],
+            reads: 0,
+        }
+    }
+
+    /// One read's drive added.
+    fn add(&mut self, read: &[Vec<[i64; 14]>; 2]) {
+        for (mine, theirs) in self.units.iter_mut().zip(read) {
+            assert_eq!(mine.len(), theirs.len(), "a read of the same readout units");
+            for (unit, other) in mine.iter_mut().zip(theirs) {
+                for (total, &v) in unit.iter_mut().zip(other) {
+                    *total = total.saturating_add(v);
+                }
+            }
+        }
+        self.reads = self.reads.saturating_add(1);
+    }
+
+    /// Dumped: how many reads, then each stimulus's drive unit by unit (`e034_line`).
+    fn dump(&self, label: &str) {
+        eprintln!(
+            "DUMP {label} drive of units over {} reads A {} B {}",
+            self.reads,
+            e034_line(&self.units[0]),
+            e034_line(&self.units[1])
+        );
+    }
+}
+
+/// Exploration 033's unit read (`e033_read_with`), and on each trial every unit of the arena
+/// counted in the trial's window (`e036_count`) and the drive onto each readout unit by
+/// presynaptic class (`e036_drive`), the weights the executor's blocks hold at the trial's end
+/// walked from the start image's heads of the units that spiked (`e036_synapses`). Held on each
+/// trial: the readout units' counts among every unit's are the unit read's; on the read's first
+/// trial, a walk over every unit gives the same drive. Dumped after the read, beside the unit
+/// read's line: each stimulus's trials and every unit's spikes summed over them, by id; and the
+/// drive summed over each readout's units by class on each stimulus's trials, readout 0's then
+/// readout 1's, without the gain, then each trial's times its end gain (`synaptic_gain_q16`),
+/// then the readouts' inputs by class at the read's last trial's end, every count one, as the
+/// input read sums them over each readout's units.
+/// Returns the read's result, the drive unit by unit on each stimulus's trials, and the time the
+/// count and the walk took.
+fn e036_read(
+    site: &NightSite,
+    image: &[u8],
+    label: &str,
+    what: &str,
+    from: ReadFrom,
+    units: &E033Units,
+    arena: &E036Arena,
+) -> ((u8, [i64; 4]), E036ByUnit, std::time::Duration) {
+    let size = units.units.len();
+    let n = arena.records.len();
+    let mut spikes = [vec![0u32; n], vec![0u32; n]];
+    let mut by_unit = [vec![[0i64; 14]; size], vec![[0i64; 14]; size]];
+    let mut by_readout = [[[0i64; 14]; 2]; 2];
+    let mut gained = [[[0i64; 14]; 2]; 2];
+    let mut trials = [0u32; 2];
+    let mut walked = std::time::Duration::ZERO;
+    let mut compared = false;
+    let mut ended: Option<[[i64; 14]; 2]> = None;
+    let got = e033_read_with(
+        site,
+        image,
+        label,
+        what,
+        from,
+        units,
+        &mut |exec, trial, opens, s, counts| {
+            let clock = std::time::Instant::now();
+            let all = e036_count(exec.train(), opens, WINDOW.ticks, n);
+            let readouts: Vec<u32> = units.units.iter().map(|&u| all[u as usize]).collect();
+            assert_eq!(
+                readouts.as_slice(),
+                counts,
+                "{label} {what}: the readout units' counts among every unit's are the unit read's"
+            );
+            let blocks = exec.blocks();
+            let drive = e036_drive(
+                units,
+                &arena.class,
+                &all,
+                e036_synapses(&arena.records, blocks, &all),
+            );
+            if trial == 0 {
+                let every = e036_drive(
+                    units,
+                    &arena.class,
+                    &all,
+                    e036_synapses(&arena.records, blocks, &arena.ones),
+                );
+                assert_eq!(
+                    drive, every,
+                    "{label} {what}: a unit with no spike adds no drive"
+                );
+                compared = true;
+            }
+            if trial.wrapping_add(1) == BLOCK {
+                let inputs = e036_drive(
+                    units,
+                    &arena.class,
+                    &arena.ones,
+                    e036_synapses(&arena.records, blocks, &arena.ones),
+                );
+                let mut sums = [[0i64; 14]; 2];
+                for (k, unit) in inputs.iter().enumerate() {
+                    let r = usize::from(k >= units.first);
+                    for (total, &v) in sums[r].iter_mut().zip(unit) {
+                        *total = total.saturating_add(v);
+                    }
+                }
+                ended = Some(sums);
+            }
+            let gain = i64::from(exec.homeostasis().synaptic_gain_q16);
+            trials[s] = trials[s].saturating_add(1);
+            for (total, &c) in spikes[s].iter_mut().zip(&all) {
+                *total = total.saturating_add(c);
+            }
+            for (k, unit) in drive.iter().enumerate() {
+                let r = usize::from(k >= units.first);
+                for (c, &v) in unit.iter().enumerate() {
+                    by_unit[s][k][c] = by_unit[s][k][c].saturating_add(v);
+                    by_readout[s][r][c] = by_readout[s][r][c].saturating_add(v);
+                    gained[s][r][c] = gained[s][r][c].saturating_add(v.saturating_mul(gain));
+                }
+            }
+            walked = walked.saturating_add(clock.elapsed());
+        },
+    );
+    assert!(
+        compared,
+        "{label} {what}: the read's first trial was compared"
+    );
+    let ended = ended.expect("the read ran its last trial");
+    eprintln!(
+        "DUMP {label} every unit spread {what} {from:?} trials {trials:?} A {} B {}",
+        e036_line(&spikes[0]),
+        e036_line(&spikes[1])
+    );
+    eprintln!(
+        "DUMP {label} drive spread {what} {from:?} trials {trials:?} by readout A {} B {} times the gain A {} B {} inputs at the end {}",
+        e034_line(&by_readout[0]),
+        e034_line(&by_readout[1]),
+        e034_line(&gained[0]),
+        e034_line(&gained[1]),
+        e034_line(&ended)
+    );
+    (got, by_unit, walked)
+}
+
+/// Exploration 036's trial's read of A on one image as it was: exploration 033's unit read alone,
+/// timed, then the same read with every unit counted and the drive (`e036_read`), timed. Held:
+/// both give the read's result. Dumped: the drive unit by unit over the one read, and the two
+/// times with the count's and the walk's part.
+fn e036_timed(
+    start: &NightsStart,
+    image: &[u8],
+    blocks: &str,
+    at: &str,
+    units: &E033Units,
+    arena: &E036Arena,
+) -> (u8, [i64; 4]) {
+    let from = nights_read_from(0);
+    let clock = std::time::Instant::now();
+    let alone = e033_read(&start.site, image, blocks, "as-it-was 0", from, units);
+    let without = clock.elapsed();
+    let clock = std::time::Instant::now();
+    let (got, by_unit, walked) = e036_read(
+        &start.site,
+        image,
+        blocks,
+        "as-it-was 0",
+        from,
+        units,
+        arena,
+    );
+    let with = clock.elapsed();
+    assert_eq!(
+        got, alone,
+        "{at}: the read with the drive is the unit read's"
+    );
+    let mut total = E036Drive::zero(units.units.len());
+    total.add(&by_unit);
+    total.dump(blocks);
+    eprintln!(
+        "DUMP {at} timed: A's read as it was {} ms with the unit read alone, {} ms with every unit counted and the drive, of which the count and the walk {} ms",
+        without.as_millis(),
+        with.as_millis(),
+        walked.as_millis()
+    );
+    got
+}
+
+/// Exploration 036's drive: with every presynaptic count one it is exploration 034's input read
+/// (`e034_walk`); a count scales its synapse's weight; a unit with no spike adds nothing, so a walk
+/// over the units that spiked gives the drive of a walk over all; a synapse onto a unit outside the
+/// readouts adds nothing; and the drive of reads adds up read by read.
+#[test]
+fn exploration_036_s_drive_with_every_count_one_is_the_input_read() {
+    let sets = geometry(SCAN_UNITS, rotation(SCAN_UNITS));
+    let arena = SCAN_UNITS as usize;
+    let mut class = vec![u8::MAX; arena];
+    let rest = [0u8, 1, 2, 3, 10, 13];
+    for (k, slot) in class.iter_mut().enumerate() {
+        *slot = rest[k % 6];
+    }
+    for (r, cycle) in [(2usize, [4u8, 6, 7, 11]), (3, [5, 8, 9, 12])] {
+        for (k, u) in sets[r].units().enumerate() {
+            class[u as usize] = cycle[k % 4];
+        }
+    }
+    let units = E033Units::over(&sets, arena, &class);
+    let inhibitory = |u: u32| matches!(class[u as usize], 11..=13);
+    let mut synapses: Vec<(u32, bool, u32, i16)> = Vec::new();
+    let mut spikes = vec![0u32; arena];
+    let mut x = 11u32;
+    for count in spikes.iter_mut() {
+        x = x.wrapping_mul(1_103_515_245).wrapping_add(12_345);
+        *count = x.wrapping_shr(16) % 5;
+    }
+    for _ in 0..20_000u32 {
+        x = x.wrapping_mul(1_103_515_245).wrapping_add(12_345);
+        let from = x.wrapping_shr(8) % 1024;
+        let target = x.wrapping_shr(18) % 1024;
+        let magnitude = (x.wrapping_shr(3) % 4096) as i16;
+        let inh = inhibitory(from);
+        synapses.push((
+            from,
+            inh,
+            target,
+            if inh {
+                magnitude.saturating_neg()
+            } else {
+                magnitude
+            },
+        ));
+    }
+    let ones = vec![1u32; arena];
+    let walk = e034_walk(&units, &class, synapses.iter().copied());
+    assert_eq!(
+        e036_drive(&units, &class, &ones, synapses.iter().copied()),
+        walk,
+        "with every count one the drive is the input read"
+    );
+    assert!(
+        spikes.contains(&0) && spikes.iter().any(|&c| c > 1),
+        "some units silent, some spiking more than once"
+    );
+    let all = e036_drive(&units, &class, &spikes, synapses.iter().copied());
+    let firing = e036_drive(
+        &units,
+        &class,
+        &spikes,
+        synapses
+            .iter()
+            .copied()
+            .filter(|&(from, _, _, _)| spikes[from as usize] > 0),
+    );
+    assert_eq!(all, firing, "a unit with no spike adds no drive");
+    assert_ne!(all, walk, "the counts change the drive");
+    let twice: Vec<u32> = spikes.iter().map(|&c| c.saturating_mul(2)).collect();
+    let doubled: Vec<[i64; 14]> = all
+        .iter()
+        .map(|unit| unit.map(|v| v.saturating_mul(2)))
+        .collect();
+    assert_eq!(
+        e036_drive(&units, &class, &twice, synapses.iter().copied()),
+        doubled
+    );
+
+    let u0 = units.units[0];
+    let u1 = units.units[units.first];
+    let excitatory = sets[0].units().next().expect("a unit of stimulus A");
+    let quiet = sets[0].units().nth(2).expect("a third unit");
+    let inh = sets[2]
+        .units()
+        .find(|&u| inhibitory(u))
+        .expect("an inhibitory unit of readout 0");
+    let mut counts = vec![0u32; arena];
+    counts[excitatory as usize] = 3;
+    counts[inh as usize] = 2;
+    let own: Vec<(u32, bool, u32, i16)> = vec![
+        (excitatory, false, u0, 300),
+        (excitatory, false, u0, 20),
+        (quiet, false, u0, 4_000),
+        (inh, true, u0, -200),
+        (inh, true, u1, -7),
+        (
+            excitatory,
+            false,
+            sets[0].units().nth(1).expect("a second unit"),
+            999,
+        ),
+    ];
+    let one = e036_drive(&units, &class, &counts, own.iter().copied());
+    let mut want0 = [0i64; 14];
+    want0[usize::from(class[excitatory as usize])] = 960;
+    want0[usize::from(class[inh as usize])] = 400;
+    let mut want1 = [0i64; 14];
+    want1[usize::from(class[inh as usize])] = 14;
+    assert_eq!(one[0], want0);
+    assert_eq!(one[units.first], want1);
+    assert_eq!(
+        one.iter().flatten().fold(0i64, |t, &v| t.saturating_add(v)),
+        1_374,
+        "a synapse onto a unit outside the readouts adds nothing, nor one from a unit with no spike"
+    );
+    assert_eq!(
+        e036_drive(&units, &class, &ones, own.iter().copied()),
+        e034_walk(&units, &class, own.iter().copied())
+    );
+
+    let mut total = E036Drive::zero(units.units.len());
+    total.add(&[one.clone(), all.clone()]);
+    total.add(&[one.clone(), one.clone()]);
+    assert_eq!(total.reads, 2);
+    assert_eq!(total.units[0][0], want0.map(|v| v.saturating_mul(2)));
+    let a_and_one: Vec<[i64; 14]> = all
+        .iter()
+        .zip(&one)
+        .map(|(a, b)| core::array::from_fn(|c| a[c].saturating_add(b[c])))
+        .collect();
+    assert_eq!(total.units[1], a_and_one);
+}
+
+/// Exploration 036's count of every unit: `Readout::count_window`'s rule unit by unit over the
+/// whole arena, at the train's wrap too, so the readout units' counts among every unit's are
+/// exploration 033's unit read's, and a unit outside the readouts is counted as well.
+#[test]
+fn exploration_036_s_count_of_every_unit_holds_the_unit_read() {
+    let sets = geometry(SCAN_UNITS, rotation(SCAN_UNITS));
+    let arena = SCAN_UNITS as usize;
+    let class: Vec<u8> = (0..arena).map(|i| (i % 14) as u8).collect();
+    let units = E033Units::over(&sets, arena, &class);
+    let a = sets[2].units().nth(3).expect("a unit of readout 0");
+    let b = sets[3].units().nth(5).expect("a unit of readout 1");
+    let outside = sets[0].units().next().expect("a unit of stimulus A");
+    let late = u32::MAX.wrapping_sub(10);
+    for (opens, train, want) in [
+        (
+            1_000u32,
+            vec![
+                (900u32, a),
+                (999, b),
+                (1_000, a),
+                (1_000, b),
+                (1_200, a),
+                (1_200, outside),
+                (1_300, outside),
+                (1_499, b),
+                (1_500, a),
+                (1_600, b),
+            ],
+            (2u32, 2u32, 2u32),
+        ),
+        (
+            late,
+            vec![
+                (u32::MAX.wrapping_sub(20), a),
+                (u32::MAX.wrapping_sub(5), a),
+                (u32::MAX.wrapping_sub(4), outside),
+                (3, b),
+                (600, b),
+            ],
+            (1, 1, 1),
+        ),
+    ] {
+        let every = e036_count(&train, opens, 500, arena);
+        let readouts: Vec<u32> = units.units.iter().map(|&u| every[u as usize]).collect();
+        assert_eq!(readouts, units.count(&train, opens, 500));
+        assert_eq!(
+            (
+                every[a as usize],
+                every[b as usize],
+                every[outside as usize]
+            ),
+            want
+        );
+        assert_eq!(
+            every.iter().fold(0u32, |t, &c| t.saturating_add(c)),
+            want.0.saturating_add(want.1).saturating_add(want.2)
+        );
+    }
+}
+
+/// Exploration 036's cells and reading (ADR-0251): seed 24's eighth image from the assignment and
+/// from the mirrored assignment, A's read mirrored on the first and not on the second; exploration
+/// 035's reading with the drive; and exploration 033's two jobs' forms.
+#[test]
+fn exploration_036_s_cells_and_reading() {
+    assert_eq!(E036_CELLS, [(2, 0), (2, 1)]);
+    for (&(n, s), (arm, mirrored)) in E036_CELLS.iter().zip([
+        (Reversal::AssignmentFirst, true),
+        (Reversal::MirroredFirst, false),
+    ]) {
+        assert_eq!(ZERO_NAMES[n][ZERO_ARM], "zero24");
+        assert_eq!(NIGHTS_STARTS[s], (NightFrom::Eighth, arm));
+        assert_eq!(nights_mirrored(NightFrom::Eighth, arm), mirrored);
+    }
+    assert_eq!(
+        (E036_READING.units, E036_READING.inputs, E036_READING.drive),
+        (true, true, true)
+    );
+    for reading in [E030_ROWS, E033_READING, E034_READING] {
+        assert!(!reading.drive);
+    }
+    let names: Vec<&str> = E033_FIRST
+        .iter()
+        .chain(E033_SECOND.iter())
+        .map(|f| f.name)
+        .collect();
+    assert_eq!(
+        names,
+        [
+            "no-replay",
+            "alone-6",
+            "plain-first",
+            "no-replay",
+            "alone-12",
+            "alone-18",
+            "alone-24"
+        ]
+    );
+}
+
+/// Exploration 036's trial, on both of seed 24's eighth images, from the assignment and from the
+/// mirrored assignment: exploration 035's trial on each, the pair's head and the first night of
+/// each of the six forms on path 0, each image's readout units' inputs read, and each image's read
+/// of A as it was counted unit by unit, timed alone and again with every unit counted and the
+/// drive.
+#[test]
+#[ignore]
+fn the_harness_of_what_reaches_the_readout_units_on_both_cells_explore() {
+    let six: Vec<E030Form> = E033_FIRST
+        .iter()
+        .chain(E033_SECOND.iter().skip(1))
+        .copied()
+        .collect();
+    for &(n, s) in &E036_CELLS {
+        e030_trial_reading(n, s, &six, E036_READING);
+    }
+}
+
+/// Exploration 036's first job on seed 24's eighth image from the assignment: exploration 034's
+/// first job, the night without replay, after block 6 alone and H-47's plain night on all four
+/// nights, with every unit counted and the drive read on each of A's reads.
+#[test]
+#[ignore]
+fn what_reaches_the_readout_units_from_the_assignment_after_block_6_alone_and_on_every_night_explore()
+ {
+    let (n, s) = E036_CELLS[0];
+    e030_job_reading(n, s, &E033_FIRST, E036_READING);
+}
+
+/// Exploration 036's second job on the same cell: exploration 034's second job, the night without
+/// replay and after block 12, 18 or 24 alone, with every unit counted and the drive read on each of
+/// A's reads.
+#[test]
+#[ignore]
+fn what_reaches_the_readout_units_from_the_assignment_after_each_later_night_alone_explore() {
+    let (n, s) = E036_CELLS[0];
+    e030_job_reading(n, s, &E033_SECOND, E036_READING);
+}
+
+/// Exploration 036's first job on seed 24's eighth image from the mirrored assignment: exploration
+/// 035's first job, the night without replay, after block 6 alone and H-47's plain night on all
+/// four nights, with every unit counted and the drive read on each of A's reads.
+#[test]
+#[ignore]
+fn what_reaches_the_readout_units_from_the_mirrored_assignment_after_block_6_alone_and_on_every_night_explore()
+ {
+    let (n, s) = E036_CELLS[1];
+    e030_job_reading(n, s, &E033_FIRST, E036_READING);
+}
+
+/// Exploration 036's second job on the same cell: exploration 035's second job, the night without
+/// replay and after block 12, 18 or 24 alone, with every unit counted and the drive read on each of
+/// A's reads.
+#[test]
+#[ignore]
+fn what_reaches_the_readout_units_from_the_mirrored_assignment_after_each_later_night_alone_explore()
+ {
+    let (n, s) = E036_CELLS[1];
+    e030_job_reading(n, s, &E033_SECOND, E036_READING);
 }
