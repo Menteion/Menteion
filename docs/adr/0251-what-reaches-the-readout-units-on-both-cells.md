@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-12
 depends-on: ADR-0250
 title: What reaches the readout units, on both cells
