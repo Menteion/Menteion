@@ -45,8 +45,8 @@ zero.
 
 **In brief**
 - **Every night is the logs'.** On each cell all 24 nights held their row inside the test: the image after the night, A's couplings at their
-  highest before it and its gain. Label aside, every line each night's watch printed is the logs' night's, in order. The input reads before
-  and after each night are explorations 034's to 036's, line for line.
+  highest over the six blocks before it and its gain. Label aside, every line each night printed is the logs' night's, in order. The input
+  reads before and after each night are explorations 034's to 036's, line for line.
 - **ADR-0252 held the pairings read below zero at none; the harness's first trial read some, and the read changed.** The harness's first
   trial read 896 on the image from the mirrored assignment, on path 0's night without replay after block 18. A night's engine is decoded
   from an image, so every unit is an addressed source and target. An excitatory synapse there consolidates under the baseline plus the
@@ -63,8 +63,9 @@ zero.
   the image from the assignment and +510.4, +616.3, +565.4 and +472.7 on the image from the mirrored assignment. At its next spike after the
   replay it carried +146.8, +161.0, +129.5 and +130.9 and +148.5, +153.8, +195.0 and +179.8. At its other spikes in slow-wave sleep it
   carried +185.9, +87.7, +168.6 and +115.5 and +17.5, +52.6, +48.0 and +46.5. Nothing was consolidated outside slow-wave sleep on any night.
-  The zero sum's rounds moved −8.3, −11.5, +8.3 and −21.5 and −7.1, −10.4, −11.1 and −10.7. What the watch does not see reads 0.0 on every
-  one of these differences.
+  Below zero it moved 0.0, 0.0, −2.8 and 0.0 on the image from the mirrored assignment and 0.0, 0.0, 0.0 and 0.0 on the image from the
+  assignment. The zero sum's rounds moved −8.3, −11.5, +8.3 and −21.5 and −7.1, −10.4, −11.1 and −10.7. What the watch does not see reads
+  0.0 on every one of these differences.
 - **By the readout unit's class.** On the image from the assignment A's patterns' targets took +718.1, +646.7, +636.1 and +585.6 k of it,
   more than all of it. The inhibitory units took −70.4, −87.2, −87.4 and −77.7. On the image from the mirrored assignment the targets took
   +509.5, +604.4, +562.0 and +501.2, the other excitatory units +51.4, +87.3, +72.0 and +58.3 and the inhibitory units +49.8, +46.7, +94.9
@@ -98,7 +99,7 @@ the mirrored assignment, **B's answer's readout** the other.
 **A's patterns** are H-47's 102, drawn from the start image, one starting at each of the 102 stimulus units. **Stimulus A's patterns** are
 the 51 that start at A's kinds' units, **stimulus B's** the 51 at B's. On both cells each pattern's targets past its first unit all lie in
 its stimulus's answer's readout: 545 distinct targets on the image from the assignment and 576 on the image from the mirrored assignment, as
-each job's pattern lines print them.
+each job's pattern lines print them. Of them 48 and 42 are C's or D's own units.
 
 **The kinds**, exploration 016's: **A alone**, A's 25 units that C does not share, **A and C**, the 26 it shares, **B alone** and **B and
 D** the same of B; **A's kinds** are the first two and **B's kinds** the last two. Each kind is a group of the zero sum
@@ -108,7 +109,8 @@ back to its value.
 
 **Each readout unit's class**, exploration 020's, from each cell's start image (`e020_class`), which each job prints. The readout units'
 classes make four groups here: C's or D's own, the pair's units inside the readout, C's 25 at place 5 in readout 0 and D's 25 at place 16 in
-readout 1; A's patterns' targets; the other excitatory units; and the inhibitory units.
+readout 1; A's patterns' targets, the units a pattern reaches past its first unit but C's or D's own, which count as C's or D's own wherever
+a pattern reaches them; the other excitatory units; and the inhibitory units.
 
 | The cell | Readout | C's or D's own | A's patterns' targets | Other excitatory | Inhibitory | All |
 | :--- | :--- | ---: | ---: | ---: | ---: | ---: |
@@ -142,14 +144,14 @@ summed by unit over the arena and printed for the readout units:
 holds, half of it at the slow-wave baseline. That trace holds the earlier pairings and what the day left. So a kind's first spike of a night
 consolidates part of the day's trace in whichever bin that spike falls; on the night without replay no spike falls in a replay.
 
-**Held inside the test on every night**: the image after it, by CRC-64, A's couplings at their highest over the block ends before it and its
-gain are the row the logs give for that night, path and cell. The chain's nights hold H-47's pinned row of the night without replay at that
-block. The night after block 6 alone holds H-47's plain night's at block 6. The nights after block 12, 18 and 24 alone hold the rows
-explorations 033 and 035 printed, read from their artifacts by a script and pinned in the harness. A replayed night reads replays and
-depotentiations that are not zero, and a night without replay none. The watch misses nothing, below zero as above it. No round moves a
-weight onto any of the 106 units outside the readouts. Every unit's spikes in the replays, summed over the arena by stimulus and class, are
-the watch's ripple spikes lines'. What every unit's pairings took from the trace, summed over the arena by kind, bin of ordinals and the
-target's class, is the watch's pairings lines' `absorbed`.
+**Held inside the test on every night**: the image after it, by CRC-64, A's couplings at their highest over the block ends of the six blocks
+before it and its gain are the row the logs give for that night, path and cell. The chain's nights hold H-47's pinned row of the night
+without replay at that block. The night after block 6 alone holds H-47's plain night's at block 6. The nights after block 12, 18 and 24
+alone hold the rows explorations 033 and 035 printed, read from their artifacts by a script and pinned in the harness. A replayed night
+reads replays and depotentiations that are not zero, and a night without replay none. The watch misses nothing, below zero as above it. No
+round moves a weight onto any of the 106 units outside the readouts. Every unit's spikes in the replays, summed over the arena by stimulus
+and class, are the watch's ripple spikes lines'. What every unit's pairings took from the trace, summed over the arena by kind, bin of
+ordinals and the target's class, is the watch's pairings lines' `absorbed`.
 
 **Beside it, exploration 034's input read** on the image before and after each night: each readout unit's input by presynaptic class, A's
 and B's four kinds among them, as explorations 034 to 036 ran it. A readout unit's change from a kind over a night, less what consolidation
@@ -206,22 +208,25 @@ paths two at a time:
 ## 1. The nights against the logs
 
 Each night of the chain is set beside the night without replay after the same block on the same path in each log, and each replayed night
-beside the night after that block alone. Each input read before a night is set beside the logs' reads before that night, of the night
-without replay and of the night after that block alone, and each after a night beside the same night's. Exploration 033 ran no input read,
-so its lines there are the split and the class matrix alone. After a night the logs' checkpoint reads each kind's sums again; that line is
-not this harness's and is left out. The night without replay ran in both of each exploration's jobs, so each night of the chain, its lines
-and its read after it are counted once against each job, and each read before a night against each of the logs' nights from that image.
+beside the night after that block alone. Each input read before a night is set beside every read the logs made of the same image before a
+night: the night without replay's, in each job, each single night's at or after that block, whose chain ran until then, and at block 6
+H-47's plain night's. Each read after a night is set beside the same night's. Exploration 033 ran no input read, so its reads before a night
+are each kind's sums, the split and the class matrix, and after a night the split and the class matrix. Under the label of the image after a
+night the logs print more lines that this harness does not: the checkpoint's sums by kind and its held line, the reads of A and, in
+exploration 036, the drive; those are left out. The night without replay ran in both of each exploration's jobs, so each night of the chain,
+its lines and its read after it are counted once against each job.
 
 | The cell | Logs set beside | Nights whose image, highest and gain are the logs' row | Nights whose every line is the logs' night's, in order, label aside | Of the logs' night lines, found | Input reads before a night, every line found | Their lines found | Input reads after a night, every line found | Their lines found |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| From the assignment | exploration 033's, run 43011654795, arm-0 and arm-1 | 24 of 24 | 24 of 24 | 6 914 of 6 914 | 12 of 12 | 108 of 108 | 24 of 24 | 72 of 72 |
-| From the assignment | exploration 034's, run 43052358536, arm-0 and arm-1 | 24 of 24 | 24 of 24 | 6 914 of 6 914 | 12 of 12 | 180 of 180 | 24 of 24 | 144 of 144 |
-| From the assignment | exploration 036's, run 43192758106, arm-0 and arm-1 | 24 of 24 | 24 of 24 | 6 914 of 6 914 | 12 of 12 | 180 of 180 | 24 of 24 | 144 of 144 |
-| From the mirrored assignment | exploration 035's, run 43134386489, arm-0 and arm-1 | 24 of 24 | 24 of 24 | 6 932 of 6 932 | 12 of 12 | 180 of 180 | 24 of 24 | 144 of 144 |
-| From the mirrored assignment | exploration 036's, run 43192758106, arm-2 and arm-3 | 24 of 24 | 24 of 24 | 6 932 of 6 932 | 12 of 12 | 180 of 180 | 24 of 24 | 144 of 144 |
+| From the assignment | exploration 033's, run 43011654795, arm-0 and arm-1 | 24 of 24 | 24 of 24 | 6 914 of 6 914 | 12 of 12 | 171 of 171 | 24 of 24 | 72 of 72 |
+| From the assignment | exploration 034's, run 43052358536, arm-0 and arm-1 | 24 of 24 | 24 of 24 | 6 914 of 6 914 | 12 of 12 | 285 of 285 | 24 of 24 | 144 of 144 |
+| From the assignment | exploration 036's, run 43192758106, arm-0 and arm-1 | 24 of 24 | 24 of 24 | 6 914 of 6 914 | 12 of 12 | 285 of 285 | 24 of 24 | 144 of 144 |
+| From the mirrored assignment | exploration 035's, run 43134386489, arm-0 and arm-1 | 24 of 24 | 24 of 24 | 6 932 of 6 932 | 12 of 12 | 285 of 285 | 24 of 24 | 144 of 144 |
+| From the mirrored assignment | exploration 036's, run 43192758106, arm-2 and arm-3 | 24 of 24 | 24 of 24 | 6 932 of 6 932 | 12 of 12 | 285 of 285 | 24 of 24 | 144 of 144 |
 
-Every night's image, highest and gain are each log's row, and every line its watch printed is the log's night's, in order, label aside: the
-start of the night, each window, the watch's lines and the end. Every input read before and after a night is in each log that ran one.
+Every night's image, highest and gain are each log's row, and every line the night printed is the log's night's, in order, label aside: its
+start, each window, the watch's lines, its end with its replays and depotentiations, and the line saying what its form asked. Every input
+read before and after a night is in each log that ran one.
 
 ## 2. What each replayed night wrote onto each readout
 
@@ -351,8 +356,10 @@ the units' class.
 From A's kinds onto A's answer's readout less B's: on the image from the assignment +688.9, +623.4, +595.9 and +489.8 k after block 6, 12,
 18 and 24 alone, and on the image from the mirrored assignment +669.4, +812.2, +794.5 and +688.4. From B's kinds onto B's answer's readout
 less A's: +625.6, +545.3, +530.0 and +638.7 and +537.8, +524.1, +529.5 and +699.8. Onto A's answer's readout alone, A's kinds moved +344.4,
-+311.7, +297.9 and +244.9 and +334.7, +406.1, +397.2 and +344.2, and onto B's answer's readout the negation of those within 0.040 k. On
-every one of the 48 nights each kind's change summed over the two readouts lies within 121 of the class matrix's units of zero.
++311.7, +297.9 and +244.9 and +334.7, +406.1, +397.2 and +344.2, and onto B's answer's readout their negation: the two sum to −0.037 to
++0.040 k, the largest in size after block 6 alone on the image from the mirrored assignment. On every one of the 48 nights each kind's
+change summed over the two readouts lies within 121 of the class matrix's units of zero, the largest A alone's, on the night without replay
+after block 6 on path 6 of the image from the assignment.
 
 By class, from A's kinds onto A's answer's readout less B's: A's patterns' targets +718.1, +646.7, +636.1 and +585.6 on the image from the
 assignment and +509.5, +604.4, +562.0 and +501.2 on the image from the mirrored assignment; the other excitatory units −6.4, +6.9, −6.5 and
@@ -516,8 +523,10 @@ What the readings show, from A's kinds onto A's answer's readout less B's, less 
 - **The zero sum's rounds** moved −8.3, −11.5, +8.3 and −21.5 and −7.1, −10.4, −11.1 and −10.7. On each night alone they moved A's kinds'
   weights onto each readout by −218.8 to −91.1 k, the table above, and between the two nights from the same image most of that cancels.
 - **What the watch does not see** reads 0.0 on every difference. On 6 nights it is not zero: on the image from the assignment, both nights
-  from the image before block 6's night, on each path, in the lead ticks before the watch, from A and C alone, 645 of the class matrix's
-  units at most onto a readout. The quiet ticks moved nothing on any night.
+  from the image before block 6's night, on each path, in the lead ticks before the watch, from A and C alone, onto B's answer's readout and
+  onto A's: +645 and −632 on path 0; +90 and −115 on path 5; +285 and −331 on path 6 of the class matrix's units, the same on both nights.
+  The largest, 645 of the class matrix's units, is A and C's onto B's answer's readout on both nights from the image before the night after
+  block 6 on path 0 of the image from the assignment. The quiet ticks moved nothing on any night.
 
 By class on the image from the assignment, A's patterns' targets took +395.7, +393.9, +336.6 and +328.9 in the units' own replays, +150.4,
 +153.2, +137.2 and +143.3 at their next spikes and +180.5, +109.7, +160.3 and +131.9 at their other spikes in slow-wave sleep, and the
@@ -684,15 +693,17 @@ mostly by consolidation.** The units' own replays and their next spikes after it
 see moved little of the difference between the two nights from one image. **The two cells part, after the three later nights, in the own
 replays and in which units the weights go to**: on the image from the mirrored assignment more is consolidated in the own replays and less
 at the other spikes in slow-wave sleep, on all four nights. Of A's answer's readout less B's, more falls on the other excitatory and
-inhibitory units and less on A's patterns' targets, on all four nights. A unit's spikes in the replays line up only weakly with what it
-gained.
+inhibitory units and less on A's patterns' targets, on all four nights. A unit's spikes in a stimulus's replays line up only weakly with
+what it gained from that stimulus's kinds, positively over the stimulus's answer's readout and negatively over the other, the correlations
+between −0.34 to +0.26.
 
 Questions this suggests for a later exploration or a round:
 - What the trace holds when a night begins, by kind and readout, and how much of each bin is the day's trace rather than the night's
   pairings: the bins say when a trace was consolidated, not when it was written.
-- Why consolidation in the own replays moves more onto A's answer's readout's other excitatory and inhibitory units on the image from the
-  mirrored assignment, and less onto its targets: the order in which those units fire after a replayed pattern's first unit is not read
-  here.
+- Why, of A's answer's readout less B's, A's kinds move more onto the other excitatory and inhibitory units on the image from the mirrored
+  assignment and less onto A's patterns' targets. The targets' part there is smaller at the units' other spikes in slow-wave sleep, −202.2,
+  −115.6, −182.3 and −129.7 k against the image from the assignment, while in the own replays it reads −15.3, +81.8, +75.6 and +11.9. The
+  order in which the readout units fire after a replayed pattern's first unit is not read here.
 - What sets the dopamine term that held the modulation below zero for the first 22 231 watched ticks of both nights from one image, and on
   no other: the dopamine term itself is not read.
 - Whether the parting by the own replays holds on the other ten cells.
@@ -706,8 +717,8 @@ Questions this suggests for a later exploration or a round:
 - **The twelve blocks after the last night**, to block 36.
 - **Plain nights on both mappings and the awake gap.**
 - **Any read of A or of the pair.**
-- **The inputs of the units outside the readouts' sets**: what consolidation moved onto them is held to the watch's lines and its rounds to
-  zero, but not printed.
+- **The inputs of the units outside the readouts' sets**: what the pairings took from the trace onto them is held only summed over the arena
+  with the readouts' units, to the watch's lines, and the rounds onto each of them to zero; nothing of theirs is printed.
 - **A spike's arrival after its synapse's delay.**
 - **A unit's membrane or threshold.**
 - **Any path but H-47's three**, 0, 5 and 6.
