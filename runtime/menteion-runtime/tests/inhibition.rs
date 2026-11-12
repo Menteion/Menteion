@@ -50961,3 +50961,73 @@ fn one_cells_readout_units_inputs_after_block_6_alone_and_on_every_night_explore
 fn one_cells_readout_units_inputs_after_each_later_night_alone_explore() {
     e030_job_reading(2, 0, &E033_SECOND, E034_READING);
 }
+
+// ---------------- exploration 035: the mirrored cell's units and inputs (on its branch alone)
+
+/// Exploration 035's cell (ADR-0250): seed 24's eighth image from the mirrored assignment, the
+/// network and start indices of `with_nights`. Exploration 033's and 034's cell is `(2, 0)`.
+const E035_CELL: (usize, usize) = (2, 1);
+
+/// Exploration 035's cell is seed 24's eighth image from the mirrored assignment, the same network
+/// as exploration 033's and 034's cell and the other arm of H-25 on it; A's read of it is not
+/// mirrored, where that cell's is, so A asks readout 0 of stimulus A there and readout 1 here.
+#[test]
+fn exploration_035_s_cell_is_the_mirrored_eighth_image_on_seed_24() {
+    let (n, s) = E035_CELL;
+    assert_eq!(ZERO_NAMES[n][ZERO_ARM], "zero24");
+    assert_eq!(
+        NIGHTS_STARTS[s],
+        (NightFrom::Eighth, Reversal::MirroredFirst)
+    );
+    assert_eq!(
+        NIGHTS_STARTS[0],
+        (NightFrom::Eighth, Reversal::AssignmentFirst)
+    );
+    let (from, arm) = NIGHTS_STARTS[s];
+    assert!(
+        !nights_mirrored(from, arm),
+        "A's read of this cell is not mirrored"
+    );
+    let (from, arm) = NIGHTS_STARTS[0];
+    assert!(
+        nights_mirrored(from, arm),
+        "A's read of exploration 034's cell is mirrored"
+    );
+}
+
+/// Exploration 035's trial, on seed 24 from the eighth image and the mirrored assignment:
+/// exploration 034's trial on that cell, the pair's head and the first night of each of the six
+/// forms on path 0, each image's read of A counted unit by unit, and each image's readout units'
+/// inputs read and held to its class matrix.
+#[test]
+#[ignore]
+fn the_harness_of_the_mirrored_cells_units_and_inputs_explore() {
+    let six: Vec<E030Form> = E033_FIRST
+        .iter()
+        .chain(E033_SECOND.iter().skip(1))
+        .copied()
+        .collect();
+    let (n, s) = E035_CELL;
+    e030_trial_reading(n, s, &six, E034_READING);
+}
+
+/// Exploration 035's first job, on seed 24 from the eighth image and the mirrored assignment:
+/// exploration 034's first job on that cell, the night without replay, after block 6 alone and
+/// H-47's plain night on all four nights, each of A's reads counted unit by unit and the readout
+/// units' inputs read on each image split.
+#[test]
+#[ignore]
+fn the_mirrored_cells_units_and_inputs_after_block_6_alone_and_on_every_night_explore() {
+    let (n, s) = E035_CELL;
+    e030_job_reading(n, s, &E033_FIRST, E034_READING);
+}
+
+/// Exploration 035's second job, on the same cell: exploration 034's second job on that cell, the
+/// night without replay and after block 12, 18 or 24 alone, each of A's reads counted unit by unit
+/// and the readout units' inputs read on each image split.
+#[test]
+#[ignore]
+fn the_mirrored_cells_units_and_inputs_after_each_later_night_alone_explore() {
+    let (n, s) = E035_CELL;
+    e030_job_reading(n, s, &E033_SECOND, E034_READING);
+}
