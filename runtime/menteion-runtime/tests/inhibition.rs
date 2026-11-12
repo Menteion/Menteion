@@ -47251,6 +47251,19 @@ struct ReplayWatch {
     ripples: [u32; 2],
     spikes: [[u64; 8]; 2],
     wrong: u64,
+    /// Exploration 037: each unit's spikes in the ripples that replay one of A's patterns, by the
+    /// pattern's stimulus and the spike's class as the watch classed it, by the unit's id.
+    unit_spikes: [[Vec<u32>; 8]; 2],
+    /// Exploration 037: what consolidation took into the weights onto each unit, by the unit's id,
+    /// then the pairing's kind (`WATCH_PRE`), its bin of ordinals (`e037_bin`) and the target's
+    /// class as the watch classed the pairing (`WATCH_POST`).
+    unit_absorbed: Vec<[[[i64; 7]; 4]; 4]>,
+    /// Exploration 037: the pairings read at a modulation below zero, where the watch checks
+    /// nothing and `absorbed` would carry the weight's move with the other sign.
+    below_zero: u64,
+    /// Exploration 037: each kind's weights onto each unit, by the unit's id, when the watch was
+    /// built and after its last tick (`finish`), before the quiet ticks.
+    unit_weights: [Vec<[i64; 4]>; 2],
 }
 
 impl ReplayWatch {
@@ -47306,6 +47319,21 @@ impl ReplayWatch {
                 held_blocks.extend(chains[unit].iter().copied());
             }
         }
+        let mut weights = vec![[0i64; 4]; n];
+        for unit in units {
+            let Some(k) = pre.get(unit.id as usize).copied().flatten() else {
+                continue;
+            };
+            for s in unit.fan_out(blocks) {
+                let w = &mut weights[s.target as usize][usize::from(k)];
+                *w = w.saturating_add(i64::from(s.weight_q1_15));
+            }
+        }
+        assert_eq!(
+            e037_kind_weights(&chains, &pre, blocks),
+            weights,
+            "{label}: the chains of A's patterns' first units hold every synapse of the four kinds"
+        );
         Self {
             label: label.to_string(),
             exponent: exec.depression_exponent(),
@@ -47336,6 +47364,10 @@ impl ReplayWatch {
             ripples: [0; 2],
             spikes: [[0; 8]; 2],
             wrong: 0,
+            unit_spikes: core::array::from_fn(|_| core::array::from_fn(|_| vec![0u32; n])),
+            unit_absorbed: vec![[[[0i64; 7]; 4]; 4]; n],
+            below_zero: 0,
+            unit_weights: [weights.clone(), weights],
         }
     }
 
@@ -47399,6 +47431,9 @@ impl ReplayWatch {
                 let (s, class) = (self.stimulus[first as usize], self.spike_class(e, unit));
                 if let Some(s) = s {
                     let n = &mut self.spikes[usize::from(s)][usize::from(class)];
+                    *n = n.saturating_add(1);
+                    let n =
+                        &mut self.unit_spikes[usize::from(s)][usize::from(class)][unit as usize];
                     *n = n.saturating_add(1);
                 }
             }
@@ -47470,6 +47505,14 @@ impl ReplayWatch {
                 };
                 let read = self.pairing(&old, &new, slot, post, now, unit);
                 let to = self.post_class(unit, post);
+                self.below_zero = self
+                    .below_zero
+                    .saturating_add(u64::from(self.modulation < 0));
+                if let Some(k) = self.pre[u] {
+                    let cell = &mut self.unit_absorbed[post as usize][usize::from(k)]
+                        [e037_bin(ordinal)][usize::from(to)];
+                    *cell = cell.saturating_add(i64::from(read.absorbed));
+                }
                 self.pending.push((class, to, ordinal, unit, read));
             }
             self.shadow[b as usize] = new;
@@ -47593,6 +47636,234 @@ impl ReplayWatch {
         }
         eprintln!("DUMP {} watch post classes {WATCH_POST:?}", self.label);
     }
+
+    /// After the watch's last tick, before the quiet ticks (exploration 037): each kind's weights
+    /// onto each unit, walked over the chains of A's patterns' first units. It reads the synapse
+    /// arena alone, so the run is the run it was.
+    fn finish(&mut self, exec: &Engine) {
+        self.unit_weights[1] = e037_kind_weights(&self.chains, &self.pre, exec.blocks());
+    }
+
+    /// Each kind's rounds of the zero sum onto each unit, by the unit's id (exploration 037): its
+    /// weights onto the unit after the watch's last tick less its weights when the watch was built,
+    /// less what consolidation took into them.
+    fn e037_rounds(&self) -> Vec<[i64; 4]> {
+        let [built, ended] = &self.unit_weights;
+        built
+            .iter()
+            .zip(ended)
+            .zip(&self.unit_absorbed)
+            .map(|((b, e), a)| {
+                core::array::from_fn(|k| {
+                    let consolidated = a[k]
+                        .iter()
+                        .flatten()
+                        .fold(0i64, |t, &v| t.saturating_add(v));
+                    e[k].saturating_sub(b[k]).saturating_sub(consolidated)
+                })
+            })
+            .collect()
+    }
+
+    /// Held on a night (exploration 037): the watch's misses and the pairings read below zero are
+    /// none; the rounds onto every unit outside the two readouts are zero; every unit's spikes in
+    /// the replays, summed over the arena by the pattern's stimulus and the spike's class, are the
+    /// ripple spikes lines'; and what consolidation took onto every unit, summed over the arena by
+    /// kind, bin of ordinals and target class, is the pairings lines' `absorbed` summed over the
+    /// ordinals of each bin and over their `spikes`. Dumped: what was held.
+    fn e037_held(&self, label: &str) {
+        assert_eq!(
+            (self.wrong, self.below_zero),
+            (0, 0),
+            "{label}: the watch misses nothing and reads no pairing below zero"
+        );
+        let mut outside = 0usize;
+        for (u, rounds) in self.e037_rounds().iter().enumerate() {
+            if self.readout[u].is_none() {
+                assert_eq!(
+                    rounds, &[0i64; 4],
+                    "{label}: no round moves a weight onto unit {u}, outside the readouts"
+                );
+                outside = outside.saturating_add(1);
+            }
+        }
+        let spikes: [[u64; 8]; 2] = core::array::from_fn(|s| {
+            core::array::from_fn(|c| {
+                self.unit_spikes[s][c]
+                    .iter()
+                    .fold(0u64, |t, &v| t.saturating_add(u64::from(v)))
+            })
+        });
+        assert_eq!(
+            spikes, self.spikes,
+            "{label}: every unit's spikes in the replays sum to the ripple spikes lines'"
+        );
+        let mut lines = [[[0i64; 7]; 4]; 4];
+        for (&(class, to, ordinal, _), tally) in &self.tallies {
+            let cell = &mut lines[usize::from(class)][e037_bin(ordinal)][usize::from(to)];
+            *cell = cell.saturating_add(tally.absorbed);
+        }
+        let mut units = [[[0i64; 7]; 4]; 4];
+        for unit in &self.unit_absorbed {
+            for (total, mine) in units.iter_mut().zip(unit) {
+                for (total, mine) in total.iter_mut().zip(mine) {
+                    for (total, &v) in total.iter_mut().zip(mine) {
+                        *total = total.saturating_add(v);
+                    }
+                }
+            }
+        }
+        assert_eq!(
+            units, lines,
+            "{label}: every unit's consolidation sums to the pairings lines' absorbed"
+        );
+        eprintln!(
+            "DUMP {label} e037 held: wrong 0, pairings below zero 0; rounds 0 onto each of the {outside} units outside the readouts; every unit's replay spikes by stimulus and class sum to the ripple spikes lines' {spikes:?}; every unit's consolidation by kind {WATCH_PRE:?}, bin {E037_BINS:?} and target class sums to the pairings lines' absorbed {lines:?}"
+        );
+    }
+
+    /// Dumped for the readout units of `units`, in their order (exploration 037), a unit's values
+    /// comma-separated and the units separated by `;`: each one's spikes in the ripples that
+    /// replay A's patterns of stimulus A, as one of the pattern's units and outside it, then of
+    /// stimulus B; what consolidation took onto it from each kind (`WATCH_PRE`) in each bin
+    /// (`E037_BINS`), kind by kind; each kind's rounds onto it; and each kind's weights onto it
+    /// when the watch was built and after its last tick. Then each of those summed over each
+    /// readout's units, readout 0's then readout 1's.
+    fn e037_dump(&self, label: &str, units: &E033Units) {
+        let rounds = self.e037_rounds();
+        let spikes: Vec<[i64; 4]> = units
+            .units
+            .iter()
+            .map(|&u| {
+                let of = |s: usize| {
+                    let all = self.unit_spikes[s]
+                        .iter()
+                        .fold(0u32, |t, by| t.saturating_add(by[u as usize]));
+                    let mine = self.unit_spikes[s][1][u as usize];
+                    (i64::from(mine), i64::from(all.saturating_sub(mine)))
+                };
+                let ((a, a_out), (b, b_out)) = (of(0), of(1));
+                [a, a_out, b, b_out]
+            })
+            .collect();
+        let consolidated: Vec<[i64; 16]> = units
+            .units
+            .iter()
+            .map(|&u| {
+                let by = &self.unit_absorbed[u as usize];
+                core::array::from_fn(|i| {
+                    by[i >> 2][i & 3]
+                        .iter()
+                        .fold(0i64, |t, &v| t.saturating_add(v))
+                })
+            })
+            .collect();
+        let pick = |of: &[[i64; 4]]| -> Vec<[i64; 4]> {
+            units.units.iter().map(|&u| of[u as usize]).collect()
+        };
+        let (rounds, built, ended) = (
+            pick(&rounds),
+            pick(&self.unit_weights[0]),
+            pick(&self.unit_weights[1]),
+        );
+        eprintln!(
+            "DUMP {label} e037 replay spikes of the readout units, of A's patterns in the pattern and outside it, then of B's {}",
+            e037_line(&spikes)
+        );
+        eprintln!(
+            "DUMP {label} e037 consolidation onto the readout units by kind {WATCH_PRE:?} and bin {E037_BINS:?} {}",
+            e037_line(&consolidated)
+        );
+        eprintln!(
+            "DUMP {label} e037 rounds onto the readout units by kind {}",
+            e037_line(&rounds)
+        );
+        eprintln!(
+            "DUMP {label} e037 weights onto the readout units by kind when the watch was built {}",
+            e037_line(&built)
+        );
+        eprintln!(
+            "DUMP {label} e037 weights onto the readout units by kind after its last tick {}",
+            e037_line(&ended)
+        );
+        eprintln!(
+            "DUMP {label} e037 by readout, readout 0's then readout 1's: replay spikes {:?} consolidation {:?} rounds {:?} weights when built {:?} after the last tick {:?}",
+            e037_by_readout(units, &spikes),
+            e037_by_readout(units, &consolidated),
+            e037_by_readout(units, &rounds),
+            e037_by_readout(units, &built),
+            e037_by_readout(units, &ended)
+        );
+    }
+}
+
+/// The bins of a pairing's ordinal exploration 037 sums consolidation in (ADR-0252), as its dumps
+/// name them: 0 to 3, the presynaptic unit's own replay; its next spike after that replay
+/// (`PAIR_AFTER`); any other in slow-wave sleep (`PAIR_ELSE_SWS`); any other (`PAIR_ELSE`). A bin
+/// says when a trace is consolidated, not when the pairing that wrote it fell.
+const E037_BINS: [&str; 4] = [
+    "its own replay",
+    "its next spike after it",
+    "another in slow-wave sleep",
+    "another",
+];
+
+/// The bin of a pairing's ordinal (`E037_BINS`' index).
+fn e037_bin(ordinal: u8) -> usize {
+    match ordinal {
+        0..=3 => 0,
+        PAIR_AFTER => 1,
+        PAIR_ELSE_SWS => 2,
+        _ => 3,
+    }
+}
+
+/// Each kind's weights onto each unit, by the unit's id (exploration 037): over the chain of each
+/// unit of `chains` whose kind `pre` names, the synapses of its blocks in `blocks`.
+fn e037_kind_weights(
+    chains: &[Vec<u32>],
+    pre: &[Option<u8>],
+    blocks: &[SynapseBlock],
+) -> Vec<[i64; 4]> {
+    let mut weights = vec![[0i64; 4]; chains.len()];
+    for (chain, kind) in chains.iter().zip(pre) {
+        let Some(k) = kind else {
+            continue;
+        };
+        for &b in chain {
+            let block = &blocks[b as usize];
+            for slot in 0..SYNAPSES_PER_BLOCK {
+                if let Some(post) = block.target(slot) {
+                    let w = &mut weights[post as usize][usize::from(*k)];
+                    *w = w.saturating_add(i64::from(block.weights_q1_15[slot]));
+                }
+            }
+        }
+    }
+    weights
+}
+
+/// Values of the readout units as exploration 037 dumps them: a unit's values comma-separated, the
+/// units separated by `;`, in `E033Units`' order.
+fn e037_line<const K: usize>(values: &[[i64; K]]) -> String {
+    values
+        .iter()
+        .map(|unit| e036_line(unit))
+        .collect::<Vec<String>>()
+        .join(";")
+}
+
+/// Values of the readout units of `units`, in their order, summed over each readout's units,
+/// readout 0's then readout 1's.
+fn e037_by_readout<const K: usize>(units: &E033Units, values: &[[i64; K]]) -> [[i64; K]; 2] {
+    let mut sums = [[0i64; K]; 2];
+    for (k, unit) in values.iter().enumerate() {
+        let sum = &mut sums[usize::from(k >= units.first)];
+        for (total, &v) in sum.iter_mut().zip(unit) {
+            *total = total.saturating_add(v);
+        }
+    }
+    sums
 }
 
 /// `night_on` with exploration 020's watch where `watch` says: the same engine, stages and dumps,
@@ -47620,6 +47891,24 @@ fn e020_night_counted(
     tag: bool,
     watch: bool,
 ) -> (Vec<u8>, (u32, u32), (u64, u64)) {
+    let (written, gain, counts, _) = e020_night_watched(start, image, label, patterns, tag, watch);
+    (written, gain, counts)
+}
+
+/// A watched night as `e020_night_watched` returns it (exploration 037): the image it writes, the
+/// gain at its start and its end, its replays and depotentiations, and the watch.
+type E037Watched = (Vec<u8>, (u32, u32), (u64, u64), Option<ReplayWatch>);
+
+/// `e020_night_counted`, with the watch where `watch` says, finished after its last tick, before
+/// the quiet ticks (exploration 037): the same engine, stages and dumps.
+fn e020_night_watched(
+    start: &NightsStart,
+    image: &[u8],
+    label: &str,
+    patterns: &[Vec<u32>],
+    tag: bool,
+    watch: bool,
+) -> E037Watched {
     let site = &start.site;
     let sets = site.sets;
     let mut exec = night_engine(image, patterns.len(), Some(site.groups), |h| {
@@ -47692,8 +47981,9 @@ fn e020_night_counted(
         }
     }
     assert_eq!(exec.sleep_stage(), STAGE_AWAKE, "{label}: the night ended");
-    if let Some(w) = &watching {
+    if let Some(w) = &mut watching {
         w.dump();
+        w.finish(&exec);
     }
     let ticks = exec.ticks().wrapping_sub(began);
     let quiet_ticks = quiet(&mut exec);
@@ -47711,7 +48001,7 @@ fn e020_night_counted(
     undropped(exec, label);
     let written = Image::encode(&awake).expect("quiescent");
     undropped(awake, label);
-    (written, (start_state.gain, end.gain), counts)
+    (written, (start_state.gain, end.gain), counts, watching)
 }
 
 /// `nights_gap` with the night without replay and the plain night on A's patterns watched where
@@ -49814,8 +50104,21 @@ fn e030_night(
     label: &str,
     replay: bool,
 ) -> (Vec<u8>, (u32, u32)) {
-    let (written, gain, (replays, depotentiations)) =
-        e020_night_counted(start, image, label, first, replay, true);
+    let (written, gain, _) = e030_night_watched(start, image, first, label, replay);
+    (written, gain)
+}
+
+/// `e030_night`, with its watch, finished after its last tick (exploration 037): the same night,
+/// held and dumped the same.
+fn e030_night_watched(
+    start: &NightsStart,
+    image: &[u8],
+    first: &[Vec<u32>],
+    label: &str,
+    replay: bool,
+) -> (Vec<u8>, (u32, u32), ReplayWatch) {
+    let (written, gain, (replays, depotentiations), watch) =
+        e020_night_watched(start, image, label, first, replay, true);
     if replay {
         assert!(
             replays > 0 && depotentiations > 0,
@@ -49831,7 +50134,7 @@ fn e030_night(
     eprintln!(
         "DUMP {label} night as its form asks: replay {replay}, replays {replays} depotentiations {depotentiations}"
     );
-    (written, gain)
+    (written, gain, watch.expect("the night is watched"))
 }
 
 /// Exploration 030's trial: on network `n` from start `s`, on path 0, the pair's head, then the
@@ -51855,4 +52158,407 @@ fn what_reaches_the_readout_units_from_the_mirrored_assignment_after_each_later_
  {
     let (n, s) = E036_CELLS[1];
     e030_job_reading(n, s, &E033_SECOND, E036_READING);
+}
+
+// ---------------- exploration 037: what the night writes, on both cells (on its branch alone)
+
+/// One night's row as exploration 037 holds it (ADR-0252): the image after the night by its
+/// CRC-64, A's four couplings at their highest over the block ends of the stretch before it, and
+/// the night's gain at its start and its end.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct E037Row {
+    image: u64,
+    highest: [i64; 4],
+    gain: (u32, u32),
+}
+
+impl E037Row {
+    /// The image, highest and gain of a row H-47 pinned at a night's checkpoint.
+    fn of(row: &NightsRow) -> Self {
+        Self {
+            image: row.image,
+            highest: row.highest,
+            gain: row.gain.expect("a night's row has its gain"),
+        }
+    }
+}
+
+/// The rows of the nights after block 12, 18 and 24 alone (ADR-0252), by cell (`E036_CELLS`'
+/// order), night and path (`NIGHTS_PATHS`' order): the `PIN row` of the form `alone-N` at block N
+/// that exploration 033's second job printed on the image from the assignment, run 43011654795,
+/// and exploration 035's on the image from the mirrored assignment, run 43134386489, read from
+/// their artifacts by a script, not by hand.
+const E037_ALONE_ROWS: [[[E037Row; 3]; 3]; 2] = [
+    [
+        [
+            E037Row {
+                image: 2_940_879_946_940_692_804,
+                highest: [6_263_786, 6_531_020, 6_491_776, 6_671_641],
+                gain: (110_735, 106_456),
+            },
+            E037Row {
+                image: 3_236_835_779_604_374_197,
+                highest: [6_254_704, 6_495_657, 6_460_007, 6_668_345],
+                gain: (110_744, 106_460),
+            },
+            E037Row {
+                image: 2_126_169_505_967_110_864,
+                highest: [6_271_117, 6_553_820, 6_450_471, 6_677_607],
+                gain: (110_717, 106_470),
+            },
+        ],
+        [
+            E037Row {
+                image: 2_580_287_219_964_419_969,
+                highest: [6_330_578, 6_408_499, 6_473_097, 6_664_574],
+                gain: (110_225, 106_268),
+            },
+            E037Row {
+                image: 9_695_996_960_351_847_915,
+                highest: [6_342_053, 6_426_903, 6_464_553, 6_751_673],
+                gain: (110_439, 106_333),
+            },
+            E037Row {
+                image: 12_395_869_979_910_230_323,
+                highest: [6_326_246, 6_406_223, 6_409_434, 6_736_578],
+                gain: (110_280, 106_294),
+            },
+        ],
+        [
+            E037Row {
+                image: 5_766_745_996_040_845_168,
+                highest: [6_441_435, 6_311_307, 6_513_980, 6_695_966],
+                gain: (109_804, 105_655),
+            },
+            E037Row {
+                image: 10_403_875_444_609_270_153,
+                highest: [6_465_941, 6_284_899, 6_392_157, 6_747_574],
+                gain: (109_843, 105_677),
+            },
+            E037Row {
+                image: 12_627_019_772_678_430_719,
+                highest: [6_432_533, 6_321_817, 6_446_780, 6_723_053],
+                gain: (109_703, 105_662),
+            },
+        ],
+    ],
+    [
+        [
+            E037Row {
+                image: 18_045_284_085_173_819_361,
+                highest: [6_296_711, 6_440_978, 6_422_334, 6_747_903],
+                gain: (110_818, 105_899),
+            },
+            E037Row {
+                image: 3_646_884_101_360_444_077,
+                highest: [6_384_356, 6_419_864, 6_396_736, 6_750_413],
+                gain: (110_645, 105_873),
+            },
+            E037Row {
+                image: 13_062_758_666_256_649_596,
+                highest: [6_337_575, 6_425_835, 6_432_101, 6_703_155],
+                gain: (110_645, 105_903),
+            },
+        ],
+        [
+            E037Row {
+                image: 17_836_481_135_971_525_099,
+                highest: [6_267_069, 6_511_090, 6_448_626, 6_709_347],
+                gain: (110_250, 105_471),
+            },
+            E037Row {
+                image: 96_623_637_585_982_534,
+                highest: [6_267_730, 6_512_339, 6_440_276, 6_740_469],
+                gain: (110_461, 105_486),
+            },
+            E037Row {
+                image: 10_842_687_539_770_116_816,
+                highest: [6_265_038, 6_513_560, 6_444_204, 6_711_196],
+                gain: (110_218, 105_461),
+            },
+        ],
+        [
+            E037Row {
+                image: 14_469_125_424_388_786_553,
+                highest: [6_217_070, 6_533_758, 6_449_980, 6_685_951],
+                gain: (109_791, 104_921),
+            },
+            E037Row {
+                image: 15_589_511_169_250_184_954,
+                highest: [6_179_757, 6_568_882, 6_474_071, 6_664_073],
+                gain: (109_871, 104_921),
+            },
+            E037Row {
+                image: 14_754_953_543_493_122_935,
+                highest: [6_198_634, 6_584_423, 6_463_552, 6_684_231],
+                gain: (109_706, 104_927),
+            },
+        ],
+    ],
+];
+
+/// The row a night of exploration 037 must hold, and whose it is (ADR-0252): on cell `cell`
+/// (`E036_CELLS`' index), network `n` and start `s`, path `p` (`NIGHTS_PATHS`' index), the night
+/// after block `WATCH_GAPS[c]`. The chain's night, H-47's night without replay, holds H-47's
+/// pinned row of the night without replay at that block; the replayed night after block 6 alone
+/// H-47's plain night's at block 6; and after block 12, 18 or 24 alone the row exploration 033 or
+/// 035 printed (`E037_ALONE_ROWS`).
+fn e037_pinned(
+    cell: usize,
+    n: usize,
+    s: usize,
+    p: usize,
+    c: usize,
+    replay: bool,
+) -> (E037Row, String) {
+    let block = WATCH_GAPS[c];
+    let h47 = |gap: NightsGap| {
+        E037Row::of(
+            nights_row(NIGHTS_ROWS[n][s][e030_index(gap)], p, c).expect("H-47 pinned the row"),
+        )
+    };
+    match (replay, c) {
+        (false, _) => (
+            h47(NightsGap::NoReplay),
+            format!("H-47's no-replay row at block {block}"),
+        ),
+        (true, 0) => (
+            h47(NightsGap::PlainFirst),
+            format!("H-47's plain-first row at block {block}"),
+        ),
+        (true, _) => (
+            E037_ALONE_ROWS[cell][c.saturating_sub(1)][p],
+            format!(
+                "exploration {}'s alone-{block} row at block {block}",
+                ["033", "035"][cell]
+            ),
+        ),
+    }
+}
+
+/// Each readout unit's inputs from A's and B's four kinds on `image` (exploration 034's input
+/// read, its first four classes), in `units`' order, `class` each unit's class by its id.
+fn e037_kind_inputs(image: &[u8], units: &E033Units, class: &[u8], label: &str) -> Vec<[i64; 4]> {
+    let exec = zero_from(image, SCAN_UNITS, ZERO_ARM);
+    let inputs = e034_walk(units, class, e034_synapses(&exec));
+    undropped(exec, label);
+    inputs.iter().map(|i| [i[0], i[1], i[2], i[3]]).collect()
+}
+
+/// Exploration 037 on one path of a cell (ADR-0252): the chain, H-47's blocks from the start to
+/// block 24 with its night without replay after block 6, 12, 18 and 24, and from the image before
+/// each of those four nights a single replayed night, H-47's plain night on A's patterns, with
+/// nothing run after it. Before each night, on the image before it, each kind's sum onto the
+/// readouts and exploration 034's input read, as explorations 034 to 036 ran them; each night
+/// watched (`e030_night_watched`), its row held (`e037_pinned`), what the watch read held and
+/// dumped (`ReplayWatch::e037_held`, `ReplayWatch::e037_dump`), and the input read on the image
+/// after it. Dumped beside it, for each readout unit and each kind, what the watch does not see:
+/// the inputs' change over the night less consolidation less the rounds, and of it what moved
+/// before the watch was built.
+#[allow(clippy::too_many_arguments)]
+fn e037_path(
+    start: &NightsStart,
+    cell: usize,
+    (n, s): (usize, usize),
+    first: &[Vec<u32>],
+    targets: &[u32],
+    units: &E033Units,
+    class: &[u8],
+    j: u64,
+) {
+    let p = NIGHTS_PATHS
+        .iter()
+        .position(|&x| x == j)
+        .expect("one of H-47's three paths");
+    let clock = std::time::Instant::now();
+    let chain = format!("{} path {j} {}", start.name, E030_NO_REPLAY.name);
+    let head = format!("{} path {j} head blocks {NIGHTS_EVERY}", start.name);
+    let (mut at, mut ends) = nights_run(start, start.image, NIGHTS_EVERY, &head, path_from(j));
+    for (c, &block) in WATCH_GAPS.iter().enumerate() {
+        if block != NIGHTS_EVERY {
+            let label = format!("{chain} blocks {block}");
+            (at, ends) = nights_run(start, &at, NIGHTS_EVERY, &label, path_from(j));
+        }
+        let before = format!("{chain} gap {block} before");
+        shared_sums(start, &at, &before);
+        e020_split_reading(start, &at, &before, targets, Some(units));
+        let inputs = e037_kind_inputs(&at, units, class, &before);
+        let highest = nights_highest(&ends);
+        let mut next = None;
+        for (form, replay) in [
+            (E030_NO_REPLAY, false),
+            (E030_ALONE[c.saturating_add(1)], true),
+        ] {
+            assert_eq!(
+                form.gap(c) == NightsGap::PlainFirst,
+                replay,
+                "{}",
+                form.name
+            );
+            let name = format!("{} path {j} {}", start.name, form.name);
+            let gap = format!("{name} gap {block}");
+            let night = std::time::Instant::now();
+            let (image, gain, watch) = e030_night_watched(start, &at, first, &gap, replay);
+            let row = E037Row {
+                image: crc64(&image),
+                highest,
+                gain,
+            };
+            let (pinned, whose) = e037_pinned(cell, n, s, p, c, replay);
+            assert_eq!(
+                row, pinned,
+                "{gap}: the night's image, highest and gain are {whose} on path {j}"
+            );
+            eprintln!("DUMP {gap} e037 row {row:?} holds {whose} on path {j}");
+            watch.e037_held(&gap);
+            watch.e037_dump(&gap, units);
+            let after = format!("{name} blocks {block}");
+            e020_split_reading(start, &image, &after, targets, Some(units));
+            let changed = e037_kind_inputs(&image, units, class, &after);
+            let pick = |of: &[[i64; 4]]| -> Vec<[i64; 4]> {
+                units.units.iter().map(|&u| of[u as usize]).collect()
+            };
+            let (built, ended) = (pick(&watch.unit_weights[0]), pick(&watch.unit_weights[1]));
+            let unseen: Vec<[i64; 4]> = changed
+                .iter()
+                .zip(&inputs)
+                .zip(built.iter().zip(&ended))
+                .map(|((a, b), (w0, w1))| {
+                    core::array::from_fn(|k| {
+                        a[k].saturating_sub(b[k])
+                            .saturating_sub(w1[k].saturating_sub(w0[k]))
+                    })
+                })
+                .collect();
+            let lead: Vec<[i64; 4]> = built
+                .iter()
+                .zip(&inputs)
+                .map(|(w0, b)| core::array::from_fn(|k| w0[k].saturating_sub(b[k])))
+                .collect();
+            eprintln!(
+                "DUMP {gap} e037 unseen onto the readout units by kind, the inputs' change over the night less consolidation less the rounds {}",
+                e037_line(&unseen)
+            );
+            eprintln!(
+                "DUMP {gap} e037 of which before the watch was built {}",
+                e037_line(&lead)
+            );
+            eprintln!(
+                "DUMP {gap} e037 unseen by readout, readout 0's then readout 1's {:?} of which before the watch was built {:?}",
+                e037_by_readout(units, &unseen),
+                e037_by_readout(units, &lead)
+            );
+            eprintln!(
+                "DUMP {gap} e037 the night and its reads in {} ms",
+                night.elapsed().as_millis()
+            );
+            if !replay {
+                next = Some(image);
+            }
+        }
+        at = next.expect("the chain's night ran");
+    }
+    eprintln!(
+        "DUMP {} path {j} e037 the path in {} s",
+        start.name,
+        clock.elapsed().as_secs()
+    );
+}
+
+/// Exploration 037 on network `n` from start `s`, one of exploration 036's two cells, on the
+/// paths of `paths`, two at a time (ADR-0252): A's patterns' composition, the readout units and
+/// every unit's class from the start image, the start image's input read, then each path
+/// (`e037_path`).
+fn e037_cell(n: usize, s: usize, paths: &[u64]) {
+    let cell = E036_CELLS
+        .iter()
+        .position(|&c| c == (n, s))
+        .expect("one of exploration 036's two cells");
+    let clock = std::time::Instant::now();
+    with_nights(n, s, "e037", |start| {
+        let first = mapping_patterns(&start.site, start.image);
+        e020_patterns(start, &first);
+        let targets = e020_targets(&first);
+        let units = E033Units::of(start, &targets);
+        let arena = E036Arena::of(start, &targets);
+        let label = format!("{} start", start.name);
+        e020_split_reading(start, start.image, &label, &targets, Some(&units));
+        eprintln!(
+            "DUMP {} e037 ready in {} s",
+            start.name,
+            clock.elapsed().as_secs()
+        );
+        two_at_a_time(paths, |&j| {
+            e037_path(
+                start,
+                cell,
+                (n, s),
+                &first,
+                &targets,
+                &units,
+                &arena.class,
+                j,
+            );
+        });
+        eprintln!(
+            "DUMP {} e037 the cell in {} s",
+            start.name,
+            clock.elapsed().as_secs()
+        );
+    });
+}
+
+/// Exploration 037's nights and rows (ADR-0252): the chain's night is H-47's night without replay
+/// and each replayed night the plain night of the form after that block alone; each pinned row
+/// parts from the chain's at its own night, with the same highest and the same gain at the night's
+/// start as H-47's row of the night without replay there and another image, as H-47's plain
+/// night's at block 6 does; and the bins of the ordinals.
+#[test]
+fn exploration_037_s_nights_and_rows() {
+    for (c, &block) in WATCH_GAPS.iter().enumerate() {
+        let alone = E030_ALONE[c.saturating_add(1)];
+        assert_eq!(alone.name, format!("alone-{block}"));
+        assert_eq!(alone.gap(c), NightsGap::PlainFirst);
+        assert_eq!(E030_NO_REPLAY.gap(c), NightsGap::NoReplay);
+    }
+    for (cell, &(n, s)) in E036_CELLS.iter().enumerate() {
+        for c in 0..WATCH_GAPS.len() {
+            for p in 0..NIGHTS_PATHS.len() {
+                let (replayed, whose) = e037_pinned(cell, n, s, p, c, true);
+                let (chain, _) = e037_pinned(cell, n, s, p, c, false);
+                assert_eq!(replayed.highest, chain.highest, "{whose} on path {p}");
+                assert_eq!(replayed.gain.0, chain.gain.0, "{whose} on path {p}");
+                assert_ne!(replayed.image, chain.image, "{whose} on path {p}");
+            }
+        }
+    }
+    let bins: Vec<usize> = (0u8..=PAIR_ELSE).map(e037_bin).collect();
+    assert_eq!(bins, [0, 0, 0, 0, 1, 2, 3]);
+    assert_eq!((PAIR_AFTER, PAIR_ELSE_SWS, PAIR_ELSE), (4, 5, 6));
+}
+
+/// Exploration 037's trial (ADR-0252): path 0 of each of the two cells run whole, as a job runs a
+/// path, the two cells two at a time, so that every pinned row of path 0 is held before a job runs.
+#[test]
+#[ignore]
+fn the_harness_of_what_the_night_writes_on_both_cells_explore() {
+    two_at_a_time(&E036_CELLS, |&(n, s)| e037_cell(n, s, &NIGHTS_PATHS[..1]));
+}
+
+/// Exploration 037's job on seed 24's eighth image from the assignment: its three paths, 72 blocks
+/// and 24 nights.
+#[test]
+#[ignore]
+fn what_the_night_writes_from_the_assignment_explore() {
+    let (n, s) = E036_CELLS[0];
+    e037_cell(n, s, &NIGHTS_PATHS);
+}
+
+/// Exploration 037's job on seed 24's eighth image from the mirrored assignment: its three paths,
+/// 72 blocks and 24 nights.
+#[test]
+#[ignore]
+fn what_the_night_writes_from_the_mirrored_assignment_explore() {
+    let (n, s) = E036_CELLS[1];
+    e037_cell(n, s, &NIGHTS_PATHS);
 }
