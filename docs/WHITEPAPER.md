@@ -2673,7 +2673,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0252](adr/0252-what-the-night-writes-on-both-cells.md) | What the night writes, on both cells | accepted |
 | [ADR-0253](adr/0253-what-the-night-writes-on-the-other-ten-cells.md) | What the night writes, on the other ten cells | accepted |
 | [ADR-0254](adr/0254-the-design-review-planned.md) | The design review planned | accepted |
-| [ADR-0255](adr/0255-a-search-by-forks-and-the-two-alternative-tasks-references.md) | A search by forks, and the two-alternative task's references | proposed |
+| [ADR-0255](adr/0255-a-search-by-forks-and-the-two-alternative-tasks-references.md) | A search by forks, and the two-alternative task's references | accepted |
 <!-- adr-index: end decisions -->
 
 ---

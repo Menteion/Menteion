@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-13
 depends-on: ADR-0254
 title: A search by forks, and the two-alternative task's references
