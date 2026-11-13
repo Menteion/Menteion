@@ -1,7 +1,7 @@
 ---
 status: proposed
 date: 2026-11-13
-affectedFiles: [runtime/menteion-runtime/tests/instrument/search.rs, runtime/menteion-runtime/tests/inhibition.rs, docs/**, briefs/**, CHANGELOG.md]
+affectedFiles: [runtime/menteion-runtime/tests/instrument/fork_search.rs, runtime/menteion-runtime/tests/inhibition.rs, docs/**, briefs/**, CHANGELOG.md]
 protectedFiles: [crates/**, runtime/menteion-runtime/src/**, runtime/menteion-runtime/tests/instrument/harness.rs, runtime/menteion-runtime/tests/inhibition/pins/**, runtime/menteion-runtime/tests/assembly/**, runtime/menteion-runtime/tests/h46/**, docs/explorations/0*.md, docs/research/**, docs/benchmarks/results/**, benches/**, .github/workflows/**, .cargo/**, Cargo.toml, Cargo.lock, rust-toolchain.toml, clippy.toml, .spec-brief.json, package.json, package-lock.json, scripts/**]
 ---
 
@@ -13,11 +13,11 @@ protectedFiles: [crates/**, runtime/menteion-runtime/src/**, runtime/menteion-ru
 It is the first step of the first order of [ADR-0254](../docs/adr/0254-the-design-review-planned.md)'s plan; exploration 039, which reads the two-alternative task's references with the tool, is the second, and is not this brief's.
 
 When the round is done, the tree holds:
-- `runtime/menteion-runtime/tests/instrument/search.rs`, included by path by the `inhibition` binary: the search and the writer, every result repeatable bit for bit from its seed;
+- `runtime/menteion-runtime/tests/instrument/fork_search.rs`, included by path by the `inhibition` binary: the search and the writer, every result repeatable bit for bit from its seed;
 - the tests that hold them, running with the workspace's;
 - an ADR at the next free number (`ls docs/adr`) that records the tool built, `docs/STATUS.md` rewritten and a changelog entry.
 
-The scope is the front matter's ([ADR-0191](../docs/adr/0191-a-rounds-scope-eighteen-shards-and-the-reproduction-first.md)): one new test module, the line that includes it, and documents.
+The scope is the front matter's ([ADR-0191](../docs/adr/0191-a-rounds-scope-eighteen-shards-and-the-reproduction-first.md)): one new test module, the two lines that include it, and documents.
 
 ---
 
@@ -33,6 +33,7 @@ The scope is the front matter's ([ADR-0191](../docs/adr/0191-a-rounds-scope-eigh
 - **The pull request opens as a draft with the round's first push** ([ADR-0223](../docs/adr/0223-the-gate-shortened-and-explorations-kept-as-tags.md)), and leaves draft with the commit that asks for the merge, which sets the round's ADR to `accepted`.
 - **New text meets [ADR-0197](../docs/adr/0197-one-place-for-each-kind-of-fact.md)'s shape**, which `npm run spec:shape` holds.
 - **No push notification.** The maintainers asked for none; a question that stops the round is written at the end of the session's turn.
+- **The sweep**: the schedule's sweep of 2026-11-18 at 20:17Z is recorded by the first ADR that merges after it ends ([briefs/README.md](README.md#evidencing-a-round), item 7). If it has ended when this round's ADR merges, that ADR records it.
 
 ---
 
@@ -40,10 +41,12 @@ The scope is the front matter's ([ADR-0191](../docs/adr/0191-a-rounds-scope-eigh
 
 Re-derived on 2026-11-13 at `main` `7d8496a`. Line numbers move; the names are what to re-derive.
 
-- **The harness** (`runtime/menteion-runtime/tests/instrument/harness.rs`) is included by path by six binaries (`active`, `arrival`, `assembly`, `everywhere`, `inhibition`, `instrument`); `tests/inhibition.rs` includes it as `#[path = "instrument/harness.rs"] mod harness;` and its pins the same way. A module included by `inhibition` alone runs its tests once.
+- **The harness** (`runtime/menteion-runtime/tests/instrument/harness.rs`) is included by path by six binaries (`active`, `arrival`, `assembly`, `everywhere`, `inhibition`, `instrument`); `tests/inhibition.rs` includes it as `#[path = "instrument/harness.rs"] mod harness;` and its pins the same way. A module included by `inhibition` alone runs its tests once, and reaches the harness's names and `tests/inhibition.rs`'s private items through `use crate::*;`, as `tests/inhibition/pins/h46.rs` does.
 - **Generators**: `Lcg` (`testkit/prop.rs` at the repository root, included by the harness) and `mix64`.
 - **Forks**: `Image::encode` of a quiescent engine (`quiet()`) once, refused on one that is not, and `Image::decode` a candidate; a run repeats bit for bit on any count of workers.
 - **Writes to weights**: `Executor::blocks_mut()` over a unit's `fan_out(exec.blocks())`, which names each synapse's block, slot, target and weight; a precedent is in `tests/inhibition.rs`, where a test writes synapses this way. The geometry of `PERIOD` 20 gives the stimulus and readout sets (stimulus A at place 0, B at 11; readout 0 the odd places but 11, readout 1 the even places but 0), and `coupling`/`couplings` read them. A weight is an `i16`; consolidation holds its magnitude to the rail, 32 767.
+- **`round:additive`** (`scripts/check-additive.mjs`): an inserted top-level item may not be a `use` or take a name the sources its crate sees already hold. `search` is one (`crates/menteion-arithmetic`); `fork_search` is not. rustfmt puts `#[path]` and `mod` on two lines.
+- **Gate traps**: a `pub(crate)` item no test uses is `dead_code` under `-D warnings`; more than seven arguments trips `clippy::too_many_arguments`; MSRV 1.85 has no `let` chains; a `const` longer than 24 lines in `tests/inhibition.rs` fails `spec:pins`.
 - **The couplings H-25 bounds**: clause 2 reads a coupling against its image's as `coupling × 100 ≤ image × 130`; 332/256 is the largest factor in 1/256 within it.
 - **What uses the tool next**: exploration 039 ([ADR-0255](../docs/adr/0255-a-search-by-forks-and-the-two-alternative-tasks-references.md)), on H-42's three networks; then order 3, on H-47's task.
 
@@ -53,7 +56,7 @@ Re-derived on 2026-11-13 at `main` `7d8496a`. Line numbers move; the names are w
 
 ### The search
 
-- [ ] `runtime/menteion-runtime/tests/instrument/search.rs`, and one line in `tests/inhibition.rs` that includes it by path. It takes genes, each a named integer with inclusive bounds and a start value; an objective, a whole-number score of the genes on a stream; P, G, E, M, S and a seed.
+- [ ] `runtime/menteion-runtime/tests/instrument/fork_search.rs`, and two lines in `tests/inhibition.rs` that include it by path as `mod fork_search`, with no `use`. It takes genes, each a named integer with inclusive bounds and a start value; an objective, a whole-number score of the genes on a stream; P, G, E, M, S and a seed.
 - [ ] ADR-0255's algorithm, in integers from `Lcg` seeded by the seed:
   - generation 0 is the start genes and P − 1 candidates drawn uniformly within the bounds;
   - each new candidate is scored on streams 0 to S − 1 and ranked by the sum, ties by its index in the generation, the kept first in their rank and the children in the order made;
@@ -64,11 +67,11 @@ Re-derived on 2026-11-13 at `main` `7d8496a`. Line numbers move; the names are w
 
 ### The writer
 
-- [ ] A function that scales each excitatory synapse from one stimulus's units onto one readout's units by a factor in units of 1/256, the product widened to `i64`, rounded to the nearest with a half away from zero and held to the rail, 32 767, and touches no other synapse.
+- [ ] A function that scales each synapse `coupling` counts, from an excitatory unit of one stimulus's set onto any unit of one readout's set, by a factor in units of 1/256, the product widened to `i64`, rounded to the nearest with a half away from zero and held within ±32 767, and touches no other synapse.
 
 ### The tests
 
-- [ ] On synthetic objectives whose best is known, one at a corner of the box and one inside it, the search at P = 16, G = 10, E = 4, M = 16 and S = 3 reaches the best.
+- [ ] On synthetic objectives whose best is known, one at a corner of a small box and one inside it, the search at P = 16, G = 10, E = 4, M = 16 and S = 3 reaches the best from the seed the test fixes.
 - [ ] One seed prints the same table twice, and another seed another.
 - [ ] No gene leaves its bounds, and the count of candidates scored is P + (G − 1)(P − E).
 - [ ] On a small engine, the writer at 256 leaves the encoded image byte for byte; at 128 and at 332 it writes each synapse of the coupling as the rounding says, and no other synapse moves.
@@ -76,7 +79,7 @@ Re-derived on 2026-11-13 at `main` `7d8496a`. Line numbers move; the names are w
 ### The documents
 
 - [ ] An ADR at the next free number: the tool as built, its API and the tests that hold it, and `npm run round:additive -- origin/main <the last commit>` quoted.
-- [ ] `docs/STATUS.md` rewritten, the changelog's entry, the index (`node scripts/adr-index.mjs`), and the whitepaper's version where it changes.
+- [ ] `docs/STATUS.md` rewritten, the changelog's entry, the index (`node scripts/adr-index.mjs`), and the whitepaper's version, which the ADR's row in §9 changes.
 - [ ] This brief archived with `spec-brief archive 088 --strict`, every box dispositioned.
 
 ---
@@ -94,9 +97,9 @@ Re-derived on 2026-11-13 at `main` `7d8496a`. Line numbers move; the names are w
 ## Architectural empowerment
 
 The round may, recording each in its ADR:
-- choose the module's names, types and how an objective is passed, so long as it takes and prints what ADR-0255 says;
+- choose the names inside the module, its types and how an objective is passed, so long as it takes and prints what ADR-0255 says;
 - choose the synthetic objectives and the small engine of the writer's tests, so long as the tests are fast in a debug build;
-- put the tests in `search.rs` or in `tests/inhibition.rs`;
+- put the tests in `fork_search.rs` or in `tests/inhibition.rs`, which reaches the module's items by path;
 - widen `affectedFiles` within its mission, in a commit of its own that says why ([briefs/README.md](README.md#archiving-one)).
 
 It may not reach the whitepaper's invariants or `CLAUDE.md`'s constraints.
@@ -125,7 +128,7 @@ node scripts/adr-index.mjs
 npx --no-install @spec-family/spec-brief archive 088 --strict --pr <n> --summary "<one paragraph>"
 ```
 
-- `round:additive` exits 0: the change only adds.
+- `round:additive` exits 0: the change only adds. If it does not, the round renames what it inserted; a change that cannot only add stops the round, and the session says why.
 - No dispatch is made: the round measures nothing.
 - The archive passes `--strict`: nothing outside `affectedFiles` and nothing in `protectedFiles` changed.
 
@@ -136,6 +139,7 @@ npx --no-install @spec-family/spec-brief archive 088 --strict --pr <n> --summary
 The closing message states:
 - the tool as built, its API, and the tests that hold it;
 - `round:additive`'s exit;
+- whether the sweep of 2026-11-18 had ended when the ADR merged, and if so that the ADR records it;
 - any widening of `affectedFiles`, and why;
 - that the pull request is ready for review;
 - what was not done and why.
