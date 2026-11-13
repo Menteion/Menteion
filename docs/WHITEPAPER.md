@@ -1,6 +1,6 @@
 ---
 title: Menteion Architecture Whitepaper
-version: 5.48.0
+version: 5.49.0
 status: active
 date: 2026-11-13
 ---
@@ -11,7 +11,7 @@ date: 2026-11-13
 
 | Document control | |
 | :--- | :--- |
-| Version | 5.48.0 |
+| Version | 5.49.0 |
 | Status | Active (living document; amended by ADR) |
 | Date | 2026-11-13 |
 | Supersedes | Whitepaper 4.134.0 (2026-10-19), whose §6.5 and §11.1 told the rounds now in [docs/research/](research/README.md). It superseded 3.0.0 (2026-09-10, eighteen crates), which superseded Specification 2.8.0 |
@@ -2673,6 +2673,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0252](adr/0252-what-the-night-writes-on-both-cells.md) | What the night writes, on both cells | accepted |
 | [ADR-0253](adr/0253-what-the-night-writes-on-the-other-ten-cells.md) | What the night writes, on the other ten cells | accepted |
 | [ADR-0254](adr/0254-the-design-review-planned.md) | The design review planned | accepted |
+| [ADR-0255](adr/0255-a-search-by-forks-and-the-two-alternative-tasks-references.md) | A search by forks, and the two-alternative task's references | accepted |
 <!-- adr-index: end decisions -->
 
 ---
