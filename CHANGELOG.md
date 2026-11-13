@@ -8,6 +8,7 @@ This file is a historical record: `spec-graph` treats it as history, so nothing 
 
 ### Added
 
+- **The design review planned ([ADR-0254](docs/adr/0254-the-design-review-planned.md)); whitepaper 5.48.0.** Thirty-one entries of a design review of 2026-11-13, checked against the tree: sixteen planned in seven orders, a search by forks with a task's references first; exploration 038 paused; F-87 to F-91.
 - **What the night writes, on the other ten cells ([ADR-0253](docs/adr/0253-what-the-night-writes-on-the-other-ten-cells.md)); whitepaper 5.47.0.** On seed 24's two eighth images the cells parted in what consolidation in the units' own replays wrote and where it landed (exploration 037). Exploration 038 reads the same on H-47's other ten cells.
 - **What the night writes, on both cells ([ADR-0252](docs/adr/0252-what-the-night-writes-on-both-cells.md)); whitepaper 5.46.0.** On seed 24's two eighth images the volley's drive from A's kinds onto A's answer's readout less the other, by the weights, parted the cells after the three later single nights (exploration 036). Exploration 037 reads what each night writes onto each readout unit.
 - **What reaches the readout units, on both cells ([ADR-0251](docs/adr/0251-what-reaches-the-readout-units-on-both-cells.md)); whitepaper 5.45.0.** On seed 24's mirrored eighth image replayed nights moved the inputs as on the other arm, yet on A's trials A's answer's readout's spikes less the other's moved the other way (exploration 035). Exploration 036 reads weights times presynaptic spikes.
