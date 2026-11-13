@@ -54,6 +54,6 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 ## The next decision
 
 [ADR-0254](adr/0254-the-design-review-planned.md) plans a design review of 2026-11-13 in seven orders and pauses M11's exploration 038.
-1. The plan's first order: a search by forks in the tree, outside the tick loop, and the two-alternative task's references, a floor by the simplest learner and a ceiling by the search. Its ADR says where the tool lives and how it runs. Then a trace of weight changes, and M11's retention gate, which the host runs.
+1. The plan's first order: a search by forks in the tree, outside the tick loop, and the two-alternative task's references, a floor by the simplest learner and a ceiling by the search. Its ADR says where the tool lives and how it runs. Then a trace of weight changes, and M11's retention gate, which the host runs; after that gate's verdict an ADR orders the plan's other four beside M13, M14, M8's remainder and M15.
 2. The schedule's sweep of 2026-11-18 at 20:17Z is the next to record, by the first ADR that merges after it ends; ADR-0251 recorded 2026-11-11's.
 3. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
