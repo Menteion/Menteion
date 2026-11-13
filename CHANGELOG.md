@@ -8,6 +8,7 @@ This file is a historical record: `spec-graph` treats it as history, so nothing 
 
 ### Added
 
+- **The two-alternative task's references ([ADR-0255](docs/adr/0255-the-two-alternative-tasks-references.md)); whitepaper 5.49.0.** ADR-0254's first order: brief 088 builds a search by forks in the test harness and reads the two-alternative task's floor, by two simplest learners, and ceiling, by the search, beside the engine on the three reference networks.
 - **The design review planned ([ADR-0254](docs/adr/0254-the-design-review-planned.md)); whitepaper 5.48.0.** Thirty-one entries of a design review of 2026-11-13, checked against the tree: sixteen planned in seven orders, a search by forks with a task's references first; exploration 038 paused; F-87 to F-91.
 - **What the night writes, on the other ten cells ([ADR-0253](docs/adr/0253-what-the-night-writes-on-the-other-ten-cells.md)); whitepaper 5.47.0.** On seed 24's two eighth images the cells parted in what consolidation in the units' own replays wrote and where it landed (exploration 037). Exploration 038 reads the same on H-47's other ten cells.
 - **What the night writes, on both cells ([ADR-0252](docs/adr/0252-what-the-night-writes-on-both-cells.md)); whitepaper 5.46.0.** On seed 24's two eighth images the volley's drive from A's kinds onto A's answer's readout less the other, by the weights, parted the cells after the three later single nights (exploration 036). Exploration 037 reads what each night writes onto each readout unit.
