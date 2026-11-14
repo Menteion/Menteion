@@ -24,8 +24,8 @@ merge by a pull request of its own (ADR-0258); this document then names it.
 - **Menteion names every overflow.** Plain `+`, `-` and `*` are a Clippy error in every crate root (`clippy::arithmetic_side_effects`),
   and `/` and `%` pass only by a nonzero constant; each sum is `saturating_*`, `wrapping_*` or `checked_*`. Narrowing `as` casts appear
   throughout, some with a comment and some without. Mente traps on overflow
-  and never wraps implicitly (its `spec/refinement-and-fixed-point.md`). Those sites are what `zero-cost-measured` counts; each
-  kernel below gives its count.
+  and never wraps implicitly (its `spec/refinement-and-fixed-point.md`). Each kernel below gives its count of those sites. Mente's
+  `zero-cost-measured` counts guards, checked clauses and lemmas, not these sites; whether it should count them is Mente's question.
 - **Port `testkit/prop.rs` first** (173 lines, no dependencies): the MMIX LCG (`Lcg`), FNV-1a and the edge-biased lattices
   (`I32_LATTICE`, `U32_LATTICE`). Every property test draws its walks from it, so both sides can draw the same walks.
 - **No floats.** `f32` and `f64` are a Clippy error (`clippy.toml`, denied by `[workspace.lints]` in `Cargo.toml`); Q16.16 lives in
@@ -40,12 +40,15 @@ merge by a pull request of its own (ADR-0258); this document then names it.
 | K3. STDP into eligibility, and three-factor consolidation | `crates/menteion-core/src/dynamics/synapse.rs` | about 250 | saturating `i16` traces; a wrapping `u32` tick difference read as signed; range patterns; `isqrt`; `const fn` evaluated at compile time | 25 saturating, 4 wrapping, 32 casts | M5 |
 | K4. Two-tier timing wheel | `crates/menteion-core/src/dispatch/wheel.rs`, `cadence.rs` | 143 | const generics; a 4 195 336-byte value built without passing through the stack, which Menteion's Rust cannot do; a `const fn new` that asserts; power-of-two masks; a borrowed slice returned | few | M3, M4 |
 | K5. Image codec: CRC-64/XZ, header and record bytes | `crates/menteion-connectome/src/lib.rs`, `crates/menteion-core/src/serial.rs` | about 350 | `u64` shift and xor; little-endian bytes in fixed arrays; `repr(C, align(64))` | none at risk | M1 to M3 |
-| K6. Critic and modulator | `crates/menteion-neuromod/src/lib.rs` | 112 | generics over an iterator and a fold, unless rewritten over a slice; saturating `i64`; clamped shifts | few | M4 |
+| K6. Critic and modulator | `crates/menteion-neuromod/src/lib.rs` | 112 | generics over an iterator and a fold, unless rewritten over a slice; saturating `i64`; clamped shifts | few | M5 (saturating `i64`) |
 
 ### K1. Membrane integration
 
 - **Items**: `DendriticSuperNeuron::integrate` with `leak` and `add` (widen to `i64`, clamp to `i32`) and the constants above them.
   Beside it, optional: `SlowCurrent` and `integrate_slow`, `quiet_cannot_fire`, `quiet_catch_up` and `threshold_after`.
+- **What Mente cannot express today**: the record's two atomic fields. A `@layout` struct has no atomic field type, a plain struct is
+  copied bit for bit, and atomics with their orderings are an open entry of Mente's M7. A port can hold `integrate`'s arithmetic over
+  a mirror record of the plain fields; the arithmetic alone could run at Mente's M2.
 - **Record**: `DendriticSuperNeuron` (`neuron.rs`), `#[repr(C, align(64))]`, 64 bytes, asserted in a `const _` block. It holds two
   atomics, `mailbox_head_ptr: AtomicU64` at bytes 8 to 16 and `gate_state: AtomicU8` at byte 56, so it is a control record and not
   `Copy`. `integrate` writes plain fields only: `v_soma`, `v_basal`, `v_apical`, `v_thresh` (Q16.16 `i32`), two `u16` countdowns,
@@ -91,6 +94,9 @@ merge by a pull request of its own (ADR-0258); this document then names it.
 - **Items**: `FlatTimingWheel<const CAP: usize>` with `schedule`, `advance`, `cascade` and `push`; `WorkerWheel` is
   `FlatTimingWheel<2048>`, 4 195 336 bytes, asserted. `Cadence` in `cadence.rs`.
 - **In and out**: a `u32` delay and a 28-bit token to `Result<(), ScheduleError>`; `advance()` returns `&[u32]`, valid to the next call.
+- **What Mente cannot express today**: the 4 195 336-byte value in a stack frame, past the 1 048 576 bytes a thread that Mente is
+  specifying, so a port holds it in a `List`, a region or a pool; and `advance()`'s view returned from a `mut` call, which Mente forbids,
+  so it becomes two calls.
 - **Tests**: eight unit tests, among them `delivered_on_exactly_the_requested_advance` and
   `delivery_order_is_deterministic_across_both_rings`; the property test
   `every_token_is_due_exactly_once_at_exactly_its_tick_and_two_wheels_agree`.
@@ -115,15 +121,37 @@ merge by a pull request of its own (ADR-0258); this document then names it.
 
 - **C1. The single-threaded oscillator** (`crates/menteion-core/tests/oscillator.rs`, core crate only): the wheel, the mailbox, the
   gate's claim, `integrate`, `release` and fan-out, with periods pinned at 1 527, 3 793 and 2 433 ticks. It needs atomics with
-  sequentially consistent and acquire-release orderings.
+  sequentially consistent and acquire-release orderings. **What Mente cannot express today**: atomic fields in a record and a
+  lock-free mailbox, which no milestone of Mente's plans; C1 needs Mente's M7 at the earliest.
 - **C2. The T-1 network**, the strongest bit-for-bit target the tree has:
   `the_random_network_hashes_to_the_pinned_value_on_every_architecture` (`runtime/menteion-runtime/tests/differential.rs`). 128 units
   and 128 blocks run 20 000 ticks on one worker, and the CRC-64 of their bytes and spikes is pinned at `0x6c27858ece2dd412`
   (`PINNED_ARENA_HASH`), on x86-64 and on AArch64. It needs K1 to K5 and the executor's phase order; its configuration switches off the
-  gain's regulation, sleep and episodes (control step 0, sleep shift 0, no episodes), so they do not run.
+  gain's regulation, sleep and episodes (control step 0, sleep shift 0, no episodes), so they do not run. With its records' atomics
+  it waits for Mente's M7; on one worker over mirror records of plain fields it could run at M5.
 
-**The order a port could take**: K5 from M1 to M3; K4 at M3 and M4, and K6 at M4; K1 with K2 at Mente's M5, then K3; then C1, and
-C2 at M7.
+**The order a port could take**: K5 from M1 to M3; K4 at M3 and M4; K6 at M5, where saturating `i64` arrives; K1 with K2 at Mente's
+M5 over raw integers with explicit clamps, then K3; C2 at M5 over mirror records on one worker, or at M7 with the atomics; C1 at M7.
+
+## What the kernels rely on, beyond add and subtract
+
+Read from the frozen tree's code, outside its tests, for Mente's register; Mente's per-operator forms cover saturating and wrapping
+add and subtract only.
+- **Other named operations**: `saturating_mul` in K1, K2, K3 and K6; `saturating_neg` and `wrapping_mul` in K1; `wrapping_neg` in K3;
+  `checked_sub` and `checked_div`, each returning an `Option`, in K1 and K3. Shifts are plain `>>` and `<<` by amounts clamped or
+  constant; no `*_shl`, `*_shr` or `*_pow` appears.
+- **Narrowing casts**: 62 in the six kernel files. Most narrow a value already bounded by a clamp, a `min` or `max`, a mask, a
+  constant or an enum's discriminant. Those that rely on two's-complement reinterpretation, not on a range, are in `synapse.rs`: a
+  wrapped `u32` tick difference read as `i32` (`step_stdp_shaped`) and read back as `u32` for the window; an `i32` efficacy reinterpreted
+  as `u32` and masked to the message's width (`spike_message`); and a `u32` message shifted left, reinterpreted as `i32` and shifted
+  right to extend its sign (`message_efficacy_q16`).
+- **Enums in records**: none. `GateState` is stored as a byte in the `AtomicU8` `gate_state`; `Polarity` and `DepressionExponent` are
+  arguments, never fields. Every record's fields are integers, arrays of integers or atomics.
+
+## Corrections during the pause
+
+- **2026-11-15**, after Mente checked this document against its register at Mente's `965cfb5`: what `zero-cost-measured` counts, K6's
+  milestone, what Mente cannot express today for K1, K4, C1 and C2, the order, and the section above.
 
 ## What the whole engine asks of a language
 
