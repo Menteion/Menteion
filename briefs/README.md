@@ -171,8 +171,8 @@ section is the rule.
 2. **A round never dispatches the sweep** (ADR-0211, amending
    [ADR-0075](../docs/adr/0075-the-dispatch-scope-follows-the-diff.md)): its calibration and its
    reproduction are at `scope=exhaustive`, whatever its diff. The schedule sweeps the whole tree
-   every week, on Wednesday at 20:17 UTC (ADR-0223), and the pull request's mutation gate meets
-   every line the round changed.
+   every week, on Wednesday at 20:17 UTC (ADR-0223), suspended while development is paused
+   (ADR-0258), and the pull request's mutation gate meets every line the round changed.
 3. **The round asks for its merge when the reproduction's whole-domain shards are green** and the
    pull request's gate is green on its last commit. It waits for no sweep.
 4. **The cost table** is regenerated from the calibration's and the reproduction's shards'
