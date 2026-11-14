@@ -1,7 +1,7 @@
 # Where the work stands
 
 Every round rewrites this page whole, and it holds no history ([ADR-0197](adr/0197-one-place-for-each-kind-of-fact.md)).
-[ADR-0255](adr/0255-a-search-by-forks-and-the-two-alternative-tasks-references.md) wrote it on 2026-11-13, after ADR-0254 planned a design review.
+[ADR-0256](adr/0256-a-search-by-forks-built.md) wrote it on 2026-11-14, after brief 088 built a search by forks.
 
 ## The engine
 
@@ -11,6 +11,7 @@ Every round rewrites this page whole, and it holds no history ([ADR-0197](adr/01
 - **It can keep its addresses and read a delay** ([ADR-0208](adr/0208-a-reward-past-the-trial-its-address-kept-built.md), [ADR-0217](adr/0217-a-delay-the-engine-reads-built.md)): a reward that names its trial's age consolidates under the address kept, and with the delay read the engine moves once to the age that leads. Unset, told, or on time with no move, every run is the run it was.
 - **It can hold a stimulus's couplings** ([ADR-0228](adr/0228-a-zero-sum-at-the-stimulus-built.md)): `Executor::set_zero_sum` scales each group back to a value the host gives, and `Config::depression_exponent` sets the excitatory depression's exponent. Neither is in the image.
 - **It has a name for running a settled image** ([ADR-0233](adr/0233-a-running-configuration-built.md)): `Config::runs_a_settled_image()` is the default with a quarter's exponent. The host reads each group's value once with `Executor::coupling_sum` and sets the groups at each load; the name without them is a state no run has read.
+- **Its tests can search by forks** ([ADR-0256](adr/0256-a-search-by-forks-built.md)): `search_by_forks` in the inhibition tests runs a genetic search in integers over named genes, each candidate read on streams, and repeats bit for bit from its seed. `scale_coupling` writes a stimulus–readout coupling by a factor in 1/256. Nothing has read a task with them.
 - **It can sleep on a baseline of its own and replay only what a host tags** ([ADR-0235](adr/0235-learning-that-sleep-keeps-built.md)): `Config::slow_wave_baseline_q16` takes the baseline's place in slow-wave sleep, `Executor::spend_episodes` spends the ledger, and `Task::trial_presenting` presents a stimulus to the units a host gives. Each unset, every run is the run it was; the baseline is in no name and not in the image. The replay's drive arrives scaled by the gain, 4.375 at 1.75 (F-47 resolved).
 
 ## What it learns
@@ -54,6 +55,6 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 ## The next decision
 
 [ADR-0254](adr/0254-the-design-review-planned.md) plans a design review of 2026-11-13 in seven orders and pauses M11's exploration 038.
-1. The plan's first order, [ADR-0255](adr/0255-a-search-by-forks-and-the-two-alternative-tasks-references.md), in two steps the maintainers start: brief 088 builds a search by forks in the inhibition tests, measuring nothing; then exploration 039 uses it to read the two-alternative task's floor and ceiling beside the engine on H-46's first schedule. Then a trace of weight changes, and M11's retention gate, which the host runs; after that gate's verdict an ADR orders the plan's other four beside M13, M14, M8's remainder and M15.
+1. The plan's first order, [ADR-0255](adr/0255-a-search-by-forks-and-the-two-alternative-tasks-references.md), has its tool: brief 088 built the search ([ADR-0256](adr/0256-a-search-by-forks-built.md)). Its second step, exploration 039, uses it to read the two-alternative task's floor and ceiling beside the engine on H-46's first schedule, when the maintainers start it. Then a trace of weight changes, and M11's retention gate, which the host runs; after that gate's verdict an ADR orders the plan's other four beside M13, M14, M8's remainder and M15.
 2. The schedule's sweep of 2026-11-18 at 20:17Z is the next to record, by the first ADR that merges after it ends; ADR-0251 recorded 2026-11-11's.
 3. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.
