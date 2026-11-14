@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-15
 depends-on: ADR-0257
 amends: [ADR-0223]

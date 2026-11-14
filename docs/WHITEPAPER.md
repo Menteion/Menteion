@@ -2676,7 +2676,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0255](adr/0255-a-search-by-forks-and-the-two-alternative-tasks-references.md) | A search by forks, and the two-alternative task's references | accepted |
 | [ADR-0256](adr/0256-a-search-by-forks-built.md) | A search by forks, built | accepted |
 | [ADR-0257](adr/0257-a-night-kept-by-the-hosts-probe.md) | A night kept by the host's probe, and H-47's task's references | accepted |
-| [ADR-0258](adr/0258-development-paused.md) | Development paused after a closing round | proposed |
+| [ADR-0258](adr/0258-development-paused.md) | Development paused after a closing round | accepted |
 <!-- adr-index: end decisions -->
 
 ---
