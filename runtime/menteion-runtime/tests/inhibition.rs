@@ -46985,3 +46985,931 @@ fn a_plain_night_after_the_pair_s_head_of_a_first_mapping_on_seed_24_from_the_mi
  {
     nights_short(2, 3);
 }
+
+// ============================================================================ exploration 039
+
+// The two-alternative task's references (ADR-0255, exploration 039), which decide nothing: on
+// H-42's three networks under the running configuration and H-46's first schedule, the engine
+// (H-46's arm, held to its pinned row), two floors that read only the readouts' counts of one
+// withheld run, and a ceiling, the search by forks over the four couplings within H-25's bound,
+// beside the box's sixteen corners.
+
+/// The search's seed (ADR-0255), fixed before the trial and the same for both mappings' searches,
+/// so that their generation 0 is one and its reads serve both.
+const E039_SEED: u64 = 0x0039_0255_0256_0088;
+
+/// The search's sizes (ADR-0255): P 16, G 10, E 4, M 16, S 3.
+const E039_BREEDING: fork_search::Breeding = fork_search::Breeding {
+    population: 16,
+    generations: 10,
+    kept: 4,
+    step: 16,
+    streams: 3,
+    seed: E039_SEED,
+};
+
+/// A factor's bounds and start, in units of 1/256 (ADR-0255): 0.5, the largest within H-25's
+/// 1.30, and 1.
+const E039_LOW: i32 = 128;
+const E039_HIGH: i32 = 332;
+const E039_START: i32 = 256;
+
+const _: () = assert!(E039_HIGH * 100 <= 256 * 130 && (E039_HIGH + 1) * 100 > 256 * 130);
+
+/// A gene of the ceiling: one coupling's factor within the box.
+const fn e039_gene(name: &'static str) -> fork_search::Gene {
+    fork_search::Gene {
+        name,
+        min: E039_LOW,
+        max: E039_HIGH,
+        start: E039_START,
+    }
+}
+
+/// The four genes, the couplings' factors in `couplings`' order: A→R0, A→R1, B→R0, B→R1.
+const E039_GENES: [fork_search::Gene; 4] = [
+    e039_gene("a_r0"),
+    e039_gene("a_r1"),
+    e039_gene("b_r0"),
+    e039_gene("b_r1"),
+];
+
+/// The search's stream `s` is the read's stream `s + 1` (ADR-0255): its streams 0 to 2 are 1 to
+/// 3, and its unseen ones 4 to 6. A read's stream `i` starts as `nights_read_from(i)` starts.
+const E039_STREAM_SHIFT: u32 = 1;
+
+/// The corners' streams (ADR-0255): 1 to 6.
+const E039_CORNER_STREAMS: [u32; 6] = [1, 2, 3, 4, 5, 6];
+
+/// The mappings a read scores, by index: the assignment's and the mirrored one's.
+const E039_MAPPINGS: [&str; 2] = ["assignment", "mirrored"];
+
+/// A floor's weight on its own readout's features at the start (ADR-0255), so that it starts as
+/// the readouts' own selection; 0 elsewhere.
+const E039_OWN: i16 = 16_384;
+
+/// The critic's constants ADR-0255 names: a shift of 9 and a scale of 2, on all three networks.
+const E039_CRITIC: ValueCritic = ValueCritic { shift: 9, scale: 2 };
+
+/// An arms job's bound under ADR-0179's rule, 60 % of 240 minutes, in seconds.
+const E039_JOB_BOUND_S: u128 = 144 * 60;
+
+/// One read of a candidate on a stream (ADR-0255): its correct trials under the assignment's
+/// mapping and under the mirrored one's, its ties, and which couplings stood past 1.30 of the
+/// start image's at its end.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct E039Read {
+    correct: [u32; 2],
+    ties: u32,
+    past: [bool; 4],
+}
+
+/// One network's site: H-42's network and image, H-46's groups, the sets, the start image's
+/// four couplings, the label, and the reads kept by genes and stream for both searches and the
+/// corners.
+struct E039Site {
+    made: Made,
+    groups: ZeroGroups,
+    sets: [Set; 4],
+    image: [i64; 4],
+    name: String,
+    kept: std::sync::Mutex<BTreeMap<([i32; 4], u32), E039Read>>,
+}
+
+/// The readout units in order, and each one's readout, 0 or 1.
+fn e039_readout_units(sets: &[Set; 4]) -> (Vec<u32>, Vec<u8>) {
+    let units: Vec<u32> = (0..SCAN_UNITS)
+        .filter(|&u| sets[2].contains(u) || sets[3].contains(u))
+        .collect();
+    let side = units
+        .iter()
+        .map(|&u| u8::from(sets[3].contains(u)))
+        .collect();
+    (units, side)
+}
+
+/// The check ADR-0255 names: no stimulus unit in a readout's set, and, so that each readout
+/// unit's count is one readout's, no unit in both readouts.
+fn e039_apart(sets: &[Set; 4], name: &str) {
+    let (mut stimulus, mut readout, mut crossing, mut both) = (0u32, [0u32; 2], 0u32, 0u32);
+    for u in 0..SCAN_UNITS {
+        let s = sets[0].contains(u) || sets[1].contains(u);
+        let r = [sets[2].contains(u), sets[3].contains(u)];
+        stimulus = stimulus.saturating_add(u32::from(s));
+        readout[0] = readout[0].saturating_add(u32::from(r[0]));
+        readout[1] = readout[1].saturating_add(u32::from(r[1]));
+        crossing = crossing.saturating_add(u32::from(s && (r[0] || r[1])));
+        both = both.saturating_add(u32::from(r[0] && r[1]));
+    }
+    assert_eq!(
+        (crossing, both),
+        (0, 0),
+        "{name}: no stimulus unit in a readout's set, no unit in both"
+    );
+    eprintln!(
+        "DUMP {name} the sets: {stimulus} stimulus units, readout units {readout:?}, none of them a stimulus unit, none in both readouts"
+    );
+}
+
+impl E039Site {
+    /// Network `n`'s site: the derivation run again and held to H-42's pinned tables
+    /// (`probe_made`), H-46's groups (`zero_groups`), and the start image's couplings.
+    fn new(n: usize, name: &str) -> Self {
+        let made = probe_made(n, name);
+        let groups = zero_groups(&made, name);
+        let sets = geometry(SCAN_UNITS, made.derived.rotation);
+        let image = [
+            made.couplings[0][0],
+            made.couplings[0][1],
+            made.couplings[1][0],
+            made.couplings[1][1],
+        ];
+        let exec = zero_from(&made.windowed, SCAN_UNITS, ZERO_ARM);
+        assert_eq!(
+            couplings(&exec, &sets),
+            image,
+            "{name}: the start image's four couplings, H-42's"
+        );
+        undropped(exec, name);
+        e039_apart(&sets, name);
+        assert_eq!(
+            groups.targets,
+            e039_readout_units(&sets).0,
+            "{name}: the zero sum's targets are the readout units"
+        );
+        assert_eq!(made.critic, E039_CRITIC, "{name}: the critic's constants");
+        Self {
+            made,
+            groups,
+            sets,
+            image,
+            name: name.to_string(),
+            kept: std::sync::Mutex::new(BTreeMap::new()),
+        }
+    }
+
+    /// The read of `genes` on stream `stream` (ADR-0255), kept: made once whichever search or
+    /// corner asks first; a read made twice, by two searches at once, held equal bit for bit.
+    fn read(&self, genes: [i32; 4], stream: u32) -> E039Read {
+        let key = (genes, stream);
+        if let Some(&kept) = self.kept.lock().expect("unpoisoned").get(&key) {
+            return kept;
+        }
+        let read = self.read_once(genes, stream);
+        let mut kept = self.kept.lock().expect("unpoisoned");
+        if let Some(&before) = kept.get(&key) {
+            assert_eq!(before, read, "{}: a read made twice is one read", self.name);
+        }
+        kept.insert(key, read);
+        read
+    }
+
+    /// One read: a fork of the start image under the running configuration, the four couplings
+    /// written by brief 088's writer, the zero sum's groups set from the written engine's
+    /// `coupling_sum`, and one block with the reward withheld on stream `stream`, its first trial
+    /// and its drive's seed as `nights_read_from` sets them. Its correct trials are counted under
+    /// both mappings, and at its end the four couplings are read against the start image's.
+    fn read_once(&self, genes: [i32; 4], stream: u32) -> E039Read {
+        let label = format!("{} read genes {genes:?} stream {stream}", self.name);
+        let made = &self.made;
+        let mut exec = zero_from(&made.windowed, SCAN_UNITS, ZERO_ARM);
+        let written = fork_search::scale_couplings(&mut exec, &self.sets, genes);
+        let values = [0usize, 1].map(|s| {
+            exec.coupling_sum(&self.groups.sources[s], &self.groups.targets)
+                .expect("excitatory units once each, and every unit in the arena")
+        });
+        if genes == [E039_START; 4] {
+            assert_eq!(
+                values, self.groups.values,
+                "{label}: unwritten, the groups' values are H-46's"
+            );
+        }
+        let held = [
+            (self.groups.sources[0].as_slice(), values[0]),
+            (self.groups.sources[1].as_slice(), values[1]),
+        ];
+        assert!(
+            exec.set_zero_sum(&held, &self.groups.targets),
+            "every source excitatory and in the arena, once, and every target in the arena"
+        );
+        let begun = couplings(&exec, &self.sets);
+        let from = nights_read_from(u64::from(stream));
+        let mut task = task_over(
+            self.sets,
+            SHAPE_F46,
+            Some(made.derived.cancel),
+            SCAN_UNITS,
+            Feedback::Withheld,
+            false,
+            DRAWN_DELIVERY,
+        );
+        task.drive.seed = task.drive.seed.wrapping_add(from.drive);
+        let mut correct = [0u32; 2];
+        let mut words = [0u64; 3];
+        let (read, trace) = run_on_presenting_from(
+            Presented {
+                first: from.trial,
+                units: None,
+            },
+            self.sets,
+            &mut exec,
+            task,
+            SCAN_UNITS,
+            BLOCK,
+            &[],
+            &mut |_, trial, _, outcome| {
+                for (m, count) in correct.iter_mut().enumerate() {
+                    let right = harness::answers_of(m == 1)[usize::from(outcome.stimulus)];
+                    *count = count.saturating_add(u32::from(outcome.selection == Some(right)));
+                }
+                let bit = 1u64.wrapping_shl(trial as u32);
+                for (word, set) in words.iter_mut().zip([
+                    outcome.stimulus == 1,
+                    outcome.selection == Some(1),
+                    outcome.selection.is_none(),
+                ]) {
+                    if set {
+                        *word |= bit;
+                    }
+                }
+            },
+        );
+        let ties = read.first().map_or(0, |b| b.11);
+        assert_eq!(
+            read.first().map(|b| b.0),
+            Some(correct[0]),
+            "{label}: the task's own count, under the assignment, is the read's"
+        );
+        let ended = couplings(&exec, &self.sets);
+        let past: [bool; 4] = core::array::from_fn(|p| over_bound(ended[p], self.image[p]));
+        eprintln!(
+            "DUMP {label} correct {correct:?} ties {ties} trace {trace:#018x} written {written:?} values {values:?} begun {begun:?} ended {ended:?} image {:?} past {past:?} stimuli {:#018x} selected {:#018x} tied {:#018x} gain {}",
+            self.image,
+            words[0],
+            words[1],
+            words[2],
+            exec.homeostasis().synaptic_gain_q16
+        );
+        undropped(exec, &label);
+        E039Read {
+            correct,
+            ties,
+            past,
+        }
+    }
+
+    /// The ceiling on one mapping (ADR-0255): the search by forks over the four genes, every read
+    /// on the start image; then the best's six reads, which couplings any of them left past 1.30.
+    fn search(&self, mapping: usize, breeding: fork_search::Breeding) -> fork_search::Searched {
+        let label = format!("{} {}", self.name, E039_MAPPINGS[mapping]);
+        let mut objective = |genes: &[i32], s: u32| {
+            let genes: [i32; 4] = genes.try_into().expect("four genes");
+            i64::from(
+                self.read(genes, s.saturating_add(E039_STREAM_SHIFT))
+                    .correct[mapping],
+            )
+        };
+        let searched = fork_search::search_by_forks(&E039_GENES, breeding, &label, &mut objective);
+        let genes: [i32; 4] = searched
+            .best
+            .genes
+            .as_slice()
+            .try_into()
+            .expect("four genes");
+        let streams = breeding.streams.saturating_mul(2);
+        let past = (0..streams).fold([false; 4], |any, s| {
+            let read = self.read(genes, s.saturating_add(E039_STREAM_SHIFT));
+            core::array::from_fn(|p| any[p] || read.past[p])
+        });
+        eprintln!(
+            "DUMP {label} ceiling best genes {genes:?} scores {:?} unseen {:?} past 1.30 on any of its reads {past:?}",
+            searched.best.scores, searched.unseen
+        );
+        searched
+    }
+
+    /// The box's sixteen corners on streams 1 to 6 (ADR-0255), each mapping's best on streams 1 to
+    /// 3 by their sum, the first corner of the largest sum, set beside its scores on 4 to 6.
+    fn corners(&self) {
+        let mut scored: Vec<([i32; 4], [[u32; 6]; 2])> = Vec::with_capacity(16);
+        for c in 0..16u32 {
+            let genes: [i32; 4] = core::array::from_fn(|j| {
+                if c.wrapping_shr(j as u32) & 1 == 1 {
+                    E039_HIGH
+                } else {
+                    E039_LOW
+                }
+            });
+            let reads = E039_CORNER_STREAMS.map(|s| self.read(genes, s));
+            let scores = [0usize, 1].map(|m| reads.map(|r| r.correct[m]));
+            let past = reads.iter().fold([false; 4], |any, r| {
+                core::array::from_fn(|p| any[p] || r.past[p])
+            });
+            eprintln!(
+                "DUMP {} corner {c} genes {genes:?} assignment {:?} mirrored {:?} past 1.30 on any of its reads {past:?}",
+                self.name, scores[0], scores[1]
+            );
+            scored.push((genes, scores));
+        }
+        for (m, mapping) in E039_MAPPINGS.iter().enumerate() {
+            let sum = |s: &[u32]| s.iter().fold(0u32, |t, &v| t.saturating_add(v));
+            let best = scored
+                .iter()
+                .fold(None::<&([i32; 4], [[u32; 6]; 2])>, |best, c| match best {
+                    Some(b) if sum(&b.1[m][..3]) >= sum(&c.1[m][..3]) => Some(b),
+                    _ => Some(c),
+                })
+                .expect("sixteen corners");
+            eprintln!(
+                "DUMP {} {mapping} corners best genes {:?} scores {:?} unseen {:?}",
+                self.name,
+                best.0,
+                &best.1[m][..3],
+                &best.1[m][3..]
+            );
+        }
+    }
+}
+
+/// The engine's run of H-46's first schedule from one start, as `zero_schedule` runs it, each
+/// trial's stimulus kept.
+fn e039_schedule(made: &Made, groups: &ZeroGroups, arm: Reversal) -> (Engine, ZeroRun, Vec<u8>) {
+    let units = SCAN_UNITS;
+    let sets = geometry(units, made.derived.rotation);
+    let mut exec = zero_from(&made.windowed, units, ZERO_ARM);
+    let held = [
+        (groups.sources[0].as_slice(), groups.values[0]),
+        (groups.sources[1].as_slice(), groups.values[1]),
+    ];
+    assert!(
+        exec.set_zero_sum(&held, &groups.targets),
+        "every source excitatory and in the arena, once, and every target in the arena"
+    );
+    let task = task_over(
+        sets,
+        SHAPE_F46,
+        Some(made.derived.cancel),
+        units,
+        Feedback::Answer,
+        first_mapping(arm),
+        DRAWN_DELIVERY,
+    );
+    let mut values: Vec<i32> = Vec::with_capacity(SCHEDULE_TRIALS);
+    let mut stimuli: Vec<u8> = Vec::with_capacity(SCHEDULE_TRIALS);
+    let mut rail = [0u32; 4];
+    let (blocks, trace) = run_on_scheduled_over(
+        sets,
+        &mut exec,
+        task,
+        units,
+        SCHEDULE_TRIALS,
+        &SCHEDULE_FLIPS,
+        &mut |exec, trial, _, outcome| {
+            stimuli.push(outcome.stimulus);
+            if let Some(value) = outcome.value_q16 {
+                values.push(value);
+            }
+            if trial.wrapping_add(1) % BLOCK == 0 {
+                let (_, now) = zero_bands(exec, &sets);
+                rail = core::array::from_fn(|p| rail[p].max(now[p]));
+            }
+        },
+    );
+    let run = ZeroRun {
+        blocks,
+        trace,
+        values,
+        rail,
+    };
+    (exec, run, stimuli)
+}
+
+/// Clause 1's and clause 3's reading of a run of 120 blocks, as the engine's row reads them
+/// (`mapping_correct`, `crossings`, `reversals_within`), printed with its curve and its ties.
+fn e039_reading(label: &str, blocks: &[Block]) -> ([u32; 4], [Option<usize>; 4]) {
+    let last = mapping_correct(blocks);
+    let crossed = crossings(blocks);
+    let clause_1 = blocks.len() == SCHEDULE_BLOCKS && last.iter().all(|&c| c >= REWARDED_MIN);
+    let clause_3 = reversals_within(crossed).iter().all(|&r| r);
+    eprintln!(
+        "DUMP {label} curve {:?} ties {:?} last 128 {last:?} crossed {crossed:?} clause 1 {clause_1} clause 3 {clause_3}",
+        curve(blocks),
+        blocks.iter().map(|b| b.11).collect::<Vec<u32>>()
+    );
+    (last, crossed)
+}
+
+/// An engine's run: its blocks and every trial's stimulus.
+type E039Run = (Vec<Block>, Vec<u8>);
+
+/// The engine from start `k` on network `n` (ADR-0255): H-46's arm on its first schedule, its row
+/// held to H-46's pinned row of that network and start, which stops the job where it does not
+/// hold. Returns its blocks and every trial's stimulus.
+fn e039_engine(site: &E039Site, n: usize, k: usize) -> E039Run {
+    let arm = ZERO_ARMS[k];
+    let name = format!("{} {arm:?} engine", site.name);
+    let clock = std::time::Instant::now();
+    let (mut exec, run, stimuli) = e039_schedule(&site.made, &site.groups, arm);
+    quiet(&mut exec);
+    let written = Image::encode(&exec).expect("quiescent");
+    let row = zero_row(&site.made, &exec, &run, &written);
+    eprintln!("DUMP {name} PIN row {row:?}");
+    let pin = ZERO_ROWS[n][ZERO_ARM][k]
+        .first()
+        .expect("H-46's pinned first schedule");
+    assert_eq!(
+        row, *pin,
+        "{name}: H-46's pinned row of its network and start, its first schedule"
+    );
+    eprintln!(
+        "DUMP {name} holds H-46's pinned row in {} ms; blocks {:?}",
+        clock.elapsed().as_millis(),
+        run.blocks
+    );
+    undropped(exec, &name);
+    e039_reading(&name, &run.blocks);
+    (run.blocks, stimuli)
+}
+
+/// The withheld run's trials (ADR-0255): each trial's stimulus and the readouts' own selection,
+/// and the floors' features, the two readouts' summed window counts and each readout unit's
+/// window count, each trial-major; and each readout unit's readout.
+struct E039Features {
+    stimuli: Vec<u8>,
+    selections: Vec<Option<u8>>,
+    summed: Vec<u32>,
+    units: Vec<u32>,
+    side: Vec<u8>,
+}
+
+/// The withheld run on a network (ADR-0255): the start image under the running configuration,
+/// the groups set as H-46's arm sets them, `trials` of H-46's trials and drive with the reward
+/// withheld, no flip, since with the reward withheld only a trial's correctness reads the
+/// mapping. Each readout unit's window count is read by `Readout::count_window`'s rule and held
+/// to sum to the readouts' counts.
+fn e039_withheld(site: &E039Site, trials: usize) -> E039Features {
+    let name = format!("{} withheld", site.name);
+    let clock = std::time::Instant::now();
+    let (readout, side) = e039_readout_units(&site.sets);
+    let width = readout.len();
+    let mut place: Vec<Option<usize>> = vec![None; SCAN_UNITS as usize];
+    for (j, &u) in readout.iter().enumerate() {
+        place[u as usize] = Some(j);
+    }
+    let mut exec = zero_from(&site.made.windowed, SCAN_UNITS, ZERO_ARM);
+    let held = [
+        (site.groups.sources[0].as_slice(), site.groups.values[0]),
+        (site.groups.sources[1].as_slice(), site.groups.values[1]),
+    ];
+    assert!(
+        exec.set_zero_sum(&held, &site.groups.targets),
+        "every source excitatory and in the arena, once, and every target in the arena"
+    );
+    let task = task_over(
+        site.sets,
+        SHAPE_F46,
+        Some(site.made.derived.cancel),
+        SCAN_UNITS,
+        Feedback::Withheld,
+        false,
+        DRAWN_DELIVERY,
+    );
+    let mut features = E039Features {
+        stimuli: Vec::with_capacity(trials),
+        selections: Vec::with_capacity(trials),
+        summed: Vec::with_capacity(trials.saturating_mul(2)),
+        units: Vec::with_capacity(trials.saturating_mul(width)),
+        side: side.clone(),
+    };
+    let (blocks, trace) = run_on_scheduled_over(
+        site.sets,
+        &mut exec,
+        task,
+        SCAN_UNITS,
+        trials,
+        &[],
+        &mut |exec, trial, start, outcome| {
+            let opens = start.wrapping_add(WINDOW.from);
+            let mut row = vec![0u32; width];
+            for &(tick, unit) in exec.train().iter().rev() {
+                let distance = tick.wrapping_sub(opens);
+                if (distance as i32) < 0 {
+                    break;
+                }
+                if distance >= WINDOW.ticks {
+                    continue;
+                }
+                if let Some(&Some(j)) = place.get(unit as usize) {
+                    row[j] = row[j].saturating_add(1);
+                }
+            }
+            let sums = [0u8, 1].map(|r| {
+                row.iter()
+                    .zip(&side)
+                    .filter(|&(_, &s)| s == r)
+                    .fold(0u32, |sum, (&c, _)| sum.saturating_add(c))
+            });
+            assert_eq!(
+                sums, outcome.counts,
+                "trial {trial}: the readout units' window counts sum to the readouts'"
+            );
+            features.stimuli.push(outcome.stimulus);
+            features.selections.push(outcome.selection);
+            features.summed.extend_from_slice(&outcome.counts);
+            features.units.extend_from_slice(&row);
+        },
+    );
+    eprintln!(
+        "DUMP {name} {trials} trials in {} ms, {width} readout units' counts a trial; trace {trace:#018x} blocks {blocks:?}",
+        clock.elapsed().as_millis()
+    );
+    undropped(exec, &name);
+    features
+}
+
+/// The check ADR-0255 names: the withheld run presented each engine run's stimuli, trial by
+/// trial, over the trials it ran.
+fn e039_presented(name: &str, features: &E039Features, engines: &[&[u8]]) {
+    for (k, stimuli) in engines.iter().enumerate() {
+        assert_eq!(
+            Some(features.stimuli.as_slice()),
+            stimuli.get(..features.stimuli.len()),
+            "{name}: the withheld run presents engine {k}'s stimuli"
+        );
+    }
+    eprintln!(
+        "DUMP {name} the withheld run presented each of {} engine runs' stimuli, trial by trial: {} of {}",
+        engines.len(),
+        features.stimuli.len(),
+        features.stimuli.len()
+    );
+}
+
+/// A floor's run on one start (ADR-0255): its answer each trial, its blocks (the correct trials
+/// and the trials with no answer, each other field zero), by block the steps after which a weight
+/// of the vector moved stood on a rail, the weights on a rail summed over those steps and the
+/// weights on a rail at the block's end, and its weights at the end.
+struct E039Floor {
+    answers: Vec<Option<u8>>,
+    blocks: Vec<Block>,
+    rail: Vec<[u32; 3]>,
+    weights: [Vec<i16>; 2],
+}
+
+/// A weight on a rail of the `i16`.
+fn e039_on_rail(w: i16) -> bool {
+    w == i16::MAX || w == i16::MIN
+}
+
+/// A floor (ADR-0255) over trial-major `features`, `side.len()` a trial, each feature of the
+/// readout `side` names: a vector of `i16` weights for each answer, at first `E039_OWN` on its
+/// own readout's features and 0 elsewhere. It answers the larger of `ValueCritic::value_q16`
+/// over its two vectors, a tie no answer and an error; after an answer, where it `learns`, it
+/// moves that answer's weights by `ValueCritic::step` on the error of `REWARD_Q16` for a correct
+/// answer or its negation for a wrong one, against that answer's value. A trial is correct under
+/// the mapping in force on H-46's first schedule from `mirrored_first`.
+fn e039_floor(
+    features: &[u32],
+    side: &[u8],
+    stimuli: &[u8],
+    mirrored_first: bool,
+    learns: bool,
+) -> E039Floor {
+    let width = side.len();
+    assert_eq!(
+        Some(features.len()),
+        stimuli.len().checked_mul(width),
+        "a trial's features, one a feature"
+    );
+    let critic = E039_CRITIC;
+    let mut weights: [Vec<i16>; 2] = [0u8, 1].map(|a| {
+        side.iter()
+            .map(|&s| if s == a { E039_OWN } else { 0 })
+            .collect()
+    });
+    let mut answers = Vec::with_capacity(stimuli.len());
+    let mut blocks: Vec<Block> = Vec::new();
+    let mut rail: Vec<[u32; 3]> = Vec::new();
+    let (mut correct, mut none, mut stepped_on, mut weights_on) = (0u32, 0u32, 0u32, 0u32);
+    for (t, (row, &stimulus)) in features.chunks_exact(width).zip(stimuli).enumerate() {
+        let values = [0usize, 1]
+            .map(|a| critic.value_q16(weights[a].iter().copied().zip(row.iter().copied())));
+        let answer = match values[0].cmp(&values[1]) {
+            core::cmp::Ordering::Greater => Some(0u8),
+            core::cmp::Ordering::Less => Some(1u8),
+            core::cmp::Ordering::Equal => None,
+        };
+        let mirrored = mirrored_first != flipped_at(&SCHEDULE_FLIPS, t);
+        let right = harness::answers_of(mirrored)[usize::from(stimulus)];
+        let good = answer == Some(right);
+        correct = correct.saturating_add(u32::from(good));
+        none = none.saturating_add(u32::from(answer.is_none()));
+        if let (Some(a), true) = (answer, learns) {
+            let a = usize::from(a);
+            let reward = if good {
+                REWARD_Q16
+            } else {
+                REWARD_Q16.saturating_neg()
+            };
+            let error = ValueCritic::error_q16(reward, values[a]);
+            for (w, &c) in weights[a].iter_mut().zip(row) {
+                *w = critic.step(*w, error, c);
+            }
+            let on = weights[a].iter().filter(|&&w| e039_on_rail(w)).count();
+            let on = u32::try_from(on).unwrap_or(u32::MAX);
+            weights_on = weights_on.saturating_add(on);
+            stepped_on = stepped_on.saturating_add(u32::from(on > 0));
+        }
+        answers.push(answer);
+        if t.wrapping_add(1) % BLOCK == 0 {
+            let at_end = weights
+                .iter()
+                .flatten()
+                .filter(|&&w| e039_on_rail(w))
+                .count();
+            blocks.push((
+                correct,
+                0,
+                [[0; 2]; 2],
+                [0; 2],
+                [0; 2],
+                [0; 2],
+                0,
+                0,
+                0,
+                0,
+                [[0; 2]; 2],
+                none,
+            ));
+            rail.push([
+                stepped_on,
+                weights_on,
+                u32::try_from(at_end).unwrap_or(u32::MAX),
+            ]);
+            (correct, none, stepped_on, weights_on) = (0, 0, 0, 0);
+        }
+    }
+    E039Floor {
+        answers,
+        blocks,
+        rail,
+        weights,
+    }
+}
+
+/// The floors on one network (ADR-0255): from each start, the readouts' own selection (a floor
+/// that never moves, held trial by trial to the withheld run's selection), then the two floors,
+/// the one that sees the two summed counts and the one that sees each readout unit's count, each
+/// read as the engine is read.
+fn e039_floors(site: &E039Site, features: &E039Features) {
+    let summed_side = [0u8, 1];
+    for arm in ZERO_ARMS.iter() {
+        let mirrored_first = first_mapping(*arm);
+        let at = format!("{} {arm:?}", site.name);
+        for (floor, data, side) in [
+            ("summed", features.summed.as_slice(), summed_side.as_slice()),
+            ("units", features.units.as_slice(), features.side.as_slice()),
+        ] {
+            let still = e039_floor(data, side, &features.stimuli, mirrored_first, false);
+            assert_eq!(
+                still.answers, features.selections,
+                "{at} floor {floor}: unmoved, it answers as the readouts select"
+            );
+            if floor == "summed" {
+                e039_reading(&format!("{at} own selection"), &still.blocks);
+            }
+            let moved = e039_floor(data, side, &features.stimuli, mirrored_first, true);
+            let label = format!("{at} floor {floor}");
+            e039_reading(&label, &moved.blocks);
+            let total = moved.rail.iter().fold([0u32; 3], |t, r| {
+                core::array::from_fn(|i| t[i].saturating_add(r[i]))
+            });
+            eprintln!(
+                "DUMP {label} rail: steps that left a weight on a rail {:?}, weights on a rail over the steps {:?}, weights on a rail at the block's end {:?}; totals {:?} of {} weights",
+                moved.rail.iter().map(|r| r[0]).collect::<Vec<u32>>(),
+                moved.rail.iter().map(|r| r[1]).collect::<Vec<u32>>(),
+                moved.rail.iter().map(|r| r[2]).collect::<Vec<u32>>(),
+                total,
+                side.len().saturating_mul(2)
+            );
+            let by_readout = moved.weights.each_ref().map(|w| {
+                [0u8, 1].map(|r| {
+                    w.iter()
+                        .zip(side)
+                        .filter(|&(_, &s)| s == r)
+                        .fold(0i64, |sum, (&v, _)| sum.saturating_add(i64::from(v)))
+                })
+            });
+            if floor == "summed" {
+                eprintln!("DUMP {label} weights at the end {:?}", moved.weights);
+            } else {
+                eprintln!(
+                    "DUMP {label} weights at the end summed by readout, each answer's [readout 0, readout 1] {by_readout:?}"
+                );
+            }
+        }
+    }
+}
+
+/// One piece of a job's second part, two at a time.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum E039Work {
+    Search(usize),
+    Withheld,
+    Corners,
+}
+
+/// A job (ADR-0255): on network `n`, the engine from both starts (two at a time, its rows held
+/// first), then the two searches, the withheld run and the corners (two at a time), then the
+/// floors from both starts.
+fn e039_job(n: usize) {
+    let clock = std::time::Instant::now();
+    let name = format!("e039 {}", ZERO_NAMES[n][ZERO_ARM]);
+    let site = E039Site::new(n, &name);
+    eprintln!(
+        "DUMP {name} ready in {} ms; the critic {:?}; the search's seed {E039_SEED:#018x}, P {} G {} E {} M {} S {}",
+        clock.elapsed().as_millis(),
+        site.made.critic,
+        E039_BREEDING.population,
+        E039_BREEDING.generations,
+        E039_BREEDING.kept,
+        E039_BREEDING.step,
+        E039_BREEDING.streams
+    );
+    let engines: std::sync::Mutex<[Option<E039Run>; 2]> = std::sync::Mutex::new([None, None]);
+    two_at_a_time(&[0usize, 1], |&k| {
+        let run = e039_engine(&site, n, k);
+        engines.lock().expect("unpoisoned")[k] = Some(run);
+    });
+    let [first, second] = engines.into_inner().expect("unpoisoned");
+    let (first, second) = (
+        first.expect("the engine from the assignment"),
+        second.expect("the engine from the mirrored assignment"),
+    );
+    eprintln!(
+        "DUMP {name} engines done at {} ms",
+        clock.elapsed().as_millis()
+    );
+    let features: std::sync::Mutex<Option<E039Features>> = std::sync::Mutex::new(None);
+    let work = [
+        E039Work::Search(0),
+        E039Work::Withheld,
+        E039Work::Search(1),
+        E039Work::Corners,
+    ];
+    two_at_a_time(&work, |w| {
+        let at = std::time::Instant::now();
+        match *w {
+            E039Work::Search(m) => {
+                site.search(m, E039_BREEDING);
+            }
+            E039Work::Withheld => {
+                let read = e039_withheld(&site, SCHEDULE_TRIALS);
+                *features.lock().expect("unpoisoned") = Some(read);
+            }
+            E039Work::Corners => site.corners(),
+        }
+        eprintln!(
+            "DUMP {name} {w:?} done in {} ms, at {} ms",
+            at.elapsed().as_millis(),
+            clock.elapsed().as_millis()
+        );
+    });
+    let features = features
+        .into_inner()
+        .expect("unpoisoned")
+        .expect("the withheld run");
+    e039_presented(&name, &features, &[&first.1, &second.1]);
+    e039_floors(&site, &features);
+    eprintln!(
+        "DUMP {name} {} reads kept; done in {} ms",
+        site.kept.lock().expect("unpoisoned").len(),
+        clock.elapsed().as_millis()
+    );
+}
+
+/// The trial of exploration 039's harness (ADR-0255), on seed 22 before any job: one start's
+/// 120 blocks beside one generation of one search, two engines at a time, timed, and each job's
+/// time projected from them; then the withheld run, its checks and the floors over two blocks.
+/// Nothing is pinned.
+#[test]
+#[ignore]
+fn the_harness_of_the_two_alternative_task_s_references_explore() {
+    let clock = std::time::Instant::now();
+    let name = "e039 trial zero22";
+    let site = E039Site::new(0, name);
+    let ready = clock.elapsed().as_millis();
+    let one = fork_search::Breeding {
+        generations: 1,
+        ..E039_BREEDING
+    };
+    let timed = std::sync::Mutex::new([0u128; 2]);
+    let engine: std::sync::Mutex<Option<E039Run>> = std::sync::Mutex::new(None);
+    two_at_a_time(&[0usize, 1], |&i| {
+        let at = std::time::Instant::now();
+        if i == 0 {
+            let run = e039_engine(&site, 0, 0);
+            *engine.lock().expect("unpoisoned") = Some(run);
+        } else {
+            site.search(0, one);
+        }
+        timed.lock().expect("unpoisoned")[i] = at.elapsed().as_millis();
+    });
+    let [engine_ms, generation_ms] = timed.into_inner().expect("unpoisoned");
+    let reads = site.kept.lock().expect("unpoisoned").len();
+    let reads_u = u128::try_from(reads).expect("a count");
+    let read_ms = generation_ms.checked_div(reads_u).expect("a read made");
+    // A job's second part: the withheld run, about the engine's time, and the reads, P × S and
+    // (G − 1)(P − E) × S a search with 2S unseen between both, less generation 0's P × S, which
+    // the second search shares, and the corners' 16 × 6; on two threads the dynamic order ends
+    // within half the work and half the longest piece, a search's reads.
+    let b = E039_BREEDING;
+    let per_search = b
+        .population
+        .saturating_add(
+            b.generations
+                .saturating_sub(1)
+                .saturating_mul(b.population.saturating_sub(b.kept)),
+        )
+        .saturating_mul(b.streams as usize)
+        .saturating_add(b.streams as usize);
+    let shared = b.population.saturating_mul(b.streams as usize);
+    let corners = 16usize.saturating_mul(E039_CORNER_STREAMS.len());
+    let all = per_search
+        .saturating_mul(2)
+        .saturating_sub(shared)
+        .saturating_add(corners);
+    let as_u = |x: usize| u128::try_from(x).expect("a count");
+    let work = engine_ms.saturating_add(read_ms.saturating_mul(as_u(all)));
+    let longest = read_ms.saturating_mul(as_u(per_search));
+    let projected_ms = ready
+        .saturating_add(engine_ms)
+        .saturating_add(work.saturating_add(longest).saturating_div(2));
+    let within = projected_ms.saturating_div(1_000) <= E039_JOB_BOUND_S;
+    eprintln!(
+        "DUMP {name} timed: ready {ready} ms; the engine's 120 blocks {engine_ms} ms beside a generation of {reads} reads in {generation_ms} ms, {read_ms} ms a read; a job's reads {all} ({per_search} a search, {shared} shared, {corners} corners); a job projected at most {projected_ms} ms against {E039_JOB_BOUND_S} s: within {within}"
+    );
+    let engine = engine
+        .into_inner()
+        .expect("unpoisoned")
+        .expect("the engine's run");
+    let trials = 2usize.saturating_mul(BLOCK);
+    let features = e039_withheld(&site, trials);
+    e039_presented(name, &features, &[&engine.1]);
+    e039_floors(&site, &features);
+    eprintln!("DUMP {name} done in {} ms", clock.elapsed().as_millis());
+}
+
+/// Exploration 039 on seed 22 (ADR-0255).
+#[test]
+#[ignore]
+fn the_two_alternative_task_s_references_on_seed_22_explore() {
+    e039_job(0);
+}
+
+/// Exploration 039 on seed 23 (ADR-0255).
+#[test]
+#[ignore]
+fn the_two_alternative_task_s_references_on_seed_23_explore() {
+    e039_job(1);
+}
+
+/// Exploration 039 on seed 24 (ADR-0255).
+#[test]
+#[ignore]
+fn the_two_alternative_task_s_references_on_seed_24_explore() {
+    e039_job(2);
+}
+
+/// Exploration 039's floor (ADR-0255) on features written by hand: unmoved it answers the larger
+/// count, a tie none; moved, each answer's vector steps by `ValueCritic::step` on the reward or
+/// the punishment less its value, and no answer moves nothing.
+#[test]
+fn exploration_039_s_floor_starts_as_the_readouts_own_selection_and_steps_by_the_critic_s_rule() {
+    let side = [0u8, 1];
+    // Four trials: A with readout 0 ahead, B tied, A with readout 1 ahead, B with no spike.
+    let features = [5u32, 3, 4, 4, 2, 7, 0, 0];
+    let stimuli = [0u8, 1, 0, 1];
+    let still = e039_floor(&features, &side, &stimuli, false, false);
+    assert_eq!(still.answers, vec![Some(0), None, Some(1), None]);
+    assert_eq!(still.weights, [vec![E039_OWN, 0], vec![0, E039_OWN]]);
+    let moved = e039_floor(&features, &side, &stimuli, false, true);
+    // Trial 0: values 20 480 and 12 288, answer 0, right; error 65 536 − 20 480 = 45 056, steps
+    // ⌊45 056 × 5 / 512⌋ = 440 and ⌊45 056 × 3 / 512⌋ = 264.
+    // Trial 1: values 16 824 + 264 = 17 088 and 16 384, answer 0, wrong; error −82 624, steps
+    // ⌊−82 624 × 4 / 512⌋ = −646 on both.
+    // Trial 2: values ⌊(16 178 × 2 − 382 × 7) / 4⌋ = 7 420 and 28 672, answer 1, wrong; error
+    // −94 208, steps −368 and −1 288. Trial 3: both values 0, no answer, nothing moves.
+    assert_eq!(moved.answers, vec![Some(0), Some(0), Some(1), None]);
+    assert_eq!(moved.weights, [vec![16_178, -382], vec![-368, 15_096]]);
+    let critic = E039_CRITIC;
+    let error = ValueCritic::error_q16(REWARD_Q16, 20_480);
+    assert_eq!(
+        [critic.step(E039_OWN, error, 5), critic.step(0, error, 3)],
+        [16_824, 264]
+    );
+    assert!(
+        moved.blocks.is_empty() && moved.rail.is_empty(),
+        "four trials make no block"
+    );
+}
