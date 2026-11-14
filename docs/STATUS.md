@@ -8,7 +8,7 @@ Every round rewrites this page whole, and it holds no history ([ADR-0197](adr/01
 - **Since 2026-11-15**, after a closing round, no new round, ADR, brief, hypothesis, exploration or build starts until an ADR resumes or reopens development ([ADR-0258](adr/0258-development-paused.md)). The maintainers' quota and time go to Mente, a systems language that will port a kernel of this engine ([docs/mente-port.md](mente-port.md)).
 - **Frozen** at the tag `menteion-paused-2026-11-15`, whose code is `58228c9`'s. The weekly schedule is suspended; nothing else runs on its own.
 - **Parked**: exploration 040, unrun at its harness on its tag; brief 089 live and [H-48](research/H-48.md) open ([ADR-0257](adr/0257-a-night-kept-by-the-hosts-probe.md)); the plan's orders 2 and 4 to 7 (ADR-0254); M11 open; and what a read of the arena on every tick should pay, which catches every asleep unit up a tick ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)).
-- **To resume**: a kernel in Mente around Mente's M5; after its M7 the maintainers weigh the engine; or an ADR reopens it in Rust sooner, as it must if Mente's M5 is not reached by 2027-06-30 (signed, [ADR-0259](adr/0259-the-restart-conditions-signed.md)). Resuming restores the schedule, calibrates the whole tree first, and reads ADR-0258's parked list.
+- **To resume**: a kernel in Mente around Mente's M5; after its M7 the maintainers weigh the engine; or an ADR reopens it in Rust sooner, among other conditions when Mente's M5 is not reached by 2027-06-30 (signed, [ADR-0259](adr/0259-the-restart-conditions-signed.md)). Resuming restores the schedule, calibrates the whole tree first, and reads ADR-0258's parked list.
 
 ## The engine
 
