@@ -1,6 +1,6 @@
 ---
 title: Menteion Architecture Whitepaper
-version: 5.52.0
+version: 5.53.0
 status: active
 date: 2026-11-15
 ---
@@ -11,7 +11,7 @@ date: 2026-11-15
 
 | Document control | |
 | :--- | :--- |
-| Version | 5.52.0 |
+| Version | 5.53.0 |
 | Status | Active (living document; amended by ADR) |
 | Date | 2026-11-15 |
 | Supersedes | Whitepaper 4.134.0 (2026-10-19), whose §6.5 and §11.1 told the rounds now in [docs/research/](research/README.md). It superseded 3.0.0 (2026-09-10, eighteen crates), which superseded Specification 2.8.0 |
@@ -2677,6 +2677,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0256](adr/0256-a-search-by-forks-built.md) | A search by forks, built | accepted |
 | [ADR-0257](adr/0257-a-night-kept-by-the-hosts-probe.md) | A night kept by the host's probe, and H-47's task's references | accepted |
 | [ADR-0258](adr/0258-development-paused.md) | Development paused after a closing round | accepted |
+| [ADR-0259](adr/0259-the-restart-conditions-signed.md) | The restart conditions signed | accepted |
 <!-- adr-index: end decisions -->
 
 ---
