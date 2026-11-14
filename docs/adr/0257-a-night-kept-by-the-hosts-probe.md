@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-14
 depends-on: ADR-0254
 title: A night kept by the host's probe, and H-47's task's references
