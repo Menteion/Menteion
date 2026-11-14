@@ -1,7 +1,14 @@
 # Where the work stands
 
 Every round rewrites this page whole, and it holds no history ([ADR-0197](adr/0197-one-place-for-each-kind-of-fact.md)).
-[ADR-0257](adr/0257-a-night-kept-by-the-hosts-probe.md) wrote it on 2026-11-14, after exploration 039 read the two-alternative task's references.
+[ADR-0258](adr/0258-development-paused.md) wrote it on 2026-11-15, when development paused.
+
+## Paused
+
+- **Since 2026-11-15**, after a closing round, no new round, ADR, brief, hypothesis, exploration or build starts until an ADR resumes or reopens development ([ADR-0258](adr/0258-development-paused.md)). The maintainers' quota and time go to Mente, a systems language that will port a kernel of this engine ([docs/mente-port.md](mente-port.md)).
+- **Frozen** at the tag `menteion-paused-2026-11-15`, whose code is `58228c9`'s. The weekly schedule is suspended; nothing else runs on its own.
+- **Parked**: exploration 040, unrun at its harness on its tag; brief 089 live and [H-48](research/H-48.md) open ([ADR-0257](adr/0257-a-night-kept-by-the-hosts-probe.md)); the plan's orders 2 and 4 to 7 (ADR-0254); M11 open; and what a read of the arena on every tick should pay, which catches every asleep unit up a tick ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)).
+- **To resume**: a kernel in Mente around Mente's M5; after its M7 the maintainers weigh the engine; or an ADR reopens it in Rust sooner. Resuming restores the schedule, calibrates the whole tree first, and reads ADR-0258's parked list.
 
 ## The engine
 
@@ -33,9 +40,7 @@ Every hypothesis, with its report, is in [docs/research/](research/README.md).
 | The couplings over sixteen schedules, under a zero sum at the stimulus and a quarter's exponent | yes, on three networks: highest coupling 1.157 to 1.215 | [H-46](research/H-46.md) |
 | A mapping a conflicting one takes, kept more by four nights with replay than four without | no at step 5: yes in ten cells of twelve, by +2.2 to +19.6 at block 36; not in one cell each on seeds 23 and 24, at −4.9 and +1.8; the pair learned and A's highest coupling at most 1.223 in every cell | [H-47](research/H-47.md) |
 
-**The learning configuration** is H-25's ([ADR-0146](adr/0146-the-tag-the-address-already-is.md)): the excitatory synapses under the reward's gate with the signed gate set, the inhibitory ones under a baseline of their own, a critic of the engine's own over the shortest synaptic delay after a reward, and the reward's address drawn by the engine from that window's counts onto the readout its selection chose.
-
-Per trial the host gives the reward's sign; under a delay it names the trial's age, or, with the delay read, the engine reads it. The readout sets are the body's interface, and so, under the zero sum, are its groups.
+**The learning configuration** is H-25's ([ADR-0146](adr/0146-the-tag-the-address-already-is.md)): the excitatory synapses under the reward's gate with the signed gate set, the inhibitory ones under a baseline of their own, a critic of the engine's own over the shortest synaptic delay after a reward, and the reward's address drawn by the engine from that window's counts onto the readout its selection chose. Per trial the host gives the reward's sign; under a delay it names the trial's age, or, with the delay read, the engine reads it. The readout sets are the body's interface, and so, under the zero sum, are its groups.
 
 ## Asked, read as no, and kept unset
 
@@ -51,10 +56,3 @@ Per trial the host gives the reward's sign; under a delay it names the trial's a
 - A delay that changes during a run or passes two trials, a run past sixteen schedules, and couplings whose shape has settled.
 - A public call that lays H-25's learning configuration on an image, so no host outside the tests reaches a settled image.
 - Chained episodes compiled in sleep (UPG-04), and a night whose replay reaches A's mapping on every network.
-
-## The next decision
-
-[ADR-0254](adr/0254-the-design-review-planned.md) plans a design review of 2026-11-13 in seven orders; the first, [ADR-0255](adr/0255-a-search-by-forks-and-the-two-alternative-tasks-references.md), is done.
-1. M11's step, the plan's third order, is [ADR-0257](adr/0257-a-night-kept-by-the-hosts-probe.md), in two steps the maintainers start: exploration 040 reads H-47's task's references, then brief 089 builds a night the host keeps by a probe and runs [H-48](research/H-48.md) on H-47's twelve cells, predicted no. Exploration 038 does not run. The plan's second order, a trace of weight changes, waits; after H-48's verdict an ADR sets when it runs and orders the plan's orders 4 to 7 beside M13, M14, M8's remainder and M15.
-2. The schedule's sweep of 2026-11-18 at 20:17Z is the next to record, by the first ADR that merges after it ends; ADR-0251 recorded 2026-11-11's.
-3. A read of the arena on every tick catches every asleep unit up a tick, so a test that reads it so takes longer ([ADR-0225](adr/0225-a-unit-served-on-arrival-built.md)): what such a reading should pay is not decided.

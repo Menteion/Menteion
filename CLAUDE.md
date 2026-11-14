@@ -26,8 +26,8 @@ round rewrites whole. This file carries no status of its own
 | Why each thing was decided, in order | [docs/adr/README.md](docs/adr/README.md) |
 | What each round did | [CHANGELOG.md](CHANGELOG.md) |
 
-**The next round** is the live brief in [briefs/](briefs/README.md), if there is one; the decision
-behind it is the newest ADR in the index.
+**The next round** is the live brief in [briefs/](briefs/README.md), if there is one and `docs/STATUS.md` does not
+say development is paused; the decision behind it is the newest ADR in the index.
 
 ## The principles
 
@@ -169,7 +169,8 @@ tests run by a dispatch at `scope=exhaustive`. A round's runs are dispatches too
 `scope=exhaustive` with its own tests excluded, made with its arms at `scope=arms`, and its
 reproduction at `scope=exhaustive` with only its own tests; the whole-tree sweep runs on the weekly
 schedule alone ([ADR-0211](docs/adr/0211-the-round-shortened.md),
-[briefs/README.md](briefs/README.md#evidencing-a-round)). A round whose change only adds, by
+[briefs/README.md](briefs/README.md#evidencing-a-round)), suspended while development is paused
+([ADR-0258](docs/adr/0258-development-paused.md)). A round whose change only adds, by
 `npm run round:additive -- origin/main <commit>`, calibrates with its own calibration tests alone
 ([ADR-0215](docs/adr/0215-the-calibration-a-change-needs.md)).
 

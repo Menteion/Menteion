@@ -7,6 +7,9 @@ protectedFiles: [crates/**, runtime/menteion-runtime/src/**, runtime/menteion-ru
 
 # Brief 089: A night kept by the host's probe
 
+> **Parked by [ADR-0258](../docs/adr/0258-development-paused.md).** Development is paused; this brief does not run until an ADR
+> resumes development and says whether it runs as written.
+
 ## Mission
 
 **This brief builds [ADR-0257](../docs/adr/0257-a-night-kept-by-the-hosts-probe.md)'s gated night in the tests and runs H-48 once.**
