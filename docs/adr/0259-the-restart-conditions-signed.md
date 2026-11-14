@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-15
 depends-on: ADR-0258
 title: The restart conditions signed
