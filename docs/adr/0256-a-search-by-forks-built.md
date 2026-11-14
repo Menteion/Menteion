@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-11-14
 depends-on: ADR-0255
 title: A search by forks, built
