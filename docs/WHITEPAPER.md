@@ -1,8 +1,8 @@
 ---
 title: Menteion Architecture Whitepaper
-version: 5.49.0
+version: 5.50.0
 status: active
-date: 2026-11-13
+date: 2026-11-14
 ---
 
 # Menteion Architecture Whitepaper
@@ -11,9 +11,9 @@ date: 2026-11-13
 
 | Document control | |
 | :--- | :--- |
-| Version | 5.49.0 |
+| Version | 5.50.0 |
 | Status | Active (living document; amended by ADR) |
-| Date | 2026-11-13 |
+| Date | 2026-11-14 |
 | Supersedes | Whitepaper 4.134.0 (2026-10-19), whose §6.5 and §11.1 told the rounds now in [docs/research/](research/README.md). It superseded 3.0.0 (2026-09-10, eighteen crates), which superseded Specification 2.8.0 |
 | Canonical language | English (this file). A [Traditional Chinese reader's guide](zh-TW/README.md) points into it and carries no layouts or figures of its own. |
 | Structure | [arc42](https://arc42.org) template v8 with [C4](https://c4model.com) views |
@@ -2674,6 +2674,7 @@ Decisions are recorded as MADR files under `docs/adr/`; their status is checked 
 | [ADR-0253](adr/0253-what-the-night-writes-on-the-other-ten-cells.md) | What the night writes, on the other ten cells | accepted |
 | [ADR-0254](adr/0254-the-design-review-planned.md) | The design review planned | accepted |
 | [ADR-0255](adr/0255-a-search-by-forks-and-the-two-alternative-tasks-references.md) | A search by forks, and the two-alternative task's references | accepted |
+| [ADR-0256](adr/0256-a-search-by-forks-built.md) | A search by forks, built | accepted |
 <!-- adr-index: end decisions -->
 
 ---

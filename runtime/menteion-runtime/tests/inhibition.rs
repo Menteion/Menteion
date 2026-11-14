@@ -246,6 +246,8 @@ use harness::*;
 #[path = "inhibition/pins/mod.rs"]
 mod pins;
 use pins::*;
+#[path = "instrument/fork_search.rs"]
+mod fork_search;
 
 use menteion_core::{
     DepressionExponent, ISTDP_PERIOD_MAX_TICKS, ISTDP_PERIOD_MIN_TICKS, ISTDP_TARGET_PERIOD_TICKS,
