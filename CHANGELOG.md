@@ -8,6 +8,7 @@ This file is a historical record: `spec-graph` treats it as history, so nothing 
 
 ### Added
 
+- **The restart conditions signed ([ADR-0259](docs/adr/0259-the-restart-conditions-signed.md)); whitepaper 5.53.0.** The maintainers signed ADR-0258's conditions for resuming and reopening Menteion as drafted, with 2027-06-30 as the date by which Mente's M5 must be reached; Mente's register holds the same text. Development stays paused.
 - **Development paused after a closing round ([ADR-0258](docs/adr/0258-development-paused.md)); whitepaper 5.52.0.** Exploration 040 and H-48 parked unrun, the weekly schedule suspended, the tree frozen at the tag `menteion-paused-2026-11-15`; [docs/mente-port.md](docs/mente-port.md) names the kernels Mente may port. F-92 open, F-93 resolved.
 - **A night kept by the host's probe, and H-47's task's references ([ADR-0257](docs/adr/0257-a-night-kept-by-the-hosts-probe.md)); whitepaper 5.51.0.** ADR-0254's third order: H-48 asks whether nights the host keeps by a probe six blocks on keep A at least as well as nights without replay, predicted no. Exploration 040 reads the references, then brief 089 runs H-48; exploration 038 does not run.
 - **A search by forks, built ([ADR-0256](docs/adr/0256-a-search-by-forks-built.md)); brief 088; whitepaper 5.50.0.** `search_by_forks` and `scale_coupling` in the inhibition tests, held by eight fast tests; nothing measured, `round:additive` exit 0.
