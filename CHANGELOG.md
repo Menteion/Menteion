@@ -8,6 +8,7 @@ This file is a historical record: `spec-graph` treats it as history, so nothing 
 
 ### Added
 
+- **A night kept by the host's probe, and H-47's task's references ([ADR-0257](docs/adr/0257-a-night-kept-by-the-hosts-probe.md)); whitepaper 5.51.0.** ADR-0254's third order: H-48 asks whether nights the host keeps by a probe six blocks on keep A at least as well as nights without replay, predicted no. Exploration 040 reads the references, then brief 089 runs H-48; exploration 038 does not run.
 - **A search by forks, built ([ADR-0256](docs/adr/0256-a-search-by-forks-built.md)); brief 088; whitepaper 5.50.0.** `search_by_forks` and `scale_coupling` in the inhibition tests, held by eight fast tests; nothing measured, `round:additive` exit 0.
 - **A search by forks, and the two-alternative task's references ([ADR-0255](docs/adr/0255-a-search-by-forks-and-the-two-alternative-tasks-references.md)); whitepaper 5.49.0.** ADR-0254's first order: brief 088 builds a search by forks in the inhibition tests; exploration 039 then reads the two-alternative task's floor and ceiling beside the engine on H-46's first schedule.
 - **The design review planned ([ADR-0254](docs/adr/0254-the-design-review-planned.md)); whitepaper 5.48.0.** Thirty-one entries of a design review of 2026-11-13, checked against the tree: sixteen planned in seven orders, a search by forks with a task's references first; exploration 038 paused; F-87 to F-91.
