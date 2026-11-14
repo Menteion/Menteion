@@ -12,7 +12,7 @@ decision-makers: Menteion maintainers
 # ADR-0257: A night kept by the host's probe, and H-47's task's references
 
 **In brief**
-- **Decision.** Nothing in the engine changes. At each of H-47's four gaps the host runs both of H-47's nights in forks, the night without replay and the plain night on A's patterns. Each fork runs the pair's next 6 blocks, A is read on six streams H-47's reads never use, and the fork that reads more is kept, the plain night on a tie. H-48 asks, on H-47's twelve cells, whether such gated nights keep A at least as well as nights without replay in every cell, and more in at least ten. It is predicted no, on its second clause. Exploration 040 first reads H-47's task's references: exploration 039's floor on each readout unit's count, and a ceiling by the search over A's four couplings. Brief 089 then builds the gate in the tests and runs H-48 once. Exploration 038 is replaced by H-48 and does not run.
+- **Decision.** Nothing in the engine changes. At each of H-47's four gaps the host runs both of H-47's nights in forks, the night without replay and the plain night on A's patterns. Each fork runs the pair's next 6 blocks, A is read on six streams H-47's reads never use, and the fork that reads more is kept, the plain night on a tie. H-48 asks, on H-47's twelve cells, whether such gated nights keep A at least as well as nights without replay in every cell, and more in at least ten. It is predicted no: on its second clause, and on its first too where the gate is expected to keep a night whose cost comes late. Exploration 040 first reads H-47's task's references: exploration 039's floor on each readout unit's count, and a ceiling by the search over A's four couplings. Brief 089 then builds the gate in the tests and runs H-48 once. Exploration 038 is replaced by H-48 and does not run.
 - **Why.** ADR-0254 makes a night kept by a gate the host runs M11's next decision, with order 1's tool for H-47's task's references. Explorations 030 to 032 read that a replayed night's cost can appear blocks after the night. Six blocks on, their nearest readings leave clause 2 short. The round is still worth running: nothing else reads the chains a gate runs, or whether it removes replay's cost where replay had one.
 - **Left open.** When the plan's order 2 runs; DR-25, the replay's order set by the host's tags, order 3's other candidate; chained episodes compiled in sleep (UPG-04); whether the slow-wave baseline enters the running configuration.
 
@@ -27,9 +27,9 @@ decision-makers: Menteion maintainers
 - on seed 24's eighth image from the assignment, the first plain night stood +0.3 ± 0.64 over the night without replay right after it, and the form that replays on it alone −2.0 ± 0.88 at block 36 ([exploration 031](../explorations/031-the-first-nights-replay-on-twelve-cells.md));
 - right after the night, single replayed nights stood above the night without replay beyond 2 SE in eight, seven, seven and six of the twelve cells after blocks 6, 12, 18 and 24 ([exploration 032](../explorations/032-each-later-nights-replay-alone-on-twelve-cells.md)).
 
-**Six blocks on.** The first checkpoint after six more blocks is the nearest those tables come to what a probe six blocks on reads. There the form that replays on one night alone stood above the night without replay beyond 2 SE in 5, 9, 7 and 3 of the twelve cells after the nights at blocks 6, 12, 18 and 24, and below in 1, 2, 1 and 2. On seed 24's eighth image from the assignment the first night read +1.4 ± 0.72 at block 12, and the later nights −4.6 ± 1.83, −8.8 ± 0.82 and −4.6 ± 0.73 at blocks 18, 24 and 36. There, the form that replays on the first night alone stood +6.4 ± 1.70 over H-47's plain nights at block 18.
+**Six blocks on.** The first checkpoint after six more blocks is the nearest those tables come to what a probe six blocks on reads; for the night after block 24 it is block 36, twelve blocks on. There the form that replays on one night alone stood above the night without replay beyond 2 SE in 5, 9, 7 and 3 of the twelve cells after the nights at blocks 6, 12, 18 and 24, and below in 1, 2, 1 and 2. On seed 24's eighth image from the assignment the first night read +1.4 ± 0.72 at block 12, and the later nights −4.6 ± 1.83, −8.8 ± 0.82 and −4.6 ± 0.73 at blocks 18, 24 and 36. There, the form that replays on the first night alone stood +6.4 ± 1.70 over H-47's plain nights at block 18, under exploration 018's unpaired SE.
 
-**What a probe resolves.** Exploration 017 split a read's SD of 3.52 into a stream's 2.64 and the rest's 2.34 ([exploration 017](../explorations/017-what-a-read-spreads.md)). Two forks read on the same six streams share the streams' part. Worked out and not run, their difference over six reads then has an SD of at most √12 × 2.34 ≈ 8.1 correct trials, 1.35 a read.
+**What a probe resolves.** Exploration 017 split a read's SD of 3.52 into a stream's 2.64 and the rest's 2.34 ([exploration 017](../explorations/017-what-a-read-spreads.md)). Worked out and not run, two forks' difference over the same six reads has an SD of about √12 × 2.34 ≈ 8.1 correct trials, 1.35 a read, if they share each stream's part, and up to √12 × 3.52 ≈ 12.2, 2.0 a read, if they do not.
 
 **What a fork costs.** The nights already run on forks: each of H-47's forms decodes the image the pair's stretch wrote, and each of H-47's reads is a fork. One H-47 job ran two forms on three paths in 61.2 to 68.6 minutes on AArch64 ([H-47's report](../research/H-47.md#the-dispatches)).
 
@@ -37,8 +37,8 @@ decision-makers: Menteion maintainers
 
 ## Decision Drivers
 
-- **The maintainers' choices** (2026-11-14): order 3 before order 2; a rejected night replaced by the night without replay, not by the image as it was; the probe read after the next blocks; H-48 as a round with exploration 040's references first; for the references, exploration 039's floor on each readout unit's count and a ceiling by the search over A's four couplings; exploration 038 replaced by H-48.
-- **The maintainers' choices** (2026-11-15): H-48 predicted no and run; the probe on A alone over six streams, six blocks after every night.
+- **The maintainers' choices for the gate** (2026-11-14): order 3 before order 2. A rejected night is replaced by the night without replay, not by the image as it was. The probe reads A alone, on six streams, six blocks after every night.
+- **The maintainers' choices for the round** (2026-11-14): H-48 as a round, predicted no and run, after exploration 040's references. The references are exploration 039's floor on each readout unit's count and a ceiling by the search over A's four couplings. Exploration 038 is replaced by H-48.
 - **ADR-0254's question, narrowed.** It asks for better than an ungated night and a night without replay. A gate that keeps every plain night is the ungated night, so it cannot stand above it in every cell. H-48's clauses compare with the night without replay, as M11's exit test does ([ADR-0234](0234-learning-that-sleep-keeps.md)), and the ungated night is a reading.
 - **What the probe does not see**: H-47's streams 0 to 15, and every image H-48's reads read. Six blocks on from a night is the image before the next night, or block 30.
 - **H-47's stopping rule**, step 8: "No constant moves after such a run. There is no second attempt, and no other baseline, shift, form, path or network." H-48 is a new hypothesis on H-47's cells, with its own constants committed before any run, and runs no form of H-47's as an arm.
@@ -75,10 +75,10 @@ Around the gate:
 - **Its comparisons**: H-47's pinned rows of the night without replay and of the plain night on A's patterns, on the same paths and streams, paired by path and stream ([H-47's terms](../research/H-47.md#its-terms)). No form of H-47's runs as an arm or a comparison, and a chain that repeats one is held to its rows.
 - **Checked inside the test**: while the gate has kept the same form at every gap so far, the chain's image and reads at each checkpoint are H-47's pinned row of that form. At each gap where it has, that form's fork's night image is H-47's row of the form there, before the choice. A gated chain that is not stops the round as a finding.
 - **Its pins**, in `tests/inhibition/pins/h48.rs`: the chain's rows at the five checkpoints, as H-47's rows are. At each gap, for each fork: its night image and its probe image by CRC-64, A's couplings at their highest over its six blocks and in its probe image, and its six counts; and the choice.
-- **The calibration**: `round:additive` is expected to exit 0, so the calibration is the round's own test that step 2 names. On seed 22's eighth image from the assignment, on path 0, it runs the head and both forks of the gap at block 6, and holds each night's image and reads to H-47's pinned row at block 6. It runs at `scope=arms` beside the jobs.
+- **The calibration test**, which step 2 names: on seed 22's eighth image from the assignment, on path 0, it runs the head and both forks of the gap at block 6, and holds each night's image and reads to H-47's pinned row at block 6. It runs at `scope=arms` beside the jobs, and again beside them in the reproduction. If `round:additive` exits 0 it is the whole calibration; if it exits 1 it runs beside the whole tree's.
 - **Twelve `…_paused` jobs**, one a cell, its three paths two at a time and each gap's forks one after the other. Each runs the same 24 nights and 198 blocks as one of H-47's jobs, with 624 reads against H-47's 960: about an hour each on AArch64.
 - **A short form of each cell** is a weekly `…_exhaustive` test. On path 0 it runs the head, both forks at block 6, their six blocks and the probe, held to the long run's pinned rows of that gap. The twelve take at most 4 800 s together on x86-64, as the reproduction reads them alone, and keep the cost table's default until a full deal ([ADR-0220](0220-the-cost-of-a-test-run-alone.md)).
-- **The reproduction**: the short forms at `scope=exhaustive`, and the twelve jobs again at `scope=arms` on the reproduction's commit, every pinned table held, as H-47's were.
+- **The reproduction**: the short forms at `scope=exhaustive`, and the calibration test and the twelve jobs again at `scope=arms` on the reproduction's commit, every pinned table held, as H-47's were.
 
 ### H-48 (Hypothesis; written before any run)
 
@@ -86,28 +86,28 @@ The text, with its clauses, readings, terms and stopping rule, is [H-48's report
 - **Clause 1**: in each of the twelve cells, A's mean count at block 36 under gated nights is not below that under nights without replay by more than twice its paired SE.
 - **Clause 2**: in at least ten of the twelve cells, A's mean count at block 36 under gated nights exceeds that under nights without replay by more than twice its paired SE.
 - **Clause 3**: in each cell, the pair's mean count at block 36 under gated nights is at least 56 of 64.
-- **Clause 4**: in each cell, none of A's four couplings passes 1.30 of H-42's image's on its network. It is read at each block's end of every stretch the gated chain runs, the forks the gate does not keep among them, and at each image read.
+- **Clause 4**: in each cell, none of A's four couplings passes 1.30 of H-42's image's on its network. It is read at each block's end of every stretch the gated chain runs and of every fork's six blocks, and at each image read.
 - **Yes** when all four hold; otherwise **no**, with the network, the start and the clause.
 
 A mean count and the paired SE are H-47's, of 48 reads, three paths by sixteen streams.
 
-**Predicted: no, on clause 2.** Six blocks on, the nearest readings put three cells below its bound:
-- on seed 24's eighth image from the assignment the gate is expected to keep the first plain night and the nights without replay after it, the chain exploration 031 read at −2.0 ± 0.88 at block 36. A is not expected above there, and clause 1 is at risk;
+**Predicted: no.** Six blocks on, the nearest readings put three cells below clause 2's bound, and clause 1 is at risk in two of them:
+- on seed 24's eighth image from the assignment the gate is expected to keep the first plain night and the nights without replay after it. On every path that is exploration 031's form that replays on the first night alone, bit for bit, which read −2.0 ± 0.88 at block 36. If the gate runs it on all three paths, clause 1 fails there, and step 5 is taken before step 6;
 - on seed 23's eighth image from the assignment the night after block 12 read −2.3 ± 0.76 six blocks on, and no form that replays on one night alone stood above at block 36;
-- on seed 23's first mapping from the mirrored assignment the night after block 24 read −2.4 ± 0.86 at block 36. The form leaving that night out read −1.3 ± 1.40 there, within 2 SE (exploration 030).
+- on seed 23's first mapping from the mirrored assignment the night after block 24 read −0.3 ± 0.81 right after it and −2.4 ± 0.86 at block 36, and the probe reads between them. Of exploration 030's forms with a plain night there, H-47's among them, four of five stood below the night without replay beyond 2 SE at block 36, and none of the four without one; the form leaving that night out read −1.3 ± 1.40, within. Clause 1 there rests on the probe rejecting that night.
 
 **Four readings are predicted:**
-1. clause 1's rule holds in at least 11 of the 12 cells;
+1. clause 1's rule holds in at least 10 of the 12 cells;
 2. clause 2's rule holds in at least 8 of the 12 cells;
 3. on seed 23's first mapping from the mirrored assignment, A's mean count at block 36 under gated nights over that under plain nights, positive;
 4. on seed 24's eighth image from the assignment, the plain night kept at the gap at block 6 on at least two of its three paths, and the night without replay at at least seven of its nine later gaps.
 
-**What would refute the no**: gated nights above the night without replay beyond 2 SE in ten or more cells, with clauses 1, 3 and 4 holding.
+**What would refute it**: all four clauses holding, the gated nights above the night without replay beyond 2 SE in ten or more cells. A no read on clause 1 with clause 2 holding keeps the no, on another clause than the one expected.
 
 ### H-48's stopping rule
 
 1. **One round**: brief 089 builds the gated night in the tests and writes its protocol ADR, then runs H-48 once. Its clauses, constants and readings are committed before any arm runs.
-2. **A calibration stops the round**, and is a finding, if a pinned number moves. So does the calibration test, run beside the jobs at `scope=arms`, if a fork's image or reads at block 6 are not H-47's pinned row of its form. So does a gated chain that, where the gate has kept the same form at every gap so far, is not H-47's pinned row of that form.
+2. **A calibration stops the round**, and is a finding, if a pinned number moves. So does the calibration test, run beside the jobs at `scope=arms` and in the reproduction, if a fork's image or reads at block 6 are not H-47's pinned row of its form. So does a gated chain that, where the gate has kept the same form at every gap so far, is not H-47's pinned row of that form.
 3. **Yes**: M11's exit test reads yes. The next decisions are whether M11 closes, whether the slow-wave baseline enters the running configuration, and whether DR-25 runs.
 4. **No on clause 4**: M12 reopens ([ADR-0232](0232-a-running-configuration-and-m12-closed.md)), and an ADR on the zero sum through the form that crossed.
 5. **No on clause 1**: an ADR on what the probe six blocks on does not see on that network.
@@ -146,7 +146,7 @@ It runs from `main` on `explore/040-what-a-readout-and-the-couplings-keep` and a
 - **Good**: M11's next step is a mechanism, read on H-47's cells against H-47's own pinned rows.
 - **Good**: the gate is a fork and a comparison on the host's side, an engineered capability stated as a mechanism (DR-01), with no change to the engine or its image. It computes no gradient (DR-21), and H-47's task gains its references, a rung of the ladder (DR-26).
 - **Bad**: each gap runs two nights and their blocks. The round runs twelve jobs of about an hour, and the same again to reproduce them, and the weekly job gains twelve short forms, at most 4 800 s together on x86-64.
-- **Bad**: it is predicted no. If the no is read, M11 stays open, and the next ADR asks what the gate gives up.
+- **Bad**: it is predicted no. If the no is read, M11 stays open, and the next ADR asks what the probe six blocks on does not see (step 5) or what the gate gives up (step 6).
 - **Neutral**: the references decide nothing, and H-48's prediction does not rest on them.
 
 ## Alternatives considered and why rejected

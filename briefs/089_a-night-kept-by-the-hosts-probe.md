@@ -28,7 +28,7 @@ The scope is the front matter's ([ADR-0191](../docs/adr/0191-a-rounds-scope-eigh
 - **H-48 is ADR-0257's**: its clauses, its constants and its four predicted readings are committed in the protocol ADR and pinned in the tests before any arm runs, and nothing among them moves after. It is predicted no; a no is read and recorded like any verdict.
 - **H-47's rows are read, not rewritten**: no form of H-47's runs as an arm or a comparison, the comparisons are H-47's pinned rows in `tests/inhibition/pins/h47.rs`, and a chain that repeats a form is held to them.
 - **The code rules hold**: no `unsafe`; no `f32` or `f64`; checked or saturating arithmetic, as `clippy::arithmetic_side_effects` requires in a test crate root; every loop ends by construction ([ADR-0062](../docs/adr/0062-the-first-complete-sweeps-list.md)); the mutation gate catches every mutant in the lines the change touches ([ADR-0030](../docs/adr/0030-verification-governance.md)).
-- **The runs are dispatches** ([briefs/README.md](README.md#evidencing-a-round)). `npm run round:additive` names the calibration; if it exits 0, that is the calibration test H-48's stopping rule's step 2 names, at `scope=arms` beside the twelve jobs, on the protocol's commit. The reproduction runs the short forms at `scope=exhaustive -f only` and the twelve jobs again at `scope=arms`. No whole-domain test runs on the developer machine.
+- **The runs are dispatches** ([briefs/README.md](README.md#evidencing-a-round)), on the protocol's commit. The calibration test H-48's stopping rule's step 2 names runs at `scope=arms` beside the twelve jobs. If `npm run round:additive` exits 0 it is the whole calibration; if it exits 1, the whole tree's runs beside it at `scope=exhaustive`. The reproduction runs the short forms at `scope=exhaustive -f only`, and the calibration test and the twelve jobs again at `scope=arms`. No whole-domain test runs on the developer machine.
 - **The pull request opens as a draft with the round's first push** ([ADR-0223](../docs/adr/0223-the-gate-shortened-and-explorations-kept-as-tags.md)), and leaves draft with the commit that asks for the merge, which sets the round's ADRs to `accepted`.
 - **The branch** is `claude/089-a-night-kept-by-the-hosts-probe` from `main`, never rebased or force-pushed once a dispatch has run on it ([ADR-0186](../docs/adr/0186-merge-commits.md)). Conventional Commits with a real body ([CONTRIBUTING.md](../CONTRIBUTING.md#commit-messages)).
 - **The documents are ADR-0197's**: the new ADRs in its shape, the tables written by `node scripts/adr-index.mjs`, new text within `npm run spec:shape`'s limits.
@@ -69,14 +69,14 @@ Re-derived on 2026-11-14 at `main` `22cb69a`. Line numbers move; the names are w
   - Inside the test: while the gate has kept the same form at every gap so far, the chain's image and reads at each checkpoint held to H-47's pinned row of that form, and that form's fork's night image held to H-47's row at the gap before the choice. Every fork's probe, score and the choice are printed at each gap.
   - The calibration test, `…_paused`: on seed 22's eighth image from the assignment, path 0, the head and both forks of the gap at block 6, each night's image and reads held to H-47's pinned row at block 6.
   - Twelve `…_paused` jobs, one a cell, and twelve `…_exhaustive` short forms, the twelve within 4 800 s together on x86-64 as the reproduction reads them alone.
-  - `tests/inhibition/pins/h48.rs` with its placeholder tables: each cell's chain rows at the five checkpoints on the three paths; at each gap, for each fork, its night image and probe image by CRC-64, A's couplings at their highest over its six blocks and in its probe image, and its six counts; and each gap's choice.
+  - `tests/inhibition/pins/h48.rs` with its placeholder tables. Each cell's chain rows at the five checkpoints on the three paths, as H-47's. At each gap, for each fork: its night image and probe image by CRC-64, A's couplings at their highest over its six blocks and in its probe image, and its six counts. And each gap's choice.
   - The verdict's test over hand-made rows, fast, and over the pinned tables once they are written; clause 4 read from the chain's rows and every fork's.
 - [ ] **H-48's protocol, in a new ADR at the next free number (`ls docs/adr`), kind `protocol`, committed before any arm runs.**
   - Every constant of the harness listed with its value, and each term of [H-48's report](../docs/research/H-48.md#its-terms) tied to the code that reads it.
   - `npm run round:additive`'s reading quoted, and the calibration it names.
 - [ ] **The dispatches.**
   - The calibration and the twelve jobs together on the protocol's commit; the calibration read first.
-  - The tables pinned from the jobs' logs, then the reproduction: the short forms at `scope=exhaustive -f only`, and the twelve jobs again at `scope=arms`.
+  - The tables pinned from the jobs' logs, then the reproduction: the short forms at `scope=exhaustive -f only`, and the calibration test and the twelve jobs again at `scope=arms`.
 - [ ] **H-48's verdict, in a new ADR at the next free number, kind `measured`.**
   - The verdict per network, start and clause in one table; each predicted reading held or missed in a line; the stopping rule's step reached and the next decision it names.
   - Whether the schedule's sweep of 2026-11-18 has ended, and its record if it has.
@@ -142,8 +142,9 @@ By dispatch, never on the developer machine. A `ci.yml` dispatch is `POST /repos
 ```bash
 npm run round:additive -- origin/main <the protocol's commit>
 # exit 0, on this round's branch: inputs {"scope":"arms","tests":"<the calibration test> <the twelve jobs>"}
-# exit 1: the calibration at {"scope":"exhaustive","exclude":"<the round's own tests>"} beside {"scope":"arms","tests":"<the twelve jobs>"}
-# after the tables are pinned: inputs {"scope":"exhaustive","only":"<the twelve short forms>"} and {"scope":"arms","tests":"<the twelve jobs>"}
+# exit 1: {"scope":"exhaustive","exclude":"<the round's own tests>"} beside {"scope":"arms","tests":"<the calibration test> <the twelve jobs>"}
+# after the tables are pinned: inputs {"scope":"exhaustive","only":"<the twelve short forms>"} and {"scope":"arms","tests":"<the calibration test> <the twelve jobs>"}
+# exit 1 only, the cost table (briefs/README.md, item 4): node scripts/exhaustive-costs.mjs from <the calibration's shards> --run '<the calibration>' --keep scripts/exhaustive-costs.tsv > costs.new, then over the table
 node scripts/adr-index.mjs
 npx --no-install @spec-family/spec-brief archive 089 --strict --pr <n> --summary "<one paragraph>"
 ```
