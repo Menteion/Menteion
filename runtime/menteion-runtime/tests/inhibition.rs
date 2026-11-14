@@ -46985,3 +46985,1355 @@ fn a_plain_night_after_the_pair_s_head_of_a_first_mapping_on_seed_24_from_the_mi
  {
     nights_short(2, 3);
 }
+
+// ============================================================================ exploration 040
+
+// What a readout and the couplings keep (ADR-0257, exploration 040), which decides nothing: on
+// H-47's twelve cells, a floor, exploration 039's learner on each readout unit's count, which
+// learns the pair from a withheld run of H-47's chain and answers A's and the pair's reads at
+// H-47's checkpoints; and a ceiling, the search by forks over A's four couplings on path 0's image
+// at block 36 under H-47's night without replay, within H-25's bound of H-42's image.
+
+/// Exploration 039's search seed (ADR-0257).
+const E040_SEED: u64 = 0x0039_0255_0256_0088;
+
+/// The search's sizes (ADR-0257): P 16, G 10, E 4, M 16, S 3.
+const E040_BREEDING: fork_search::Breeding = fork_search::Breeding {
+    population: 16,
+    generations: 10,
+    kept: 4,
+    step: 16,
+    streams: 3,
+    seed: E040_SEED,
+};
+
+/// A factor's floor, its start and the most its top may be, in units of 1/256 (ADR-0257).
+const E040_LOW: i32 = 128;
+const E040_START: i32 = 256;
+const E040_TOP_MOST: i32 = 512;
+
+/// The four genes, A's couplings' factors in `couplings`' order: A→R0, A→R1, B→R0, B→R1.
+const E040_GENE_NAMES: [&str; 4] = ["a_r0", "a_r1", "b_r0", "b_r1"];
+
+/// The search's stream `s` is the read's stream `s + 1` (ADR-0257): its streams 1 to 3, its
+/// unseen ones 4 to 6. A read's stream `i` starts as `nights_read_from(i)` starts.
+const E040_STREAM_SHIFT: u32 = 1;
+
+/// The streams the corners and the start are read on: 1 to 6.
+const E040_STREAMS: [u32; 6] = [1, 2, 3, 4, 5, 6];
+
+/// The floor's weight on its own readout's units at the start (exploration 039's), so that it
+/// starts as the readouts select; 0 elsewhere.
+const E040_OWN: i16 = 16_384;
+
+/// The critic's constants (exploration 039's): a shift of 9 and a scale of 2.
+const E040_CRITIC: ValueCritic = ValueCritic { shift: 9, scale: 2 };
+
+/// An arms job's bound under ADR-0179's rule, 60 % of 240 minutes, in seconds.
+const E040_JOB_BOUND_S: u128 = 144 * 60;
+
+/// The ceiling's chain (ADR-0257): H-47's night without replay, by its index in `NIGHTS_GAPS`,
+/// on path 0.
+const E040_CHAIN_FORM: usize = 0;
+const E040_CHAIN_PATH: u64 = 0;
+
+const _: () = assert!(matches!(NIGHTS_GAPS[E040_CHAIN_FORM], NightsGap::NoReplay));
+const _: () = assert!(E040_LOW < E040_START && E040_START < E040_TOP_MOST);
+
+/// What the floor reads on a cell: A's sets; A's readout units in order (918 at 1 024 units), each
+/// one's readout, 0 or 1, and each unit's place among them; which of them each task reads as its
+/// readouts, A's task's then the pair's; A's four couplings in H-42's image; and the cell's name.
+struct E040Cell {
+    sets: [Set; 4],
+    units: Vec<u32>,
+    side: Vec<u8>,
+    place: Vec<Option<usize>>,
+    masks: [Vec<bool>; 2],
+    bound: [i64; 4],
+    name: String,
+}
+
+impl E040Cell {
+    /// The cell's floor units (ADR-0257), held: no unit of A or B in a readout and none in both
+    /// readouts; the pair's readout units all among A's, each on the same readout; no unit C or D
+    /// presents among the pair's readout units, so the floor sees no stimulus unit; H-46's targets
+    /// A's readout units; and the critic's constants exploration 039's.
+    fn new(start: &NightsStart) -> Self {
+        let name = start.name.clone();
+        let (sets, second) = (start.site.sets, start.theirs.sets);
+        let units: Vec<u32> = (0..SCAN_UNITS)
+            .filter(|&u| sets[2].contains(u) || sets[3].contains(u))
+            .collect();
+        let side: Vec<u8> = units
+            .iter()
+            .map(|&u| u8::from(sets[3].contains(u)))
+            .collect();
+        let mut place: Vec<Option<usize>> = vec![None; SCAN_UNITS as usize];
+        for (j, &u) in units.iter().enumerate() {
+            place[u as usize] = Some(j);
+        }
+        let presented = |u: u32| start.pair.presenting.iter().any(|p| p.contains(&u));
+        let (mut crossing, mut both, mut outside) = (0u32, 0u32, 0u32);
+        let (mut theirs, mut hidden) = ([0u32; 2], [0u32; 2]);
+        for u in 0..SCAN_UNITS {
+            let r = [sets[2].contains(u), sets[3].contains(u)];
+            let q = [second[2].contains(u), second[3].contains(u)];
+            let stimulus = sets[0].contains(u) || sets[1].contains(u);
+            crossing = crossing.saturating_add(u32::from(stimulus && (r[0] || r[1])));
+            both = both.saturating_add(u32::from(r[0] && r[1]));
+            outside = outside.saturating_add(u32::from((q[0] && !r[0]) || (q[1] && !r[1])));
+            for k in 0..2 {
+                theirs[k] = theirs[k].saturating_add(u32::from(q[k]));
+                hidden[k] = hidden[k].saturating_add(u32::from(r[k] && presented(u)));
+            }
+        }
+        let masks = [sets, second].map(|s| {
+            units
+                .iter()
+                .map(|&u| s[2].contains(u) || s[3].contains(u))
+                .collect::<Vec<bool>>()
+        });
+        let seen = units
+            .iter()
+            .zip(&masks[1])
+            .filter(|&(&u, &m)| m && presented(u))
+            .count();
+        assert_eq!(
+            (crossing, both, outside, seen),
+            (0, 0, 0, 0),
+            "{name}: no unit of A or B in a readout, none in both, the pair's readout units among A's on the same readout, none C or D presents"
+        );
+        assert_eq!(
+            start.site.groups.targets, units,
+            "{name}: H-46's targets are A's readout units"
+        );
+        assert_eq!(
+            start.made.critic, E040_CRITIC,
+            "{name}: the critic's constants"
+        );
+        let read = [0u8, 1].map(|r| side.iter().filter(|&&s| s == r).count());
+        eprintln!(
+            "DUMP {name} the floor's units: A's readout units {read:?}, {} in all; the pair's readout units {theirs:?}, each among A's on the same readout; units C or D presents among A's readout units {hidden:?}, among the pair's none; no unit of A or B in a readout, none in both",
+            units.len()
+        );
+        let made = start.made;
+        Self {
+            sets,
+            units,
+            side,
+            place,
+            masks,
+            bound: nights_bound(&made.couplings),
+            name,
+        }
+    }
+
+    /// Each of A's readout units' window count in the trial that began at `at`, by
+    /// `Readout::count_window`'s rule (exploration 039's loop), held to A's readouts' counts.
+    fn row(&self, exec: &mut Engine, at: u32, label: &str) -> Vec<u32> {
+        let opens = at.wrapping_add(WINDOW.from);
+        let mut row = vec![0u32; self.units.len()];
+        for &(tick, unit) in exec.train().iter().rev() {
+            let distance = tick.wrapping_sub(opens);
+            if (distance as i32) < 0 {
+                break;
+            }
+            if distance >= WINDOW.ticks {
+                continue;
+            }
+            if let Some(&Some(j)) = self.place.get(unit as usize) {
+                row[j] = row[j].saturating_add(1);
+            }
+        }
+        let readouts = Readout::new([self.sets[2], self.sets[3]]);
+        assert_eq!(
+            self.sums(&row),
+            readouts.count_window(exec.train(), opens, WINDOW.ticks),
+            "{label}: A's readout units' counts sum to A's readouts'"
+        );
+        row
+    }
+
+    /// A row's counts summed by readout.
+    fn sums(&self, row: &[u32]) -> [u32; 2] {
+        [0u8, 1].map(|r| {
+            row.iter()
+                .zip(&self.side)
+                .filter(|&(_, &s)| s == r)
+                .fold(0u32, |sum, (&c, _)| sum.saturating_add(c))
+        })
+    }
+
+    /// The floor's features of a trial of the task `pair` names: each readout unit's count where
+    /// that task reads the unit as a readout unit, and 0 where it does not.
+    fn features(&self, row: &[u32], pair: bool) -> Vec<u32> {
+        row.iter()
+            .zip(&self.masks[usize::from(pair)])
+            .map(|(&c, &m)| if m { c } else { 0 })
+            .collect()
+    }
+}
+
+/// The floor's learner (exploration 039's): a vector of `i16` weights for each answer over A's
+/// readout units, at first `E040_OWN` on its own readout's units and 0 elsewhere.
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct E040Learner {
+    weights: [Vec<i16>; 2],
+}
+
+impl E040Learner {
+    fn new(side: &[u8]) -> Self {
+        Self {
+            weights: [0u8, 1].map(|a| {
+                side.iter()
+                    .map(|&s| if s == a { E040_OWN } else { 0 })
+                    .collect()
+            }),
+        }
+    }
+
+    /// Its answer on a trial's features, the larger of `ValueCritic::value_q16` over its two
+    /// vectors at the critic's constants, a tie no answer; and both values.
+    fn answer(&self, features: &[u32]) -> (Option<u8>, [i32; 2]) {
+        let values = [0usize, 1].map(|a| {
+            E040_CRITIC.value_q16(
+                self.weights[a]
+                    .iter()
+                    .copied()
+                    .zip(features.iter().copied()),
+            )
+        });
+        let answer = match values[0].cmp(&values[1]) {
+            core::cmp::Ordering::Greater => Some(0u8),
+            core::cmp::Ordering::Less => Some(1u8),
+            core::cmp::Ordering::Equal => None,
+        };
+        (answer, values)
+    }
+
+    /// A trial learned (exploration 039's step): its answer, then that answer's weights moved by
+    /// `ValueCritic::step` on the error of `REWARD_Q16` where the answer is `right`, or its
+    /// negation, less that answer's value. No answer moves nothing. Returns the answer and the
+    /// weights of the moved vector on a rail of the `i16` after the step.
+    fn learn(&mut self, features: &[u32], right: u8) -> (Option<u8>, u32) {
+        let (answer, values) = self.answer(features);
+        let Some(a) = answer else {
+            return (None, 0);
+        };
+        let a = usize::from(a);
+        let reward = if answer == Some(right) {
+            REWARD_Q16
+        } else {
+            REWARD_Q16.saturating_neg()
+        };
+        let error = ValueCritic::error_q16(reward, values[a]);
+        for (w, &c) in self.weights[a].iter_mut().zip(features) {
+            *w = E040_CRITIC.step(*w, error, c);
+        }
+        let on = self.weights[a]
+            .iter()
+            .filter(|&&w| w == i16::MAX || w == i16::MIN)
+            .count();
+        (answer, u32::try_from(on).unwrap_or(u32::MAX))
+    }
+
+    /// Its weights summed by readout, each answer's `[readout 0, readout 1]`, and those on a rail.
+    fn summed(&self, side: &[u8]) -> ([[i64; 2]; 2], usize) {
+        let by = self.weights.each_ref().map(|w| {
+            [0u8, 1].map(|r| {
+                w.iter()
+                    .zip(side)
+                    .filter(|&(_, &s)| s == r)
+                    .fold(0i64, |sum, (&v, _)| sum.saturating_add(i64::from(v)))
+            })
+        });
+        let rail = self
+            .weights
+            .iter()
+            .flatten()
+            .filter(|&&w| w == i16::MAX || w == i16::MIN)
+            .count();
+        (by, rail)
+    }
+}
+
+/// A stretch of the floor's withheld run (ADR-0257): `nights_run`'s stretch of the pair's blocks
+/// from `image` and `from`, with the reward withheld. Each trial is held to present the pair's
+/// draw at the index H-47's chain presents there (`Task::stimulus_at`); each of A's readout units'
+/// window count is read, those the pair reads held to sum to the pair's readouts' counts; the
+/// learner, unmoved, is held to answer as the readouts select; and `learner` answers each trial
+/// and learns on it. Returns the image it writes.
+#[allow(clippy::too_many_arguments)]
+fn e040_stretch(
+    start: &NightsStart,
+    cell: &E040Cell,
+    image: &[u8],
+    blocks: usize,
+    label: &str,
+    from: ReadFrom,
+    learner: &mut E040Learner,
+    unmoved: &E040Learner,
+) -> Vec<u8> {
+    let site = &start.theirs;
+    let mut exec = night_engine(image, 0, Some(site.groups), |_| {});
+    let begun = couplings(&exec, &cell.sets);
+    let mut task = task_over(
+        site.sets,
+        SHAPE_F46,
+        Some(start.made.derived.cancel),
+        SCAN_UNITS,
+        Feedback::Withheld,
+        site.mirrored,
+        DRAWN_DELIVERY,
+    );
+    task.drive.seed = task.drive.seed.wrapping_add(from.drive);
+    let rule = task;
+    let answers = harness::answers_of(site.mirrored);
+    let (mut learned, mut none, mut stepped) = (Vec::new(), Vec::new(), Vec::new());
+    let (mut right_now, mut none_now, mut stepped_now, mut presented) = (0u32, 0u32, 0u32, 0u32);
+    let (read, trace) = run_on_presenting_from(
+        site.presented(from.trial),
+        site.sets,
+        &mut exec,
+        task,
+        SCAN_UNITS,
+        blocks.saturating_mul(BLOCK),
+        &[],
+        &mut |exec, trial, at, outcome| {
+            let index = from.trial.wrapping_add(trial as u64);
+            assert_eq!(
+                outcome.stimulus,
+                rule.stimulus_at(index),
+                "{label}: trial {trial} presents the pair's draw at index {index}"
+            );
+            presented = presented.saturating_add(1);
+            let row = cell.row(exec, at, label);
+            let features = cell.features(&row, true);
+            assert_eq!(
+                cell.sums(&features),
+                outcome.counts,
+                "{label}: trial {trial}, the pair's readout units' counts sum to its readouts'"
+            );
+            assert_eq!(
+                unmoved.answer(&features).0,
+                outcome.selection,
+                "{label}: trial {trial}, the learner unmoved answers as the readouts select"
+            );
+            let right = answers[usize::from(outcome.stimulus)];
+            let (answer, on) = learner.learn(&features, right);
+            right_now = right_now.saturating_add(u32::from(answer == Some(right)));
+            none_now = none_now.saturating_add(u32::from(answer.is_none()));
+            stepped_now = stepped_now.saturating_add(u32::from(on > 0));
+            if trial.wrapping_add(1) % BLOCK == 0 {
+                learned.push(right_now);
+                none.push(none_now);
+                stepped.push(stepped_now);
+                (right_now, none_now, stepped_now) = (0, 0, 0);
+            }
+        },
+    );
+    let ended = couplings(&exec, &cell.sets);
+    eprintln!(
+        "DUMP {label} withheld mirrored {} correct {:?} ties {:?} trace {trace:#018x} learner {learned:?} learner none {none:?} steps that left a weight on a rail {stepped:?} presented the pair's draw on {presented} of {} trials begun {begun:?} ended {ended:?} polarity {:?}",
+        site.mirrored,
+        curve(&read),
+        read.iter().map(|b| b.11).collect::<Vec<u32>>(),
+        blocks.saturating_mul(BLOCK),
+        read.iter().map(|b| (b.7, b.8)).collect::<Vec<_>>()
+    );
+    quiet(&mut exec);
+    let written = Image::encode(&exec).expect("quiescent");
+    undropped(exec, label);
+    written
+}
+
+/// What a path of the floor leaves: the withheld run's image at each checkpoint, and the learner
+/// there.
+struct E040Path {
+    images: Vec<Vec<u8>>,
+    learners: Vec<E040Learner>,
+}
+
+/// The floor's withheld run on path `j` (ADR-0257): from the start image, the pair's 36 blocks as
+/// H-47's chain presents them, each stretch from the path's first index, 6, 6, 6, 6 and 12 blocks,
+/// quieted and encoded between them, the reward withheld; the learner learns through them, and
+/// its weights and the image are kept at each checkpoint.
+fn e040_withheld(start: &NightsStart, cell: &E040Cell, j: u64) -> E040Path {
+    let unmoved = E040Learner::new(&cell.side);
+    let mut learner = unmoved.clone();
+    let mut at = start.image.to_vec();
+    let mut done = 0usize;
+    let mut path = E040Path {
+        images: Vec::with_capacity(NIGHTS_CHECKPOINTS.len()),
+        learners: Vec::with_capacity(NIGHTS_CHECKPOINTS.len()),
+    };
+    for &block in &NIGHTS_CHECKPOINTS {
+        let label = format!("{} floor path {j} blocks {block}", cell.name);
+        let blocks = block.saturating_sub(done);
+        at = e040_stretch(
+            start,
+            cell,
+            &at,
+            blocks,
+            &label,
+            path_from(j),
+            &mut learner,
+            &unmoved,
+        );
+        let (by, rail) = learner.summed(&cell.side);
+        eprintln!(
+            "DUMP {label} learner weights summed by readout, each answer's [readout 0, readout 1] {by:?}; on a rail {rail} of {}",
+            cell.side.len().saturating_mul(2)
+        );
+        path.images.push(at.clone());
+        path.learners.push(learner.clone());
+        done = block;
+    }
+    path
+}
+
+/// One read of the floor (ADR-0257).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct E040FloorRead {
+    readouts: u8,
+    floor: u8,
+    none: u8,
+    ties: u8,
+    past: bool,
+}
+
+/// A read of the floor (ADR-0257): `spread_read`'s block of `site`'s mapping on a fork of `image`
+/// from stream `i`, the reward withheld, each of A's readout units' window count read as the
+/// stretch reads it and held as it holds them; the learner of the checkpoint answers each trial
+/// and does not learn. A's couplings are read against H-42's image at its start and end.
+#[allow(clippy::too_many_arguments)]
+fn e040_floor_read(
+    cell: &E040Cell,
+    site: &NightSite,
+    pair: bool,
+    image: &[u8],
+    label: &str,
+    i: u64,
+    learner: &E040Learner,
+    unmoved: &E040Learner,
+) -> E040FloorRead {
+    let from = nights_read_from(i);
+    let mut exec = night_engine(image, 0, Some(site.groups), |_| {});
+    let begun = couplings(&exec, &cell.sets);
+    let mut task = task_over(
+        site.sets,
+        SHAPE_F46,
+        Some(site.made.derived.cancel),
+        SCAN_UNITS,
+        Feedback::Withheld,
+        site.mirrored,
+        DRAWN_DELIVERY,
+    );
+    task.drive.seed = task.drive.seed.wrapping_add(from.drive);
+    let answers = harness::answers_of(site.mirrored);
+    let (mut floor, mut none) = (0u32, 0u32);
+    let mut words = [0u64; 5];
+    let (read, trace) = run_on_presenting_from(
+        site.presented(from.trial),
+        site.sets,
+        &mut exec,
+        task,
+        SCAN_UNITS,
+        BLOCK,
+        &[],
+        &mut |exec, trial, at, outcome| {
+            let row = cell.row(exec, at, label);
+            let features = cell.features(&row, pair);
+            assert_eq!(
+                cell.sums(&features),
+                outcome.counts,
+                "{label}: trial {trial}, its readout units' counts sum to its readouts'"
+            );
+            assert_eq!(
+                unmoved.answer(&features).0,
+                outcome.selection,
+                "{label}: trial {trial}, the learner unmoved answers as the readouts select"
+            );
+            let answer = learner.answer(&features).0;
+            let right = answer == Some(answers[usize::from(outcome.stimulus)]);
+            floor = floor.saturating_add(u32::from(right));
+            none = none.saturating_add(u32::from(answer.is_none()));
+            let bit = 1u64.wrapping_shl(trial as u32);
+            for (word, set) in words.iter_mut().zip([
+                outcome.stimulus == 1,
+                outcome.correct,
+                outcome.selection.is_none(),
+                right,
+                answer.is_none(),
+            ]) {
+                if set {
+                    *word |= bit;
+                }
+            }
+        },
+    );
+    let ended = couplings(&exec, &cell.sets);
+    let past =
+        (0..4).any(|p| over_bound(begun[p], cell.bound[p]) || over_bound(ended[p], cell.bound[p]));
+    let correct = read.first().map_or(0, |b| b.0);
+    let ties = read.first().map_or(0, |b| b.11);
+    eprintln!(
+        "DUMP {label} read mirrored {} correct [{correct}] floor [{floor}] floor none {none} ties [{ties}] trace {trace:#018x} spread {} {from:?} stimuli {:#018x} right {:#018x} tied {:#018x} floor right {:#018x} floor none {:#018x} begun {begun:?} ended {ended:?} past {past}",
+        site.mirrored,
+        nights_what(i),
+        words[0],
+        words[1],
+        words[2],
+        words[3],
+        words[4]
+    );
+    undropped(exec, label);
+    let byte = |v: u32| u8::try_from(v).unwrap_or(u8::MAX);
+    E040FloorRead {
+        readouts: byte(correct),
+        floor: byte(floor),
+        none: byte(none),
+        ties: byte(ties),
+        past,
+    }
+}
+
+/// A read of the floor to make: its path, checkpoint, mapping (the pair's when true) and stream.
+type E040FloorKey = (u64, usize, bool, u64);
+
+/// The floor's reads on the paths given (ADR-0257): at each checkpoint, the withheld run's image
+/// read `NIGHTS_READS` times of A and as many of the pair, two at a time, each answered by the
+/// learner of that checkpoint; then a row for each path and checkpoint.
+fn e040_floor_reads(start: &NightsStart, cell: &E040Cell, paths: &BTreeMap<u64, E040Path>) {
+    let unmoved = E040Learner::new(&cell.side);
+    let mut keys: Vec<E040FloorKey> = Vec::new();
+    for &j in paths.keys() {
+        for c in 0..NIGHTS_CHECKPOINTS.len() {
+            for pair in [false, true] {
+                for i in 0..NIGHTS_READS {
+                    keys.push((j, c, pair, i));
+                }
+            }
+        }
+    }
+    let read = Mutex::new(BTreeMap::new());
+    two_at_a_time(&keys, |&(j, c, pair, i)| {
+        let path = &paths[&j];
+        let (site, which) = if pair {
+            (&start.theirs, "second")
+        } else {
+            (&start.site, "first")
+        };
+        let label = format!(
+            "{} floor path {j} blocks {} {which}",
+            cell.name, NIGHTS_CHECKPOINTS[c]
+        );
+        let got = e040_floor_read(
+            cell,
+            site,
+            pair,
+            &path.images[c],
+            &label,
+            i,
+            &path.learners[c],
+            &unmoved,
+        );
+        read.lock()
+            .expect("a read ended")
+            .insert((j, c, pair, i), got);
+    });
+    let read = read.into_inner().expect("every read ended");
+    for &j in paths.keys() {
+        for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+            let of = |pair: bool, f: fn(&E040FloorRead) -> u8| -> [u8; 16] {
+                core::array::from_fn(|i| f(&read[&(j, c, pair, i as u64)]))
+            };
+            let past = [false, true]
+                .iter()
+                .flat_map(|&pair| (0..NIGHTS_READS).map(move |i| (pair, i)))
+                .filter(|&(pair, i)| read[&(j, c, pair, i)].past)
+                .count();
+            eprintln!(
+                "DUMP {} floor path {j} block {block} row first floor {:?} second floor {:?} first readouts {:?} second readouts {:?} first none {:?} second none {:?} reads past 1.30 {past}",
+                cell.name,
+                of(false, |r| r.floor),
+                of(true, |r| r.floor),
+                of(false, |r| r.readouts),
+                of(true, |r| r.readouts),
+                of(false, |r| r.none),
+                of(true, |r| r.none)
+            );
+        }
+    }
+}
+
+/// H-47's pinned rows of the cell (ADR-0236), printed beside the floor and the ceiling: each
+/// form's A and pair on each path at each checkpoint, sixteen streams each.
+fn e040_h47(start: &NightsStart, n: usize, s: usize) {
+    for (f, gap) in NIGHTS_GAPS.iter().enumerate() {
+        let rows = NIGHTS_ROWS[n][s][f];
+        assert!(!rows.is_empty(), "{}: H-47's rows are pinned", start.name);
+        for (p, &j) in NIGHTS_PATHS.iter().enumerate() {
+            for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+                let row = nights_row(rows, p, c).expect("H-47's pinned row");
+                eprintln!(
+                    "DUMP {} h47 {} path {j} block {block} first {:?} second {:?} couplings {:?}",
+                    start.name,
+                    gap.name(),
+                    row.first,
+                    row.second,
+                    row.couplings
+                );
+            }
+        }
+    }
+}
+
+/// The ceiling's chain (ADR-0257): on path 0, the pair's head and H-47's night without replay at
+/// each gap with the blocks between, as `nights_job` runs that form, to block 36. Each checkpoint's
+/// image, its couplings, each coupling's highest over the stretch before it and the gap's gain are
+/// held to H-47's pinned row of that form, which stops the job where they do not hold. Returns the
+/// image at block 36.
+fn e040_chain(start: &NightsStart, n: usize, s: usize) -> Vec<u8> {
+    let (f, j) = (E040_CHAIN_FORM, E040_CHAIN_PATH);
+    let pinned = NIGHTS_ROWS[n][s][f];
+    let p = NIGHTS_PATHS
+        .iter()
+        .position(|&x| x == j)
+        .expect("a path of H-47's");
+    let first = mapping_patterns(&start.site, start.image);
+    let name = format!("{} ceiling path {j} {}", start.name, NIGHTS_GAPS[f].name());
+    let head = format!("{name} head blocks {NIGHTS_EVERY}");
+    let (mut at, mut ends) = nights_run(start, start.image, NIGHTS_EVERY, &head, path_from(j));
+    for (c, &block) in NIGHTS_CHECKPOINTS.iter().enumerate() {
+        let label = format!("{name} blocks {block}");
+        let (image, gain) = if block > NIGHTS_LAST {
+            let (image, last) = nights_run(start, &at, NIGHTS_ON, &label, path_from(j));
+            ends = last;
+            (image, None)
+        } else {
+            if block != NIGHTS_EVERY {
+                (at, ends) = nights_run(start, &at, NIGHTS_EVERY, &label, path_from(j));
+            }
+            let gap = format!("{name} gap {block}");
+            let (image, gain) = nights_gap(start, NIGHTS_GAPS[f], &at, &first, &gap);
+            (image, Some(gain))
+        };
+        let exec = night_engine(&image, 0, Some(start.site.groups), |_| {});
+        let held = (
+            crc64(&image),
+            couplings(&exec, &start.site.sets),
+            nights_highest(&ends),
+            gain,
+        );
+        undropped(exec, &label);
+        let row = nights_row(pinned, p, c).expect("H-47's pinned row");
+        assert_eq!(
+            held,
+            (row.image, row.couplings, row.highest, row.gain),
+            "{label}: H-47's pinned row of its night without replay on path {j}"
+        );
+        eprintln!(
+            "DUMP {label} holds H-47's pinned row: image {:#018x} couplings {:?} highest {:?} gain {:?}",
+            held.0, held.1, held.2, held.3
+        );
+        at = image;
+    }
+    at
+}
+
+/// The ceiling's read of genes on a stream (ADR-0257): A's correct trials and the pair's, one
+/// withheld block each, and which of A's four couplings stood past 1.30 of H-42's image's at
+/// either read's start or end.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct E040Read {
+    first: u32,
+    second: u32,
+    past: [bool; 4],
+}
+
+impl E040Read {
+    /// Its score, A's and the pair's summed.
+    fn sum(&self) -> u32 {
+        self.first.saturating_add(self.second)
+    }
+}
+
+/// The ceiling on a cell (ADR-0257): the image at block 36, H-42's couplings, each gene's top, the
+/// label, and the reads kept by genes and stream for the search, the start and the corners.
+struct E040Ceiling<'s, 'a> {
+    start: &'s NightsStart<'a>,
+    image: Vec<u8>,
+    bound: [i64; 4],
+    tops: [i32; 4],
+    name: String,
+    kept: Mutex<BTreeMap<([i32; 4], u32), E040Read>>,
+}
+
+/// The synapses one of A's couplings counts in an engine, as brief 088's writer selects them:
+/// from an excitatory unit of `from` onto any unit of `into`; their weights.
+fn e040_weights(exec: &Engine, from: Set, into: Set) -> Vec<i16> {
+    let mut weights = Vec::new();
+    for unit in exec.units() {
+        if unit.flags & FLAG_INHIBITORY != 0 || !from.contains(unit.id as u32) {
+            continue;
+        }
+        for s in unit.fan_out(exec.blocks()) {
+            if into.contains(s.target) {
+                weights.push(s.weight_q1_15);
+            }
+        }
+    }
+    weights
+}
+
+impl<'s, 'a> E040Ceiling<'s, 'a> {
+    /// The ceiling on `image` (ADR-0257): each gene's top, the largest factor of at most
+    /// `E040_TOP_MOST` whose coupling, written by brief 088's rule (`scaled_weight`) on that
+    /// image, times 100 is at most H-42's times 130, found over every factor from the most down
+    /// and held at the top, and one above it, by the writer itself on a fork.
+    fn new(start: &'s NightsStart<'a>, cell: &E040Cell, image: Vec<u8>) -> Self {
+        let name = format!("{} ceiling", start.name);
+        let [a, b, r0, r1] = cell.sets;
+        let pairs = [(a, r0), (a, r1), (b, r0), (b, r1)];
+        let exec = night_engine(&image, 0, None, |_| {});
+        let own = couplings(&exec, &cell.sets);
+        let weights = pairs.map(|(from, into)| e040_weights(&exec, from, into));
+        undropped(exec, &name);
+        let tops: [i32; 4] = core::array::from_fn(|i| {
+            let (from, into) = pairs[i];
+            let written = |f: i32| {
+                weights[i].iter().fold(0i64, |sum, &w| {
+                    sum.saturating_add(i64::from(fork_search::scaled_weight(w, f)))
+                })
+            };
+            assert_eq!(
+                written(E040_START),
+                own[i],
+                "{name}: unwritten, the image's"
+            );
+            let top = (E040_START..=E040_TOP_MOST)
+                .rev()
+                .find(|&f| !over_bound(written(f), cell.bound[i]))
+                .unwrap_or_else(|| panic!("{name}: {} within 1.30 at 256", E040_GENE_NAMES[i]));
+            let by_writer = |f: i32| {
+                let mut exec = night_engine(&image, 0, None, |_| {});
+                fork_search::scale_coupling(&mut exec, from, into, f);
+                let got = coupling(&exec, from, into);
+                undropped(exec, &name);
+                got
+            };
+            let at_top = by_writer(top);
+            assert_eq!(at_top, written(top), "{name}: the writer writes its rule");
+            assert!(!over_bound(at_top, cell.bound[i]), "{name}: the top within");
+            let above = (top < E040_TOP_MOST).then(|| by_writer(top.saturating_add(1)));
+            if let Some(above) = above {
+                assert!(over_bound(above, cell.bound[i]), "{name}: past the top");
+            }
+            eprintln!(
+                "DUMP {name} top {} {top}: written {at_top} at it, {above:?} one above, H-42's {}, the image's {}",
+                E040_GENE_NAMES[i], cell.bound[i], own[i]
+            );
+            top
+        });
+        Self {
+            start,
+            image,
+            bound: cell.bound,
+            tops,
+            name,
+            kept: Mutex::new(BTreeMap::new()),
+        }
+    }
+
+    /// The four genes (ADR-0257): each from `E040_LOW` to its top, starting at `E040_START`.
+    fn genes(&self) -> [fork_search::Gene; 4] {
+        core::array::from_fn(|i| fork_search::Gene {
+            name: E040_GENE_NAMES[i],
+            min: E040_LOW,
+            max: self.tops[i],
+            start: E040_START,
+        })
+    }
+
+    /// The read of `genes` on stream `stream`, kept: made once, whichever asks first.
+    fn read(&self, genes: [i32; 4], stream: u32) -> E040Read {
+        let key = (genes, stream);
+        if let Some(&kept) = self.kept.lock().expect("unpoisoned").get(&key) {
+            return kept;
+        }
+        let read = self.read_once(genes, stream);
+        self.kept.lock().expect("unpoisoned").insert(key, read);
+        read
+    }
+
+    /// One read (ADR-0257): A's block and the pair's at once, each on its own fork.
+    fn read_once(&self, genes: [i32; 4], stream: u32) -> E040Read {
+        let label = format!("{} read genes {genes:?} stream {stream}", self.name);
+        let (first, second) = std::thread::scope(|scope| {
+            let theirs = scope.spawn(|| self.block(genes, stream, true, &label));
+            let mine = self.block(genes, stream, false, &label);
+            (mine, theirs.join().expect("the pair's read ended"))
+        });
+        let read = E040Read {
+            first: first.0,
+            second: second.0,
+            past: core::array::from_fn(|p| first.1[p] || second.1[p]),
+        };
+        eprintln!(
+            "DUMP {label} A {} pair {} sum {} past {:?}",
+            read.first,
+            read.second,
+            read.sum(),
+            read.past
+        );
+        read
+    }
+
+    /// One block of a read: a fork of the image under the running configuration, A's four
+    /// couplings written by brief 088's writer, the six groups set from the written engine's
+    /// `coupling_sum`, then one block of A's mapping or the pair's (`pair`) with the reward
+    /// withheld on stream `stream`, as `nights_read_from` starts it. Returns its correct trials and
+    /// which couplings stood past 1.30 of H-42's at its start or its end.
+    fn block(&self, genes: [i32; 4], stream: u32, pair: bool, label: &str) -> (u32, [bool; 4]) {
+        let start = self.start;
+        let (site, which) = if pair {
+            (&start.theirs, "second")
+        } else {
+            (&start.site, "first")
+        };
+        let label = format!("{label} {which}");
+        let sets = start.site.sets;
+        let groups = start.site.groups;
+        let mut exec = night_engine(&self.image, 0, None, |_| {});
+        let written = fork_search::scale_couplings(&mut exec, &sets, genes);
+        let values: Vec<i64> = groups
+            .sources
+            .iter()
+            .chain(groups.further.iter().map(|g| &g.0))
+            .map(|units| {
+                exec.coupling_sum(units, &groups.targets)
+                    .expect("excitatory units once each, and every unit in the arena")
+            })
+            .collect();
+        let held: Vec<(&[u32], i64)> = groups
+            .sources
+            .iter()
+            .chain(groups.further.iter().map(|g| &g.0))
+            .zip(&values)
+            .map(|(units, &v)| (units.as_slice(), v))
+            .collect();
+        assert!(
+            exec.set_zero_sum(&held, &groups.targets),
+            "every source excitatory and in the arena, once, and every target in the arena"
+        );
+        let begun = couplings(&exec, &sets);
+        let from = nights_read_from(u64::from(stream));
+        let mut task = task_over(
+            site.sets,
+            SHAPE_F46,
+            Some(start.made.derived.cancel),
+            SCAN_UNITS,
+            Feedback::Withheld,
+            site.mirrored,
+            DRAWN_DELIVERY,
+        );
+        task.drive.seed = task.drive.seed.wrapping_add(from.drive);
+        let mut words = [0u64; 3];
+        let (read, trace) = run_on_presenting_from(
+            site.presented(from.trial),
+            site.sets,
+            &mut exec,
+            task,
+            SCAN_UNITS,
+            BLOCK,
+            &[],
+            &mut |_, trial, _, outcome| {
+                let bit = 1u64.wrapping_shl(trial as u32);
+                for (word, set) in words.iter_mut().zip([
+                    outcome.stimulus == 1,
+                    outcome.correct,
+                    outcome.selection.is_none(),
+                ]) {
+                    if set {
+                        *word |= bit;
+                    }
+                }
+            },
+        );
+        let ended = couplings(&exec, &sets);
+        let past: [bool; 4] = core::array::from_fn(|p| {
+            over_bound(begun[p], self.bound[p]) || over_bound(ended[p], self.bound[p])
+        });
+        let correct = read.first().map_or(0, |b| b.0);
+        eprintln!(
+            "DUMP {label} correct {correct} ties {} trace {trace:#018x} written {written:?} values {values:?} begun {begun:?} ended {ended:?} bound {:?} past {past:?} stimuli {:#018x} right {:#018x} tied {:#018x} gain {}",
+            read.first().map_or(0, |b| b.11),
+            self.bound,
+            words[0],
+            words[1],
+            words[2],
+            exec.homeostasis().synaptic_gain_q16
+        );
+        undropped(exec, &label);
+        (correct, past)
+    }
+
+    /// The start, every factor at 256, read on streams 1 to 6.
+    fn start_reads(&self) {
+        let genes = [E040_START; 4];
+        let reads = E040_STREAMS.map(|s| self.read(genes, s));
+        eprintln!(
+            "DUMP {} start genes {genes:?} A {:?} pair {:?} sums {:?}",
+            self.name,
+            reads.map(|r| r.first),
+            reads.map(|r| r.second),
+            reads.map(|r| r.sum())
+        );
+    }
+
+    /// The search by forks over the four genes (ADR-0257), each score A's and the pair's summed on
+    /// a search stream, then the best's reads on streams 1 to 6.
+    fn search(&self, breeding: fork_search::Breeding) -> fork_search::Searched {
+        let genes = self.genes();
+        let mut objective = |genes: &[i32], s: u32| {
+            let genes: [i32; 4] = genes.try_into().expect("four genes");
+            i64::from(self.read(genes, s.saturating_add(E040_STREAM_SHIFT)).sum())
+        };
+        let searched = fork_search::search_by_forks(&genes, breeding, &self.name, &mut objective);
+        let best: [i32; 4] = searched
+            .best
+            .genes
+            .as_slice()
+            .try_into()
+            .expect("four genes");
+        let reads = E040_STREAMS.map(|s| self.read(best, s));
+        let past = reads.iter().fold([false; 4], |any, r| {
+            core::array::from_fn(|p| any[p] || r.past[p])
+        });
+        eprintln!(
+            "DUMP {} best genes {best:?} scored in g {} i {} scores {:?} unseen {:?} A {:?} pair {:?} past 1.30 on any of its reads {past:?}",
+            self.name,
+            searched.best.generation,
+            searched.best.index,
+            searched.best.scores,
+            searched.unseen,
+            reads.map(|r| r.first),
+            reads.map(|r| r.second)
+        );
+        searched
+    }
+
+    /// The box's sixteen corners on streams 1 to 6 (ADR-0257), each gene at its floor or its top;
+    /// the best on streams 1 to 3 by the sum, the first corner of the largest.
+    fn corners(&self) {
+        let mut scored: Vec<([i32; 4], [E040Read; 6])> = Vec::with_capacity(16);
+        for c in 0..16u32 {
+            let genes: [i32; 4] = core::array::from_fn(|j| {
+                if c.wrapping_shr(j as u32) & 1 == 1 {
+                    self.tops[j]
+                } else {
+                    E040_LOW
+                }
+            });
+            let reads = E040_STREAMS.map(|s| self.read(genes, s));
+            let past = reads.iter().fold([false; 4], |any, r| {
+                core::array::from_fn(|p| any[p] || r.past[p])
+            });
+            eprintln!(
+                "DUMP {} corner {c} genes {genes:?} A {:?} pair {:?} sums {:?} past 1.30 on any of its reads {past:?}",
+                self.name,
+                reads.map(|r| r.first),
+                reads.map(|r| r.second),
+                reads.map(|r| r.sum())
+            );
+            scored.push((genes, reads));
+        }
+        let sum3 = |r: &[E040Read; 6]| r[..3].iter().fold(0u32, |t, x| t.saturating_add(x.sum()));
+        let best = scored
+            .iter()
+            .fold(None::<&([i32; 4], [E040Read; 6])>, |best, c| match best {
+                Some(b) if sum3(&b.1) >= sum3(&c.1) => Some(b),
+                _ => Some(c),
+            })
+            .expect("sixteen corners");
+        eprintln!(
+            "DUMP {} corners best genes {:?} scores {:?} unseen {:?} A {:?} pair {:?}",
+            self.name,
+            best.0,
+            &best.1.map(|r| r.sum())[..3],
+            &best.1.map(|r| r.sum())[3..],
+            best.1.map(|r| r.first),
+            best.1.map(|r| r.second)
+        );
+    }
+
+    /// The reads kept, and those past 1.30 of H-42's image's (ADR-0257's third reading).
+    fn summary(&self) {
+        let kept = self.kept.lock().expect("unpoisoned");
+        let past: Vec<&([i32; 4], u32)> = kept
+            .iter()
+            .filter(|(_, r)| r.past.iter().any(|&p| p))
+            .map(|(k, _)| k)
+            .collect();
+        eprintln!(
+            "DUMP {} {} reads kept, {} of them past 1.30 of H-42's image's: {past:?}",
+            self.name,
+            kept.len(),
+            past.len()
+        );
+    }
+}
+
+/// One piece of a job's first part, two at a time: the ceiling's chain, or the floor's withheld
+/// run on a path.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum E040Work {
+    Chain,
+    Withheld(u64),
+}
+
+/// What a job's first part leaves: the chain's image at block 36 where it ran, each path's floor,
+/// and each piece's milliseconds.
+type E040First = (
+    Option<Vec<u8>>,
+    BTreeMap<u64, E040Path>,
+    Vec<(E040Work, u128)>,
+);
+
+/// A job's first part (ADR-0257): its pieces two at a time, each timed.
+fn e040_first_part(
+    start: &NightsStart,
+    cell: &E040Cell,
+    n: usize,
+    s: usize,
+    work: &[E040Work],
+) -> E040First {
+    let chain = Mutex::new(None);
+    let paths = Mutex::new(BTreeMap::new());
+    let timed = Mutex::new(Vec::new());
+    two_at_a_time(work, |&w| {
+        let at = std::time::Instant::now();
+        match w {
+            E040Work::Chain => {
+                let image = e040_chain(start, n, s);
+                *chain.lock().expect("unpoisoned") = Some(image);
+            }
+            E040Work::Withheld(j) => {
+                let path = e040_withheld(start, cell, j);
+                paths.lock().expect("unpoisoned").insert(j, path);
+            }
+        }
+        let ms = at.elapsed().as_millis();
+        eprintln!("DUMP {} {w:?} done in {ms} ms", cell.name);
+        timed.lock().expect("unpoisoned").push((w, ms));
+    });
+    (
+        chain.into_inner().expect("unpoisoned"),
+        paths.into_inner().expect("unpoisoned"),
+        timed.into_inner().expect("unpoisoned"),
+    )
+}
+
+/// A job of exploration 040 (ADR-0257) on network `n` from start `s`: the floor on paths 0, 5 and
+/// 6 where `floor`, the ceiling where `ceiling`. First the chain and the withheld runs two at a
+/// time, then the floor's reads two at a time, then the ceiling's tops, the start, the search and
+/// the corners, each of the ceiling's reads A's and the pair's at once.
+fn e040_job(n: usize, s: usize, floor: bool, ceiling: bool) {
+    let clock = std::time::Instant::now();
+    with_nights(n, s, "e040", |start| {
+        let cell = E040Cell::new(start);
+        eprintln!(
+            "DUMP {} ready in {} ms; the critic {:?}; the search's seed {E040_SEED:#018x}, P {} G {} E {} M {} S {}; floor {floor} ceiling {ceiling}",
+            cell.name,
+            clock.elapsed().as_millis(),
+            start.made.critic,
+            E040_BREEDING.population,
+            E040_BREEDING.generations,
+            E040_BREEDING.kept,
+            E040_BREEDING.step,
+            E040_BREEDING.streams
+        );
+        e040_h47(start, n, s);
+        let mut work = Vec::new();
+        if ceiling {
+            work.push(E040Work::Chain);
+        }
+        if floor {
+            work.extend(NIGHTS_PATHS.iter().map(|&j| E040Work::Withheld(j)));
+        }
+        let (chain, paths, _) = e040_first_part(start, &cell, n, s, &work);
+        eprintln!(
+            "DUMP {} first part done at {} ms",
+            cell.name,
+            clock.elapsed().as_millis()
+        );
+        if floor {
+            e040_floor_reads(start, &cell, &paths);
+            eprintln!(
+                "DUMP {} floor done at {} ms",
+                cell.name,
+                clock.elapsed().as_millis()
+            );
+        }
+        if let Some(image) = chain {
+            let ceiling = E040Ceiling::new(start, &cell, image);
+            ceiling.start_reads();
+            ceiling.search(E040_BREEDING);
+            ceiling.corners();
+            ceiling.summary();
+            eprintln!(
+                "DUMP {} ceiling done at {} ms",
+                cell.name,
+                clock.elapsed().as_millis()
+            );
+        }
+        eprintln!(
+            "DUMP {} done in {} ms",
+            cell.name,
+            clock.elapsed().as_millis()
+        );
+    });
+}
+
+/// The trial of exploration 040's harness (ADR-0257), on seed 22's first mapping from the
+/// assignment, whose start learns its mapping first: the start, path 0's chain to block 36 beside
+/// the floor's withheld run on path 0, the floor's reads on path 0, the tops and one generation of
+/// the search, each timed, and each job's time projected from them. Nothing is pinned.
+#[test]
+#[ignore]
+fn the_harness_of_what_a_readout_and_the_couplings_keep_explore() {
+    let clock = std::time::Instant::now();
+    let (n, s) = (0usize, 2usize);
+    with_nights(n, s, "e040 trial", |start| {
+        let cell = E040Cell::new(start);
+        let ready = clock.elapsed().as_millis();
+        e040_h47(start, n, s);
+        let work = [E040Work::Chain, E040Work::Withheld(E040_CHAIN_PATH)];
+        let at = std::time::Instant::now();
+        let (chain, paths, timed) = e040_first_part(start, &cell, n, s, &work);
+        let first_ms = at.elapsed().as_millis();
+        let of = |w: E040Work| timed.iter().find(|t| t.0 == w).map_or(0, |t| t.1);
+        let (chain_ms, withheld_ms) = (of(E040Work::Chain), of(E040Work::Withheld(0)));
+        let at = std::time::Instant::now();
+        e040_floor_reads(start, &cell, &paths);
+        let floor_ms = at.elapsed().as_millis();
+        let floor_reads = NIGHTS_CHECKPOINTS
+            .len()
+            .saturating_mul(2)
+            .saturating_mul(NIGHTS_READS as usize);
+        let image = chain.expect("the chain ran");
+        let at = std::time::Instant::now();
+        let ceiling = E040Ceiling::new(start, &cell, image);
+        let tops_ms = at.elapsed().as_millis();
+        let one = fork_search::Breeding {
+            generations: 1,
+            ..E040_BREEDING
+        };
+        let at = std::time::Instant::now();
+        ceiling.search(one);
+        let generation_ms = at.elapsed().as_millis();
+        let reads = ceiling.kept.lock().expect("unpoisoned").len();
+        let as_u = |x: usize| u128::try_from(x).expect("a count");
+        let read_ms = generation_ms.checked_div(as_u(reads)).expect("a read made");
+        let floor_read_ms = floor_ms.checked_div(as_u(floor_reads)).expect("reads made");
+        // A full job: the first part, the chain and three withheld runs two at a time, ending
+        // within half the work and half the longest piece; the floor's reads, three paths', at
+        // the trial's rate two at a time; the tops; and the ceiling's reads, a search's
+        // P S + (G − 1)(P − E) S + S, the corners' 16 × 6 and the start's three unseen, at the
+        // generation's rate.
+        let b = E040_BREEDING;
+        let per_search = b
+            .population
+            .saturating_add(
+                b.generations
+                    .saturating_sub(1)
+                    .saturating_mul(b.population.saturating_sub(b.kept)),
+            )
+            .saturating_mul(b.streams as usize)
+            .saturating_add(b.streams as usize);
+        let corners = 16usize.saturating_mul(E040_STREAMS.len());
+        let ceiling_reads = per_search.saturating_add(corners).saturating_add(3);
+        let paths_n = as_u(NIGHTS_PATHS.len());
+        let withheld_all = withheld_ms.saturating_mul(paths_n);
+        let both_first = chain_ms
+            .saturating_add(withheld_all)
+            .saturating_add(chain_ms.max(withheld_ms))
+            .saturating_div(2);
+        let floor_first = withheld_all.saturating_add(withheld_ms).saturating_div(2);
+        let floor_all = floor_read_ms.saturating_mul(as_u(floor_reads).saturating_mul(paths_n));
+        let ceiling_all = tops_ms.saturating_add(read_ms.saturating_mul(as_u(ceiling_reads)));
+        let whole = ready
+            .saturating_add(both_first)
+            .saturating_add(floor_all)
+            .saturating_add(ceiling_all);
+        let floor_job = ready.saturating_add(floor_first).saturating_add(floor_all);
+        let ceiling_job = ready.saturating_add(chain_ms).saturating_add(ceiling_all);
+        let within = |ms: u128| ms.saturating_div(1_000) <= E040_JOB_BOUND_S;
+        eprintln!(
+            "DUMP {} timed: ready {ready} ms; the chain {chain_ms} ms beside the withheld run on path 0 {withheld_ms} ms, {first_ms} ms both; the floor's {floor_reads} reads on path 0 {floor_ms} ms two at a time, {floor_read_ms} ms a read; the tops {tops_ms} ms; a generation of {reads} reads {generation_ms} ms, {read_ms} ms a read of A and the pair at once; a job's ceiling reads {ceiling_reads} ({per_search} the search, {corners} the corners, 3 the start's unseen)",
+            cell.name
+        );
+        eprintln!(
+            "DUMP {} projected: a whole job {whole} ms (within {}), the floor alone {floor_job} ms (within {}), the ceiling alone {ceiling_job} ms (within {}), against {E040_JOB_BOUND_S} s",
+            cell.name,
+            within(whole),
+            within(floor_job),
+            within(ceiling_job)
+        );
+        eprintln!(
+            "DUMP {} done in {} ms",
+            cell.name,
+            clock.elapsed().as_millis()
+        );
+    });
+}
+
+/// Exploration 040 on H-47's cell the eighth image on seed 22, from the assignment (ADR-0257).
+#[test]
+#[ignore]
+fn what_a_readout_and_the_couplings_keep_of_the_eighth_image_on_seed_22_from_the_assignment_explore()
+ {
+    e040_job(0, 0, true, true);
+}
+
+/// Exploration 040 on H-47's cell the eighth image on seed 22, from the mirrored assignment (ADR-0257).
+#[test]
+#[ignore]
+fn what_a_readout_and_the_couplings_keep_of_the_eighth_image_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    e040_job(0, 1, true, true);
+}
+
+/// Exploration 040 on H-47's cell a first mapping on seed 22, from the assignment (ADR-0257).
+#[test]
+#[ignore]
+fn what_a_readout_and_the_couplings_keep_of_a_first_mapping_on_seed_22_from_the_assignment_explore()
+{
+    e040_job(0, 2, true, true);
+}
+
+/// Exploration 040 on H-47's cell a first mapping on seed 22, from the mirrored assignment (ADR-0257).
+#[test]
+#[ignore]
+fn what_a_readout_and_the_couplings_keep_of_a_first_mapping_on_seed_22_from_the_mirrored_assignment_explore()
+ {
+    e040_job(0, 3, true, true);
+}
+
+/// Exploration 040 on H-47's cell the eighth image on seed 23, from the assignment (ADR-0257).
+#[test]
+#[ignore]
+fn what_a_readout_and_the_couplings_keep_of_the_eighth_image_on_seed_23_from_the_assignment_explore()
+ {
+    e040_job(1, 0, true, true);
+}
+
+/// Exploration 040 on H-47's cell the eighth image on seed 23, from the mirrored assignment (ADR-0257).
+#[test]
+#[ignore]
+fn what_a_readout_and_the_couplings_keep_of_the_eighth_image_on_seed_23_from_the_mirrored_assignment_explore()
+ {
+    e040_job(1, 1, true, true);
+}
+
+/// Exploration 040 on H-47's cell a first mapping on seed 23, from the assignment (ADR-0257).
+#[test]
+#[ignore]
+fn what_a_readout_and_the_couplings_keep_of_a_first_mapping_on_seed_23_from_the_assignment_explore()
+{
+    e040_job(1, 2, true, true);
+}
+
+/// Exploration 040 on H-47's cell a first mapping on seed 23, from the mirrored assignment (ADR-0257).
+#[test]
+#[ignore]
+fn what_a_readout_and_the_couplings_keep_of_a_first_mapping_on_seed_23_from_the_mirrored_assignment_explore()
+ {
+    e040_job(1, 3, true, true);
+}
+
+/// Exploration 040 on H-47's cell the eighth image on seed 24, from the assignment (ADR-0257).
+#[test]
+#[ignore]
+fn what_a_readout_and_the_couplings_keep_of_the_eighth_image_on_seed_24_from_the_assignment_explore()
+ {
+    e040_job(2, 0, true, true);
+}
+
+/// Exploration 040 on H-47's cell the eighth image on seed 24, from the mirrored assignment (ADR-0257).
+#[test]
+#[ignore]
+fn what_a_readout_and_the_couplings_keep_of_the_eighth_image_on_seed_24_from_the_mirrored_assignment_explore()
+ {
+    e040_job(2, 1, true, true);
+}
+
+/// Exploration 040 on H-47's cell a first mapping on seed 24, from the assignment (ADR-0257).
+#[test]
+#[ignore]
+fn what_a_readout_and_the_couplings_keep_of_a_first_mapping_on_seed_24_from_the_assignment_explore()
+{
+    e040_job(2, 2, true, true);
+}
+
+/// Exploration 040 on H-47's cell a first mapping on seed 24, from the mirrored assignment (ADR-0257).
+#[test]
+#[ignore]
+fn what_a_readout_and_the_couplings_keep_of_a_first_mapping_on_seed_24_from_the_mirrored_assignment_explore()
+ {
+    e040_job(2, 3, true, true);
+}
+
+/// Exploration 040's floor learner (ADR-0257) on features written by hand: unmoved it answers the
+/// larger count of the units the trial's task reads, a tie none; a unit the task does not read
+/// counts nothing and its weights do not move; moved, the answer's vector steps by
+/// `ValueCritic::step` on the reward or the punishment less its value.
+#[test]
+fn exploration_040_s_floor_answers_as_the_readouts_select_and_learns_on_the_units_its_task_reads() {
+    // Four units: two of readout 0, two of readout 1; the pair's task does not read unit 1.
+    let side = [0u8, 0, 1, 1];
+    let unmoved = E040Learner::new(&side);
+    let mine = [3u32, 9, 2, 4];
+    let theirs = [3u32, 0, 2, 4];
+    // A's trial: readout 0 counts 12, readout 1 counts 6; the pair's: 3 and 6.
+    assert_eq!(unmoved.answer(&mine), (Some(0), [49_152, 24_576]));
+    assert_eq!(unmoved.answer(&theirs), (Some(1), [12_288, 24_576]));
+    assert_eq!(unmoved.answer(&[0, 0, 0, 0]).0, None);
+    let mut learner = unmoved.clone();
+    // The pair's trial, right at readout 1: error 65 536 − 24 576 = 40 960, steps
+    // ⌊40 960 c / 512⌋ = 80 c on answer 1's vector, unit 1's weight unmoved.
+    assert_eq!(learner.learn(&theirs, 1), (Some(1), 0));
+    assert_eq!(
+        learner.weights,
+        [vec![E040_OWN, E040_OWN, 0, 0], vec![240, 0, 16_544, 16_704]]
+    );
+    // A's trial after it: values 49 152 and ⌊(720 + 33 088 + 66 816) / 4⌋ = 25 156.
+    assert_eq!(learner.answer(&mine), (Some(0), [49_152, 25_156]));
+    // No count, no answer, nothing moves.
+    let before = learner.clone();
+    assert_eq!(learner.learn(&[0, 0, 0, 0], 0), (None, 0));
+    assert_eq!(learner, before);
+    // The pair's trial right at readout 0: values 20 480 and ⌊(1 200 + 16 544) / 4⌋ = 4 436,
+    // error 45 056, steps ⌊45 056 c / 512⌋ = 88 c on answer 0's vector.
+    assert_eq!(learner.learn(&[5, 0, 1, 0], 0), (Some(0), 0));
+    assert_eq!(
+        learner.weights,
+        [vec![16_824, E040_OWN, 88, 0], vec![240, 0, 16_544, 16_704]]
+    );
+    assert_eq!(learner.summed(&side), ([[33_208, 88], [240, 33_248]], 0));
+    // A rewarded step that reaches the rail is counted: values 0 and ⌊32 757 / 4⌋ = 8 189,
+    // error 57 347, a step of ⌊57 347 / 512⌋ = 112, held at 32 767.
+    let mut railed = E040Learner {
+        weights: [vec![0, 0], vec![i16::MAX - 10, 0]],
+    };
+    assert_eq!(railed.learn(&[1, 0], 1), (Some(1), 1));
+    assert_eq!(railed.weights[1], vec![i16::MAX, 0]);
+    // A punished answer moves its vector down: values −25 and −50, answer 0, wrong, error
+    // −65 536 + 25 = −65 511, a step of ⌊−65 511 / 512⌋ = −128.
+    let mut punished = E040Learner {
+        weights: [vec![-100, 0], vec![-200, 0]],
+    };
+    assert_eq!(punished.learn(&[1, 0], 1), (Some(0), 0));
+    assert_eq!(punished.weights, [vec![-228, 0], vec![-200, 0]]);
+}
