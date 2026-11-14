@@ -54,13 +54,11 @@ on:
   push:
     branches: [main]
   pull_request:
-  schedule:
-    # Weekly, Wednesday 20:17 UTC, Thursday 04:17 in Taiwan: the whole-domain tests and the
-    # whole-tree mutation run (ADR-0030). Nothing to block; the survivors are the next round's
-    # list. Off the hour, where GitHub's load delays a schedule most: at Monday 03:00 the run
-    # began 5 to 7 hours late over six weeks, and 2026-10-05's never began. Thursday is the day
-    # the maintainers dispatch least, and its early morning their quietest hours (ADR-0223).
-    - cron: "17 20 * * 3"
+  # The weekly schedule is suspended while development is paused (ADR-0258): the tree does not
+  # change, and the organization's runners are one pool with Mente's. It ran the whole-domain
+  # tests and the whole-tree mutation run (ADR-0030) on Wednesday at 20:17 UTC, off the hour,
+  # where GitHub's load delays a schedule least (ADR-0223). The ADR that resumes development
+  # restores it here as `schedule:` with that minute, hour and day in a `cron` entry.
   # The weekly jobs by hand: `gh workflow run ci.yml --ref <branch> -f scope=<scope>`. A round
   # dispatches `exhaustive` and `arms` and never the sweep: the whole-tree sweep runs on the
   # schedule, which always does both, and by hand at `mutants` or `both` alone (ADR-0211, which

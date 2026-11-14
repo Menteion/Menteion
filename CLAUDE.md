@@ -168,7 +168,7 @@ a new rule carries a test over the lattice of `testkit/prop.rs`. Before a releas
 tests run by a dispatch at `scope=exhaustive`. A round's runs are dispatches too: its calibration at
 `scope=exhaustive` with its own tests excluded, made with its arms at `scope=arms`, and its
 reproduction at `scope=exhaustive` with only its own tests; the whole-tree sweep runs on the weekly
-schedule alone ([ADR-0211](docs/adr/0211-the-round-shortened.md),
+schedule alone, suspended while development is paused (ADR-0258) ([ADR-0211](docs/adr/0211-the-round-shortened.md),
 [briefs/README.md](briefs/README.md#evidencing-a-round)). A round whose change only adds, by
 `npm run round:additive -- origin/main <commit>`, calibrates with its own calibration tests alone
 ([ADR-0215](docs/adr/0215-the-calibration-a-change-needs.md)).
